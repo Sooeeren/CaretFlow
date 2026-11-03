@@ -93,3 +93,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11 | Initial version: editor, source mode, Vim, files, export, themes |
 | Claude Opus 5.5 | Claude Code | 2026-11-03 | 0.1.1–0.3.0: Vim visual increment and block mode, PDF export options, page preview, callouts, custom title bar, Linux fixes |
 | Claude Opus 5.5 | Claude Code | 2026-11-03 | Spelling & grammar check (Harper/LanguageTool, F7 panel, AutoCorrect), typing test, WPM meter, typing cat, per-model About stats, README screenshots, this file |
+| Claude Sonnet 5.5 | Claude Code | 2026-11-03 | More engaging About dialog tagline |

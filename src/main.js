@@ -2000,7 +2000,7 @@ function showAbout() {
   const body = el(
     'div',
     { class: 'about' },
-    el('p', {}, 'A fast, seamless Markdown reader & editor.'),
+    el('p', {}, 'A fast, quiet Markdown editor. Write right on the rendered page, and flip to raw Markdown or Vim whenever you like.'),
     el('p', { class: 'about-sub' }, 'Built with Tauri, ProseMirror (Milkdown), CodeMirror, KaTeX, Mermaid and pdf.js.'),
   )
   if (s && !s.unavailable && s.total && s.byAuthor) {
