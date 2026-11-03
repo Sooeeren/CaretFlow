@@ -12,6 +12,16 @@ Folio is a **seamless** Markdown reader and editor: what you type is rendered *i
 - Type `/` on an empty line for the block menu
 - Prefer Vim? **Settings → Vim Keybindings** (`Ctrl+Alt+V`) — works in source mode, with `:w`, `:q`, `:wq`
 
+## Spelling & grammar
+
+Folio checks your writing as you type, like a word processor: red wavy lines are spelling, blue double lines are grammar (*their/they're*, *could of*, *a apple*, repeated words). Right-click a marked word for suggestions, or press `F7` to go through every issue (`Alt+F7` jumps to the next one). Common typos such as *teh* are fixed while you type; press `Backspace` right after to undo a fix.
+
+The default checker (Harper) runs entirely on your computer. For German, French, Spanish and other languages, switch to LanguageTool in **Preferences → Writing**.
+
+## Typing test
+
+`Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **View → Typing Speed (WPM)** shows your speed while you write, and **View → Typing Cat** adds a small companion.
+
 ## Inline formatting
 
 You can write **bold**, *italic*, ~~strikethrough~~, `inline code`, [links](https://example.com) and inline math like $e^{i\pi} + 1 = 0$.
