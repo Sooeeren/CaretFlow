@@ -2,9 +2,51 @@
 import { marked } from 'marked'
 import katex from 'katex'
 import katexCss from 'katex/dist/katex.min.css?inline'
+import { languages } from '@codemirror/language-data'
+import { LanguageDescription, defaultHighlightStyle } from '@codemirror/language'
+import { highlightCode } from '@lezer/highlight'
 import { isAbs, join, relative, decodeSrc, encodeSrc } from './paths.js'
 
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const unesc = (s) =>
+  s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+
+/**
+ * Syntax-highlight fenced code blocks with the same Lezer parsers and highlight style the
+ * editor's code blocks use, so exports/PDFs look like the editor.
+ */
+async function highlightBlocks(html) {
+  const re = /<pre><code class="language-([\w+#.-]+)">([\s\S]*?)<\/code><\/pre>/g
+  const parts = []
+  let last = 0
+  for (let m; (m = re.exec(html)); ) {
+    const lang = m[1]
+    if (lang === 'mermaid') continue
+    const desc = LanguageDescription.matchLanguageName(languages, lang, true)
+    if (!desc) continue
+    let support
+    try {
+      support = await desc.load()
+    } catch {
+      continue
+    }
+    const code = unesc(m[2]).replace(/\n$/, '')
+    const tree = support.language.parser.parse(code)
+    let out = ''
+    highlightCode(
+      code,
+      tree,
+      defaultHighlightStyle,
+      (text, classes) => (out += classes ? `<span class="${classes}">${esc(text)}</span>` : esc(text)),
+      () => (out += '\n'),
+    )
+    parts.push(html.slice(last, m.index), `<pre><code class="language-${lang}">${out}\n</code></pre>`)
+    last = m.index + m[0].length
+  }
+  parts.push(html.slice(last))
+  return parts.join('')
+}
+const highlightCss = () => defaultHighlightStyle.module?.getRules() || ''
 const tex = (s, displayMode) => katex.renderToString(s, { displayMode, throwOnError: false })
 
 marked.use({
@@ -73,6 +115,7 @@ export async function toHtml(md, o) {
   md = md.replace(/^```(?:math|latex|tex|katex)\s*\n([\s\S]*?)\n```/gm, (_, s) => `$$\n${s}\n$$`)
   let html = marked.parse(md)
   html = await renderMermaidBlocks(html, o.dark)
+  html = await highlightBlocks(html)
 
   // Rewrite relative image paths
   html = html.replace(/(<img[^>]*?\ssrc=")([^"]+)(")/g, (all, a, src, b) => {
@@ -93,6 +136,7 @@ export async function toHtml(md, o) {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(o.title || 'Document')}</title>
 ${katexLink}
+<style>${highlightCss()}</style>
 <style>
 :root{${o.themeVars}}
 html{background:var(--bg);color:var(--fg)}
@@ -114,7 +158,8 @@ img{max-width:100%}hr{border:0;border-top:1px solid var(--border);margin:2em 0}
 li>input[type=checkbox]{margin-right:.4em}
 .math-block{overflow-x:auto;margin:1em 0}.mermaid{text-align:center;margin:1em 0}
 @media print{body{padding:0;max-width:none}pre,blockquote,table,img,.mermaid{break-inside:avoid}h1,h2,h3{break-after:avoid}}
-@page{margin:18mm 16mm}
+${o.forPdf ? '' : '@page{margin:18mm 16mm}'}
+${o.forPdf ? 'body{padding:0;max-width:none}' : ''}
 </style></head>
 <body>
 ${html}

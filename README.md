@@ -44,12 +44,32 @@ to the rendered view. Vim's Ctrl keys (`Ctrl+D/U/F/B/O/I/V/R/…`) go to Vim ins
 In visual mode `Ctrl+A`/`Ctrl+X` add/subtract on every selected line and `g Ctrl+A`/`g Ctrl+X`
 increment progressively (1, 2, 3, …), including in `Ctrl+V` block selections.
 
+## PDF export
+
+**File → Export as PDF…** (`Ctrl+Alt+E`) writes the PDF directly (no print dialog) with:
+paper size, orientation, margins, page numbers (`1`, `1 / 5`, `Page 1 of 5`), header and footer
+text with `{title}` `{file}` `{date}` `{author}` placeholders, and document properties
+(title, author, subject, keywords). Code blocks keep the editor's syntax highlighting.
+**File → Print…** still opens the system print dialog.
+
+From the command line (no window is shown):
+
+```sh
+folio --export-pdf notes.md notes.pdf --header "{title}" --footer "{author}" \
+      --author "Jane Doe" --page-numbers "page n of N" --paper letter --landscape
+folio --export-html notes.md notes.html
+```
+
 ## Notes
 
-- **Underline** (`Ctrl+U`) is saved as `<u>text</u>`, since Markdown has no underline syntax.
-- **Print / Export PDF** uses a light print theme by default (Settings → Export / PDF Theme).
-- **Linux** uses a themed title bar and the desktop's native (xdg-portal) file dialogs;
-  Settings → Use System Title Bar switches back to the GTK one.
+- **Underline** (`Ctrl+U`, or the selection toolbar) is saved as `<u>text</u>`, since Markdown has no underline syntax.
+- **Tables**: inserting asks for the size; press `Enter` in the last row or use the **+** buttons to grow it.
+- **Mermaid**: Paragraph → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
+- `F1` opens the command palette; `Shift+F1` lists all shortcuts.
+- **Title bar**: Folio draws its own (menus and window buttons in one row) on Windows and Linux.
+  Settings → Use System Title Bar switches back (on Linux this applies after a restart).
+- **Linux**: uses the desktop's native (xdg-portal) file dialogs, and sets
+  `WEBKIT_DISABLE_DMABUF_RENDERER=1` (unless you set it yourself) to avoid WebKitGTK freezes on Wayland.
 
 ## Layout
 

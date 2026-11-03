@@ -3,7 +3,7 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 import './style.css'
 
-import { editorViewCtx, serializerCtx } from '@milkdown/kit/core'
+import { editorViewCtx, serializerCtx, commandsCtx } from '@milkdown/kit/core'
 import { callCommand, $prose } from '@milkdown/kit/utils'
 import { Plugin, PluginKey, TextSelection } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
@@ -19,7 +19,10 @@ import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialo
 import { openUrl, openPath as osOpenPath, revealItemInDir } from '@tauri-apps/plugin-opener'
 
 import * as P from './paths.js'
-import { underline as underlinePlugin, toggleUnderlineCommand } from './underline.js'
+import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema } from './underline.js'
+
+const UNDERLINE_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M5 21v-2h14v2H5Zm7-4q-2.525 0-3.925-1.575T6.675 11.2V3h2.55v8.35q0 1.4.775 2.275T12 14.5q1.225 0 1.988-.875t.762-2.275V3h2.55v8.2q0 2.65-1.4 4.225T12 17Z"/></svg>'
 import guideMd from './guide.md?raw'
 
 // ════════════════════════════════════════ state & settings
@@ -50,7 +53,7 @@ const DEFAULTS = {
   vim: false,
   startInSource: false,
   exportTheme: 'paper', // 'paper' | 'sepia' | 'current' — PDF/print & HTML export palette
-  nativeTitlebar: !IS_LINUX, // Linux gets a themed title bar instead of the GTK3 one
+  nativeTitlebar: false, // mirrored from Rust's ui.json at startup (decides decorations)
   customCSS: '',
 }
 const settings = { ...DEFAULTS, ...readJSON('folio.settings', {}) }
@@ -344,6 +347,18 @@ async function createEditor(markdown) {
       [Crepe.Feature.ImageBlock]: { onUpload: storeImageFile, proxyDomURL: resolveSrc },
       [Crepe.Feature.CodeMirror]: { renderPreview, previewOnlyByDefault: true },
       [Crepe.Feature.Placeholder]: { text: 'Start writing…  (type / for blocks)', mode: 'doc' },
+      [Crepe.Feature.Toolbar]: {
+        // add Underline to the selection toolbar, next to bold / italic / strikethrough
+        buildToolbar: (builder) => {
+          builder.getGroup('formatting').addItem('underline', {
+            icon: UNDERLINE_ICON,
+            label: 'Underline',
+            shortcut: 'Ctrl+U',
+            active: (ctx) => ctx.get(commandsCtx).call(cmk.isMarkSelectedCommand.key, underlineSchema.type(ctx)),
+            onRun: (ctx) => ctx.get(commandsCtx).call(toggleUnderlineCommand.key),
+          })
+        },
+      },
     },
   })
   c.editor.use(underlinePlugin).use(folioPlugin)
@@ -1198,6 +1213,73 @@ function codeBlock(lang = '') {
   if (inSource()) return source.insert('\n```' + lang + '\n' + source.selectedText() + '\n```\n')
   run(cmk.createCodeBlockCommand, lang)
 }
+
+/** Insert a code block with content (replaces the current block if it is an empty paragraph). */
+function insertCodeBlock(lang, code) {
+  if (inSource()) return source.insert('\n```' + lang + '\n' + code + '\n```\n')
+  const v = view()
+  if (!v) return
+  const { schema } = v.state
+  const node = schema.nodes.code_block.create({ language: lang }, code ? schema.text(code) : null)
+  const $f = v.state.selection.$from
+  let tr = v.state.tr
+  if ($f.parent.type.name === 'paragraph' && $f.parent.content.size === 0 && $f.depth >= 1) {
+    tr = tr.replaceWith($f.before(), $f.after(), node)
+  } else tr = tr.replaceSelectionWith(node)
+  v.dispatch(tr.scrollIntoView())
+  v.focus()
+}
+
+const MERMAID_TEMPLATES = [
+  ['Flowchart', 'Processes and decisions', 'flowchart LR\n  A[Start] --> B{Is it working?}\n  B -- Yes --> C[Great]\n  B -- No --> D[Debug]\n  D --> B'],
+  ['Sequence', 'Messages between participants', 'sequenceDiagram\n  participant U as User\n  participant A as App\n  participant S as Server\n  U->>A: Click save\n  A->>S: PUT /doc\n  S-->>A: 200 OK\n  A-->>U: Saved ✓'],
+  ['Class', 'Classes and relationships', 'classDiagram\n  class Animal {\n    +String name\n    +move()\n  }\n  class Dog {\n    +bark()\n  }\n  Animal <|-- Dog'],
+  ['State', 'States and transitions', 'stateDiagram-v2\n  [*] --> Draft\n  Draft --> Review: submit\n  Review --> Draft: changes requested\n  Review --> Published: approve\n  Published --> [*]'],
+  ['Entity relationship', 'Database tables', 'erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains\n  PRODUCT ||--o{ LINE_ITEM : "ordered in"'],
+  ['Gantt', 'Project schedule', 'gantt\n  title Project plan\n  dateFormat YYYY-MM-DD\n  section Design\n    Research      :a1, 2026-01-05, 7d\n    Mockups       :after a1, 5d\n  section Build\n    Implementation:2026-01-19, 14d\n    Testing       :7d'],
+  ['Pie chart', 'Parts of a whole', 'pie title Time spent\n  "Writing" : 45\n  "Editing" : 30\n  "Research" : 25'],
+  ['Mindmap', 'Ideas around a topic', 'mindmap\n  root((Folio))\n    Editing\n      WYSIWYG\n      Source mode\n    Export\n      PDF\n      HTML\n    Themes'],
+  ['Timeline', 'Events in order', 'timeline\n  title Release history\n  2026-10 : 0.1.0 first release\n  2026-11 : 0.1.1 Vim fixes\n          : RPM package'],
+  ['User journey', 'Steps and satisfaction', 'journey\n  title Writing a document\n  section Draft\n    Open Folio: 5: Me\n    Write outline: 3: Me\n  section Finish\n    Export PDF: 4: Me'],
+  ['Git graph', 'Branches and merges', 'gitGraph\n  commit\n  branch feature\n  checkout feature\n  commit\n  commit\n  checkout main\n  merge feature\n  commit'],
+  ['Quadrant', 'Two-axis comparison', 'quadrantChart\n  title Effort vs impact\n  x-axis Low effort --> High effort\n  y-axis Low impact --> High impact\n  quadrant-1 Plan\n  quadrant-2 Do now\n  quadrant-3 Skip\n  quadrant-4 Delegate\n  Feature A: [0.3, 0.8]\n  Feature B: [0.7, 0.6]\n  Feature C: [0.2, 0.2]'],
+]
+
+async function mermaidGallery() {
+  const grid = el('div', { class: 'mm-grid' })
+  let closeDialog
+  const cards = [['Blank diagram', 'Start from scratch', 'flowchart TD\n  A --> B']].concat(MERMAID_TEMPLATES).map(([name, desc, code], i) => {
+    const prev = el('div', { class: 'mm-prev' }, i === 0 ? el('span', { class: 'mm-blank' }, '+') : el('span', { class: 'mm-loading' }, '…'))
+    const card = el('button', { class: 'mm-card', type: 'button' }, prev, el('b', {}, name), el('small', {}, desc))
+    card.onclick = () => {
+      closeDialog?.(true)
+      insertCodeBlock('mermaid', i === 0 ? '' : code)
+    }
+    grid.append(card)
+    return { prev, code, i }
+  })
+  const p = dialog({
+    title: 'Insert Mermaid diagram',
+    body: el('div', {}, el('p', { class: 'mm-intro' }, 'Pick a template to start from — you can edit it right after inserting.'), grid),
+    wide: true,
+    buttons: [{ label: 'Cancel', value: null, cancel: true }],
+    onMount: (_b, done) => (closeDialog = done),
+  })
+  // render previews one by one (mermaid is loaded lazily)
+  mermaidP ||= import('mermaid').then((m) => m.default)
+  const mermaid = await mermaidP
+  mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'strict', flowchart: { htmlLabels: false } })
+  for (const c of cards) {
+    if (c.i === 0 || $('#modal').hidden) continue
+    try {
+      const { svg } = await mermaid.render('mmg' + ++mmId, c.code)
+      c.prev.innerHTML = svg
+    } catch {
+      c.prev.textContent = ''
+    }
+  }
+  return p
+}
 function blockquote() {
   if (inSource()) return source.linePrefix('> ', /^>\s?/)
   run(cmk.wrapInBlockquoteCommand)
@@ -1221,9 +1303,168 @@ function list(kind) {
     }
   }
 }
-function table() {
-  if (inSource()) return source.insert('\n| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n')
-  run(gfm.insertTableCommand, { row: 3, col: 3 })
+// ── tables
+/** Ask for a table size with a hover grid (like word processors) plus exact inputs. */
+function pickTableSize() {
+  const MAXR = 10
+  const MAXC = 10
+  let rows = 3
+  let cols = 3
+  const grid = el('div', { class: 'tsize-grid' })
+  const label = el('div', { class: 'tsize-label' })
+  const rIn = el('input', { type: 'number', min: 1, max: 100, value: rows })
+  const cIn = el('input', { type: 'number', min: 1, max: 30, value: cols })
+  const paint = () => {
+    for (const cell of grid.children) cell.classList.toggle('on', +cell.dataset.r < rows && +cell.dataset.c < cols)
+    label.textContent = `${cols} × ${rows}  (columns × rows, incl. header)`
+  }
+  for (let r = 0; r < MAXR; r++)
+    for (let c = 0; c < MAXC; c++) {
+      const cell = el('div', { 'data-r': r, 'data-c': c })
+      cell.onmouseenter = () => {
+        rows = r + 1
+        cols = c + 1
+        rIn.value = rows
+        cIn.value = cols
+        paint()
+      }
+      grid.append(cell)
+    }
+  rIn.oninput = () => ((rows = Math.max(1, Math.min(100, +rIn.value || 1))), paint())
+  cIn.oninput = () => ((cols = Math.max(1, Math.min(30, +cIn.value || 1))), paint())
+  paint()
+  const body = el(
+    'div',
+    { class: 'tsize' },
+    grid,
+    label,
+    el('div', { class: 'tsize-inputs' }, el('label', {}, 'Columns ', cIn), el('label', {}, 'Rows ', rIn)),
+  )
+  return dialog({
+    title: 'Insert table',
+    body,
+    buttons: [
+      { label: 'Cancel', value: null, cancel: true },
+      { label: 'Insert', value: 'ok', primary: true },
+    ],
+    onMount: (_box, done) => grid.addEventListener('click', () => done('ok')),
+  }).then((r) => (r ? { rows, cols } : null))
+}
+
+async function table() {
+  const size = await pickTableSize()
+  if (!size) return focusEditor()
+  const { rows, cols } = size
+  if (inSource()) {
+    const line = (cells) => '| ' + cells.join(' | ') + ' |'
+    const head = line(Array.from({ length: cols }, (_, i) => `Column ${i + 1}`))
+    const sep = line(Array(cols).fill('---'))
+    const body = Array.from({ length: Math.max(0, rows - 1) }, () => line(Array(cols).fill(' ')))
+    return source.insert('\n' + [head, sep, ...body].join('\n') + '\n')
+  }
+  focusEditor()
+  run(gfm.insertTableCommand, { row: rows, col: cols })
+}
+
+/** Locate the table/row/cell around the cursor. */
+function tableContext(state) {
+  const $f = state.selection.$from
+  for (let d = $f.depth; d > 1; d--) {
+    const n = $f.node(d)
+    if (n.type.name === 'table_cell' || n.type.name === 'table_header') {
+      return { tablePos: $f.before(d - 2), table: $f.node(d - 2), row: $f.index(d - 2), col: $f.index(d - 1) }
+    }
+  }
+  return null
+}
+function cellInside(doc, tablePos, r, c) {
+  const t = doc.nodeAt(tablePos)
+  if (!t || r >= t.childCount) return null
+  let pos = tablePos + 1
+  for (let i = 0; i < r; i++) pos += t.child(i).nodeSize
+  const row = t.child(r)
+  pos += 1
+  for (let j = 0; j < Math.min(c, row.childCount - 1); j++) pos += row.child(j).nodeSize
+  return pos + 1
+}
+function selectCell(v, tablePos, r, c) {
+  const p = cellInside(v.state.doc, tablePos, r, c)
+  if (p == null) return
+  v.dispatch(v.state.tr.setSelection(TextSelection.near(v.state.doc.resolve(p))).scrollIntoView())
+  v.focus()
+}
+
+/** Enter in a table cell moves down a row; in the last row it adds a new row first. */
+function tableEnter() {
+  const v = view()
+  const ctx = v && tableContext(v.state)
+  if (!ctx) return false
+  if (ctx.row === ctx.table.childCount - 1) run(gfm.addRowAfterCommand)
+  selectCell(view(), ctx.tablePos, ctx.row + 1, ctx.col)
+  return true
+}
+
+/** Hover "+" buttons below / beside a table to add a row or column at the end. */
+function wireTablePlus() {
+  const addRow = el('button', { class: 'table-plus row', title: 'Add row (or press Enter in the last row)' }, '+')
+  const addCol = el('button', { class: 'table-plus col', title: 'Add column' }, '+')
+  $('#scroller').append(addRow, addCol)
+  let current = null
+  const hide = () => {
+    addRow.hidden = addCol.hidden = true
+    current = null
+  }
+  hide()
+  const place = (block) => {
+    const tbl = block.querySelector('table') || block
+    const r = tbl.getBoundingClientRect()
+    const sr = scroller.getBoundingClientRect()
+    const top = r.top - sr.top + scroller.scrollTop
+    const left = r.left - sr.left
+    Object.assign(addRow.style, { top: top + r.height + 4 + 'px', left: left + 'px', width: r.width + 'px' })
+    Object.assign(addCol.style, { top: top + 'px', left: left + r.width + 4 + 'px', height: r.height + 'px' })
+    addRow.hidden = addCol.hidden = S.readonly
+    current = block
+  }
+  scroller.addEventListener('mousemove', (e) => {
+    if (S.mode !== 'wysiwyg') return hide()
+    if (e.target.closest('.table-plus')) return
+    const block = e.target.closest('.milkdown-table-block')
+    if (block) return place(block)
+    if (!current) return
+    // keep the buttons while the pointer travels from the table to them
+    const r = (current.querySelector('table') || current).getBoundingClientRect()
+    if (e.clientX > r.right + 36 || e.clientY > r.bottom + 36 || e.clientX < r.left - 8 || e.clientY < r.top - 8) hide()
+  })
+  scroller.addEventListener('scroll', () => current && place(current), { passive: true })
+  const act = (kind) => {
+    const v = view()
+    const cell = current?.querySelector('td, th')
+    if (!v || !cell) return
+    const pos = v.posAtDOM(cell, 0)
+    v.dispatch(v.state.tr.setSelection(TextSelection.near(v.state.doc.resolve(pos))))
+    const ctx = tableContext(v.state)
+    if (!ctx) return
+    const lastRow = ctx.table.childCount - 1
+    const lastCol = ctx.table.child(0).childCount - 1
+    if (kind === 'row') {
+      selectCell(v, ctx.tablePos, lastRow, 0)
+      run(gfm.addRowAfterCommand)
+      selectCell(view(), ctx.tablePos, lastRow + 1, 0)
+    } else {
+      selectCell(v, ctx.tablePos, 0, lastCol)
+      run(gfm.addColAfterCommand)
+      selectCell(view(), ctx.tablePos, 0, lastCol + 1)
+    }
+    requestAnimationFrame(() => current && place(current))
+  }
+  for (const [b, kind] of [
+    [addRow, 'row'],
+    [addCol, 'col'],
+  ]) {
+    b.onmousedown = (e) => e.preventDefault()
+    b.onclick = () => act(kind)
+  }
 }
 function hr() {
   if (inSource()) return source.insert('\n---\n')
@@ -1317,16 +1558,175 @@ async function exportHtml() {
     filters: [{ name: 'HTML', extensions: ['html'] }],
   })
   if (!target) return
+  await exportHtmlTo(target)
+  toast('Exported ' + P.basename(target))
+}
+
+async function exportHtmlTo(target) {
   const { toHtml } = await import('./export.js')
   const out = await toHtml(currentText(), {
-    title: S.path ? P.stem(S.path) : firstHeading() || 'Document',
+    title: docTitle(),
     docDir: S.path && P.dirname(S.path),
     targetDir: P.dirname(target),
     themeVars: themeVars(),
     dark: DARK_THEMES.includes(exportThemeName()),
   })
   await invoke('write_text', { path: target, content: out })
-  toast('Exported ' + P.basename(target))
+}
+
+const docTitle = () => firstHeading() || (S.path ? P.stem(S.path) : 'Document')
+
+// ── PDF export (direct to file, with page numbers / header / footer / properties)
+const PAPER = { a4: [210, 297, 'A4'], letter: [215.9, 279.4, 'Letter'], legal: [215.9, 355.6, 'Legal'], a5: [148, 210, 'A5'], a3: [297, 420, 'A3'] }
+const PDF_DEFAULTS = {
+  paper: 'a4',
+  landscape: false,
+  margin: 18,
+  pageNumbers: 'n/N',
+  header: '',
+  footer: '',
+  skipFirst: false,
+  author: '',
+  subject: '',
+  keywords: '',
+  openAfter: true,
+}
+
+/** Expand {title} {file} {date} {author} placeholders. */
+function expandPlaceholders(s, meta) {
+  const date = new Date().toLocaleDateString()
+  return (s || '')
+    .replace(/\{title\}/gi, meta.title || '')
+    .replace(/\{file\}/gi, S.path ? P.basename(S.path) : 'Untitled')
+    .replace(/\{date\}/gi, date)
+    .replace(/\{author\}/gi, meta.author || '')
+}
+
+function pdfOptionsFor(p, overrides = {}) {
+  p = { ...PDF_DEFAULTS, ...p, ...overrides }
+  const [w, h] = PAPER[p.paper] || PAPER.a4
+  const meta = { title: p.title ?? docTitle(), author: p.author }
+  return {
+    pageWidthMm: w,
+    pageHeightMm: h,
+    landscape: !!p.landscape,
+    marginMm: +p.margin || 18,
+    pageNumbers: p.pageNumbers || '',
+    header: expandPlaceholders(p.header, meta),
+    footer: expandPlaceholders(p.footer, meta),
+    skipFirstPage: !!p.skipFirst,
+    title: meta.title || '',
+    author: p.author || '',
+    subject: p.subject || '',
+    keywords: p.keywords || '',
+  }
+}
+
+async function exportPdfTo(out, options) {
+  const { toHtml } = await import('./export.js')
+  const htmlDoc = await toHtml(currentText(), {
+    title: options.title || docTitle(),
+    docDir: S.path && P.dirname(S.path),
+    resolveForView: convertFileSrc,
+    themeVars: themeVars(),
+    dark: DARK_THEMES.includes(exportThemeName()),
+    inlineKatex: true,
+    forPdf: true,
+  })
+  const tmp = out.replace(/\.pdf$/i, '') + '.folio-tmp.html'
+  await invoke('write_text', { path: tmp, content: htmlDoc })
+  try {
+    await invoke('export_pdf', { url: convertFileSrc(tmp), out, options })
+  } finally {
+    invoke('remove_temp', { path: tmp }).catch(() => {})
+  }
+}
+
+async function exportPdfDialog() {
+  const p = { ...PDF_DEFAULTS, ...(settings.pdf || {}) }
+  const meta = { title: docTitle(), subject: '', keywords: p.keywords }
+  const row = (label, hint, control) => el('div', { class: 'pref-row' }, el('label', {}, label, hint ? el('small', {}, hint) : null), control)
+  const text = (val, ph, w = '220px') => el('input', { type: 'text', value: val, placeholder: ph, spellcheck: 'false', style: `width:${w}` })
+  const toggleEl = (on) => el('input', { type: 'checkbox', checked: on })
+
+  const paper = customSelect(Object.entries(PAPER).map(([k2, v]) => [k2, v[2]]), p.paper, (v) => (p.paper = v))
+  const orient = customSelect([['p', 'Portrait'], ['l', 'Landscape']], p.landscape ? 'l' : 'p', (v) => (p.landscape = v === 'l'))
+  const margin = customSelect([[10, 'Narrow (10 mm)'], [18, 'Normal (18 mm)'], [25, 'Wide (25 mm)']], p.margin, (v) => (p.margin = +v))
+  const nums = customSelect(
+    [['', 'None'], ['n', '1'], ['n/N', '1 / 5'], ['page n of N', 'Page 1 of 5']],
+    p.pageNumbers,
+    (v) => (p.pageNumbers = v),
+  )
+  const theme = customSelect([['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], settings.exportTheme, (v) => {
+    settings.exportTheme = v
+    saveSettings()
+  })
+  const header = text(p.header, 'e.g. {title}')
+  const footer = text(p.footer, 'e.g. {author} · {date}')
+  const skipFirst = toggleEl(p.skipFirst)
+  const title = text(meta.title, 'Document title')
+  const author = text(p.author, 'Your name')
+  const subject = text('', 'Optional')
+  const keywords = text(p.keywords, 'comma, separated')
+  const openAfter = toggleEl(p.openAfter)
+
+  const section = (t) => el('div', { class: 'pdf-section' }, t)
+  const body = el(
+    'div',
+    {},
+    section('Page'),
+    row('Paper size', null, paper),
+    row('Orientation', null, orient),
+    row('Margins', null, margin),
+    row('Theme', null, theme),
+    section('Header & footer'),
+    row('Page numbers', 'Bottom right, or centered when there is no footer text', nums),
+    row('Header', 'Centered at the top of each page', header),
+    row('Footer', 'Bottom left', footer),
+    row('Skip on first page', null, skipFirst),
+    el('div', { class: 'pdf-hint' }, 'Placeholders: {title} {file} {date} {author}'),
+    section('Document properties'),
+    row('Title', null, title),
+    row('Author', null, author),
+    row('Subject', null, subject),
+    row('Keywords', null, keywords),
+    section(''),
+    row('Open PDF after export', null, openAfter),
+  )
+  const go = await dialog({
+    title: 'Export as PDF',
+    body,
+    wide: true,
+    buttons: [
+      { label: 'Cancel', value: false, cancel: true },
+      { label: 'Export PDF…', value: true, primary: true },
+    ],
+  })
+  if (!go) return
+  Object.assign(p, {
+    header: header.value,
+    footer: footer.value,
+    skipFirst: skipFirst.checked,
+    author: author.value,
+    keywords: keywords.value,
+    openAfter: openAfter.checked,
+  })
+  settings.pdf = { ...p } // remembered for next time (title/subject are per document)
+  saveSettings()
+  const out = await saveDialog({
+    defaultPath: S.path ? S.path.replace(/\.[^.\\/]+$/, '') + '.pdf' : (title.value || 'document').replace(/[\\/:*?"<>|]+/g, '') + '.pdf',
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  })
+  if (!out) return
+  toast('Exporting PDF…', 20000)
+  try {
+    await exportPdfTo(out, pdfOptionsFor(p, { title: title.value, subject: subject.value }))
+    toast('Exported ' + P.basename(out))
+    if (p.openAfter) osOpenPath(out).catch(() => {})
+  } catch (e) {
+    log('pdf export failed:', e)
+    await dialog({ title: 'PDF export failed', body: String(e) })
+  }
 }
 
 async function printDoc() {
@@ -1482,14 +1882,18 @@ function toggleZen() {
   document.body.classList.toggle('app-zen')
 }
 
-// ── custom title bar (Linux by default: replaces the dated GTK3 decorations)
-async function applyTitlebar() {
+// ── custom title bar: menus share one row with the window buttons (default on every OS).
+//    The decorations themselves are chosen by Rust when the window is created.
+const OS = IS_LINUX ? 'linux' : /Windows/i.test(navigator.userAgent) ? 'windows' : 'mac'
+// Fluent glyphs on Windows (Segoe Fluent Icons / MDL2), SVG elsewhere
+const WIN_GLYPHS = { min: '', max: '', restore: '', close: '' }
+function applyTitlebar() {
+  document.body.classList.add('os-' + OS)
   const custom = !settings.nativeTitlebar
   document.body.classList.toggle('custom-titlebar', custom)
-  try {
-    await win.setDecorations(!custom)
-  } catch (e) {
-    log('setDecorations failed:', e)
+  if (OS === 'windows') {
+    $('#wc-min').innerHTML = `<span class="glyph">${WIN_GLYPHS.min}</span>`
+    $('#wc-close').innerHTML = `<span class="glyph">${WIN_GLYPHS.close}</span>`
   }
   if (custom) syncMaximized()
 }
@@ -1497,6 +1901,11 @@ async function syncMaximized() {
   const max = await win.isMaximized().catch(() => false)
   document.body.classList.toggle('maximized', max)
   $('#wc-max').title = max ? 'Restore' : 'Maximize'
+  if (OS === 'windows') $('#wc-max').innerHTML = `<span class="glyph">${max ? WIN_GLYPHS.restore : WIN_GLYPHS.max}</span>`
+  else
+    $('#wc-max').innerHTML = max
+      ? '<svg viewBox="0 0 10 10"><rect x="1.5" y="3" width="5.5" height="5.5" rx="1"/><path d="M3.5 3V2.2a.7.7 0 0 1 .7-.7h3.6a.7.7 0 0 1 .7.7v3.6a.7.7 0 0 1-.7.7H7"/></svg>'
+      : '<svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1"/></svg>'
 }
 function wireTitlebar() {
   $('#wc-min').onclick = () => win.minimize()
@@ -1512,9 +1921,30 @@ function wireTitlebar() {
   win.onResized(debounce(() => !settings.nativeTitlebar && syncMaximized(), 100))
 }
 async function toggleNativeTitlebar() {
-  settings.nativeTitlebar = !settings.nativeTitlebar
+  const native = !settings.nativeTitlebar
+  await invoke('set_native_titlebar', { native })
+  settings.nativeTitlebar = native
   saveSettings()
-  await applyTitlebar()
+  if (OS === 'windows') {
+    // Win32 can switch decorations on a live window
+    await win.setDecorations(native).catch((e) => log('setDecorations failed:', e))
+    applyTitlebar()
+    return
+  }
+  // GTK can't reliably add decorations back to a mapped window (this used to leave the
+  // window with no buttons at all), so the new title bar applies on restart.
+  const r = await dialog({
+    title: 'Restart to apply',
+    body: `Folio will use the ${native ? 'system' : 'Folio'} title bar after a restart.`,
+    buttons: [
+      { label: 'Later', value: false, cancel: true },
+      { label: 'Restart now', value: true, primary: true },
+    ],
+  })
+  if (r && (await confirmDiscard())) {
+    S.dirty = false
+    await invoke('restart', { path: S.path })
+  }
 }
 
 function updateTitle() {
@@ -1534,14 +1964,11 @@ function focusEditor() {
 // ════════════════════════════════════════ preferences
 function openPrefs() {
   const row = (label, hint, control) => el('div', { class: 'pref-row' }, el('label', {}, label, hint ? el('small', {}, hint) : null), control)
-  const sel = (key, opts, onChange) => {
-    const s = el('select', {}, ...opts.map(([v, l]) => el('option', { value: v, selected: String(settings[key]) === String(v) }, l)))
-    s.onchange = () => {
-      settings[key] = s.value
-      onChange ? onChange(s.value) : applySettings()
-    }
-    return s
-  }
+  const sel = (key, opts, onChange) =>
+    customSelect(opts, settings[key], (v) => {
+      settings[key] = v
+      onChange ? onChange(v) : applySettings()
+    })
   const chk = (key) => {
     const c = el('input', { type: 'checkbox', checked: settings[key] })
     c.onchange = () => {
@@ -1631,7 +2058,8 @@ const MENU = [
       k('Rename…', null, () => S.path && renameFile(S.path), { enabled: () => !!S.path }),
       '-',
       k('Export as HTML…', null, exportHtml),
-      k('Print / Export PDF…', 'Ctrl+Alt+P', printDoc),
+      k('Export as PDF…', 'Ctrl+Alt+E', exportPdfDialog),
+      k('Print…', 'Ctrl+Alt+P', printDoc),
       '-',
       k('Reveal in Explorer', null, () => S.path && revealItemInDir(S.path), { enabled: () => !!S.path }),
       k('Copy File Path', null, () => S.path && navigator.clipboard.writeText(S.path).then(() => toast('Path copied')), { enabled: () => !!S.path }),
@@ -1677,7 +2105,7 @@ const MENU = [
       k('Table', 'Ctrl+T', table),
       k('Code Block', 'Ctrl+Shift+K', () => codeBlock()),
       k('Math Block', 'Ctrl+Shift+M', mathBlock),
-      k('Mermaid Diagram', null, () => codeBlock('mermaid')),
+      k('Mermaid Diagram…', 'Ctrl+Shift+D', mermaidGallery),
       k('Quote', 'Ctrl+Shift+Q', blockquote),
       '-',
       k('Ordered List', 'Ctrl+Shift+[', () => list('ol')),
@@ -1772,10 +2200,11 @@ const MENU = [
     label: 'Help',
     items: [
       k('Markdown Guide', null, openGuide),
-      k('Keyboard Shortcuts', 'F1', showShortcuts),
+      k('Command Palette…', 'F1', () => commandPalette()),
+      k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       '-',
       k('About Folio', null, () =>
-        dialog({ title: 'Folio 0.1.1', body: 'A fast, seamless Markdown reader & editor.\nBuilt with Tauri, ProseMirror (Milkdown) and CodeMirror.' }),
+        dialog({ title: 'Folio 0.2.0', body: 'A fast, seamless Markdown reader & editor.\nBuilt with Tauri, ProseMirror (Milkdown) and CodeMirror.' }),
       ),
     ],
   },
@@ -1880,7 +2309,51 @@ function closeMenus() {
   openMenu = null
 }
 
+/**
+ * Self-drawn dropdown. Native <select> popups are GTK popovers on Linux (a known source
+ * of WebKitGTK hangs on Wayland) and look out of place, so Folio draws its own.
+ * @param opts [[value, label], …]
+ */
+function customSelect(opts, value, onChange) {
+  let cur = String(value)
+  const label = () => (opts.find(([v]) => String(v) === cur) || opts[0])[1]
+  const btn = el('button', { type: 'button', class: 'fsel' }, el('span', {}, label()))
+  btn.value = cur
+  btn.onclick = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const m = $('#ctxmenu')
+    if (!m.hidden && m.dataset.owner === 'fsel') {
+      m.hidden = true
+      return
+    }
+    m.innerHTML = ''
+    m.dataset.owner = 'fsel'
+    for (const [v, l] of opts) {
+      const it = el('button', { class: 'menu-item' + (String(v) === cur ? ' checked' : '') }, el('span', { class: 'lbl' }, l))
+      it.onmousedown = (ev) => ev.preventDefault()
+      it.onclick = (ev) => {
+        ev.stopPropagation()
+        m.hidden = true
+        cur = String(v)
+        btn.value = cur
+        btn.firstChild.textContent = l
+        onChange(v)
+      }
+      m.append(it)
+    }
+    m.hidden = false
+    const r = btn.getBoundingClientRect()
+    m.style.minWidth = r.width + 'px'
+    m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px'
+    const below = r.bottom + 4
+    m.style.top = (below + m.offsetHeight > innerHeight - 8 ? Math.max(8, r.top - m.offsetHeight - 4) : below) + 'px'
+  }
+  return btn
+}
+
 function showContextMenu(x, y, items) {
+  $('#ctxmenu').dataset.owner = ''
   const m = $('#ctxmenu')
   m.innerHTML = ''
   for (const it of items) {
@@ -1960,7 +2433,7 @@ const VIM_PASSTHROUGH = new Set(
 function bindKeys() {
   for (const a of ACTIONS) if (a.keys && !a.native) KEYMAP.set(canon(a.keys), a.fn)
   KEYMAP.set('Ctrl+Shift+Q', blockquote)
-  KEYMAP.set('F1', showShortcuts)
+  KEYMAP.set('F1', () => commandPalette())
 
   window.addEventListener(
     'keydown',
@@ -1993,6 +2466,20 @@ function bindKeys() {
         e.preventDefault()
         if (e.target.id === 'replace-input') return e.ctrlKey ? replaceAllMatches() : replaceOne()
         return findStep(e.shiftKey ? -1 : 1)
+      }
+      // Tables: Enter moves to the next row, adding one when in the last row
+      if (
+        combo === 'Enter' &&
+        !e.isComposing &&
+        S.mode === 'wysiwyg' &&
+        !S.readonly &&
+        e.target.closest?.('.ProseMirror') &&
+        !e.target.closest('.milkdown-code-block') &&
+        tableEnter()
+      ) {
+        e.preventDefault()
+        e.stopPropagation()
+        return
       }
       const fn = KEYMAP.get(combo)
       if (!fn) return
@@ -2194,6 +2681,7 @@ $('#palette').addEventListener('mousedown', (e) => e.target.id === 'palette' && 
 
 // ════════════════════════════════════════ wiring
 function wireUi() {
+  wireTablePlus()
   // sidebar
   for (const b of document.querySelectorAll('.sb-tabs button')) b.onclick = () => setTab(b.dataset.tab)
   $('#sb-toggle').onclick = () => setSidebar()
@@ -2333,7 +2821,46 @@ function wireUi() {
 }
 
 // ════════════════════════════════════════ boot
+/**
+ * Headless command-line export (window stays hidden):
+ *   folio --export-pdf  input.md output.pdf
+ *   folio --export-html input.md output.html
+ * Uses the PDF options saved in the app. Exit code 0 on success, 1 on failure.
+ */
+async function runCliExport(args) {
+  const i = args.findIndex((a) => a === '--export-pdf' || a === '--export-html')
+  const input = await invoke('initial_path')
+  const output = args[i + 2]
+  try {
+    if (!input || !output) throw new Error('usage: folio --export-pdf <input.md> <output.pdf>')
+    S.readonly = false
+    settings.startInSource = false
+    if (!(await openFile(input, { force: true }))) throw new Error('could not open ' + input)
+    const out = P.isAbs(output) ? output : P.join(P.dirname(input), output)
+    // optional overrides: --title --author --subject --keywords --header --footer
+    //                     --page-numbers (none|n|n/N|page n of N) --paper (a4|letter|…) --landscape --theme
+    const flag = (name) => {
+      const j = args.indexOf('--' + name)
+      return j >= 0 ? args[j + 1] : undefined
+    }
+    const o = {}
+    for (const k2 of ['title', 'author', 'subject', 'keywords', 'header', 'footer', 'paper']) if (flag(k2) !== undefined) o[k2] = flag(k2)
+    if (flag('page-numbers') !== undefined) o.pageNumbers = flag('page-numbers') === 'none' ? '' : flag('page-numbers')
+    if (args.includes('--landscape')) o.landscape = true
+    if (flag('theme')) settings.exportTheme = flag('theme')
+    if (args[i] === '--export-pdf') await exportPdfTo(out, pdfOptionsFor(settings.pdf, o))
+    else await exportHtmlTo(out)
+    await invoke('exit_app', { code: 0 })
+  } catch (e) {
+    log('cli export failed:', e)
+    await invoke('exit_app', { code: 1 })
+  }
+}
+
 async function boot() {
+  try {
+    settings.nativeTitlebar = await invoke('native_titlebar')
+  } catch {}
   applySettings()
   buildMenubar()
   bindKeys()
@@ -2341,6 +2868,9 @@ async function boot() {
   wireTitlebar()
   applyTitlebar()
   setTab(settings.sidebarTab)
+
+  const args = await invoke('cli_args').catch(() => [])
+  if (args.includes('--export-pdf') || args.includes('--export-html')) return runCliExport(args)
 
   let path = null
   try {

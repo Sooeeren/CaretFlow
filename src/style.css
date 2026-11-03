@@ -148,7 +148,7 @@ button { font: inherit; color: inherit; }
 #win-controls svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.1; }
 #win-controls button:hover { background: var(--chrome-2); }
 #win-controls #wc-close:hover { background: #d9413a; color: #fff; }
-.custom-titlebar:not(.maximized) #app { border: 1px solid var(--border); }
+.os-linux.custom-titlebar:not(.maximized) #app { border: 1px solid var(--border); }
 #resize-edges { display: none; }
 .custom-titlebar:not(.maximized) #resize-edges { display: block; }
 #resize-edges div { position: fixed; z-index: 400; }
@@ -182,7 +182,7 @@ button { font: inherit; color: inherit; }
   box-shadow: var(--shadow);
   z-index: 100;
 }
-#ctxmenu { position: fixed; min-width: 200px; }
+#ctxmenu { position: fixed; min-width: 200px; z-index: 500; max-height: 70vh; overflow-y: auto; }
 .menu-item {
   display: flex;
   align-items: center;
@@ -290,7 +290,7 @@ button { font: inherit; color: inherit; }
 
 /* Content */
 #content { flex: 1; position: relative; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
-#scroller { flex: 1; overflow-y: auto; overflow-x: hidden; scroll-padding: 80px 0; }
+#scroller { flex: 1; overflow-y: auto; overflow-x: hidden; scroll-padding: 80px 0; position: relative; }
 #notice {
   flex: none;
   display: flex;
@@ -401,7 +401,7 @@ button { font: inherit; color: inherit; }
 #wysiwyg .milkdown .ProseMirror :is(td, th) p { margin: 0; line-height: 1.5; }
 #wysiwyg .milkdown .milkdown-table-block :is(td, th) { padding: 6px 13px; border-color: var(--border); }
 #wysiwyg .milkdown .milkdown-table-block th { background: var(--chrome); }
-#wysiwyg .milkdown .milkdown-code-block { margin: 1em 0; background: var(--code-bg); border-radius: 8px; }
+#wysiwyg .milkdown .milkdown-code-block { margin: 1em 0; padding: 12px 16px; background: var(--code-bg); border-radius: 8px; }
 #wysiwyg .milkdown .milkdown-code-block .cm-editor { background: transparent; }
 #wysiwyg .milkdown .milkdown-code-block .cm-gutters { background: transparent !important; border: 0 !important; color: color-mix(in srgb, var(--muted) 70%, transparent); }
 #wysiwyg .milkdown .milkdown-code-block .cm-activeLineGutter, #wysiwyg .milkdown .milkdown-code-block .cm-activeLine { background: color-mix(in srgb, var(--fg) 5%, transparent) !important; }
@@ -661,3 +661,126 @@ button { font: inherit; color: inherit; }
 @media print {
   #menubar, #sidebar, #statusbar, #resizer, #findbar, #notice { display: none !important; }
 }
+
+/* ───────────── Window buttons per platform ───────────── */
+/* Windows: Fluent-style full-height buttons with Segoe Fluent Icons glyphs */
+.os-windows #win-controls button { width: 46px; }
+.os-windows #win-controls .glyph { font: 10px 'Segoe Fluent Icons', 'Segoe MDL2 Assets'; line-height: 1; }
+.os-windows #win-controls button:hover { background: color-mix(in srgb, var(--fg) 9%, transparent); }
+.os-windows #win-controls button:active { background: color-mix(in srgb, var(--fg) 15%, transparent); }
+.os-windows #win-controls #wc-close:hover { background: #c42b1c; color: #fff; }
+.os-windows.custom-titlebar #menubar { height: 34px; }
+.os-windows.custom-titlebar #tb-title { line-height: 34px; }
+/* Linux: GNOME/libadwaita-style round buttons */
+.os-linux #win-controls { gap: 10px; padding: 0 10px 0 6px; align-items: center; }
+.os-linux #win-controls button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+}
+.os-linux #win-controls button:hover { background: color-mix(in srgb, var(--fg) 17%, transparent); }
+.os-linux #win-controls button:active { background: color-mix(in srgb, var(--fg) 24%, transparent); }
+.os-linux #win-controls #wc-close:hover { background: color-mix(in srgb, var(--fg) 17%, transparent); color: var(--fg); }
+.os-linux #win-controls svg { width: 9px; height: 9px; stroke-width: 1.4; }
+.custom-titlebar #menus .menu-root > button { padding: 5px 10px; }
+
+/* ───────────── Custom dropdown ───────────── */
+.fsel {
+  min-width: 130px;
+  padding: 5px 30px 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 10px center / 10px 6px;
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fsel:hover, .fsel:focus { border-color: var(--accent); outline: none; }
+
+/* ───────────── Code blocks: even padding, tools float on hover ───────────── */
+#wysiwyg .milkdown .milkdown-code-block .tools {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 3;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+#wysiwyg .milkdown .milkdown-code-block:hover .tools,
+#wysiwyg .milkdown .milkdown-code-block:focus-within .tools,
+#wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) { opacity: 1; }
+#wysiwyg .milkdown .milkdown-code-block .tools .language-button { margin: 0; background: var(--bg); border: 1px solid var(--border); }
+#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button { opacity: 1; background: var(--bg); border: 1px solid var(--border); }
+#wysiwyg .milkdown .milkdown-code-block .language-picker { right: 0; padding-top: 6px; }
+#wysiwyg .milkdown .milkdown-code-block .cm-editor,
+#wysiwyg .milkdown .milkdown-code-block .cm-gutters { background: transparent; }
+#wysiwyg .milkdown .milkdown-code-block .cm-content { padding: 0; }
+#wysiwyg .milkdown .milkdown-code-block .cm-line { padding: 0 4px 0 0; }
+#wysiwyg .milkdown .milkdown-code-block .preview-panel .preview { padding: 4px 0; }
+#wysiwyg .milkdown .milkdown-code-block .preview-divider { margin: 10px 0 6px; }
+
+/* ───────────── Tables: add row / column ───────────── */
+.table-plus {
+  position: absolute;
+  z-index: 4;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.table-plus.row { height: 22px; }
+.table-plus.col { width: 22px; }
+.table-plus:hover { opacity: 1; color: var(--accent); border-color: var(--accent); border-style: solid; background: var(--accent-soft); }
+
+.tsize { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.tsize-grid { display: grid; grid-template-columns: repeat(10, 22px); gap: 3px; cursor: pointer; }
+.tsize-grid div { width: 22px; height: 22px; border: 1px solid var(--border); border-radius: 3px; background: var(--bg); }
+.tsize-grid div.on { background: var(--accent-soft); border-color: var(--accent); }
+.tsize-label { color: var(--muted); font-size: 12px; }
+.tsize-inputs { display: flex; gap: 16px; }
+.tsize-inputs input { width: 64px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); margin-left: 4px; }
+
+/* ───────────── Mermaid gallery ───────────── */
+.mm-intro { color: var(--muted); }
+.mm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.mm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  text-align: left;
+  cursor: pointer;
+}
+.mm-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.mm-card b { font-size: 13px; color: var(--fg-strong); }
+.mm-card small { color: var(--muted); font-size: 11.5px; }
+.mm-prev {
+  height: 96px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: var(--chrome);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mm-prev svg { max-width: 100%; max-height: 90px; height: auto; }
+.mm-blank { font-size: 30px; color: var(--muted); }
+.mm-loading { color: var(--muted); }
+
+/* ───────────── PDF dialog ───────────── */
+.pdf-section { margin: 14px 0 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.pdf-section:first-child { margin-top: 0; }
+.pdf-section:empty { margin-top: 6px; border-top: 1px solid var(--border); }
+.pdf-hint { font-size: 11.5px; color: var(--muted); padding: 4px 0 2px; }
+.pref-row input[type='text'] { margin: 0; }

@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, UNIX_EPOCH};
 use tauri::Manager;
 
+mod pdf;
+
 #[derive(Serialize)]
 struct Entry {
     name: String,
@@ -218,6 +220,76 @@ fn new_window(path: Option<String>) -> Result<(), String> {
     cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn cli_args() -> Vec<String> {
+    std::env::args().skip(1).collect()
+}
+
+fn is_cli_export() -> bool {
+    std::env::args().any(|a| a == "--export-pdf" || a == "--export-html")
+}
+
+// ── UI config read by Rust before the window exists (the title-bar choice must be
+//    made at creation time: GTK cannot add decorations back to a mapped window)
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct UiConfig {
+    native_titlebar: Option<bool>,
+}
+
+fn ui_config_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    app.path().app_config_dir().ok().map(|d| d.join("ui.json"))
+}
+
+fn read_ui_config(app: &tauri::AppHandle) -> UiConfig {
+    ui_config_path(app)
+        .and_then(|p| fs::read_to_string(p).ok())
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+fn set_native_titlebar(app: tauri::AppHandle, native: bool) -> Result<(), String> {
+    let p = ui_config_path(&app).ok_or("no config dir")?;
+    if let Some(d) = p.parent() {
+        fs::create_dir_all(d).map_err(|e| e.to_string())?;
+    }
+    let cfg = UiConfig { native_titlebar: Some(native) };
+    fs::write(p, serde_json::to_string(&cfg).unwrap()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn native_titlebar(app: tauri::AppHandle) -> bool {
+    read_ui_config(&app).native_titlebar.unwrap_or(false)
+}
+
+/// Start a fresh instance (optionally opening `path`) and quit this one.
+#[tauri::command]
+fn restart(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
+    new_window(path)?;
+    app.exit(0);
+    Ok(())
+}
+
+/// Delete a temporary export file. Only Folio's own temp files can be removed.
+#[tauri::command]
+fn remove_temp(path: String) -> Result<(), String> {
+    if !path.ends_with(".folio-tmp.html") {
+        return Err("refusing to delete a non-temporary file".into());
+    }
+    fs::remove_file(&path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle, code: i32) {
+    app.exit(code);
+}
+
+#[tauri::command]
+async fn export_pdf(app: tauri::AppHandle, url: String, out: String, options: pdf::PdfOptions) -> Result<(), String> {
+    pdf::export(app, url, out, options).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -227,14 +299,25 @@ pub fn run() {
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(
                     tauri_plugin_window_state::StateFlags::all()
-                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                        - tauri_plugin_window_state::StateFlags::VISIBLE
+                        - tauri_plugin_window_state::StateFlags::DECORATIONS,
                 )
+                .with_filter(|label| label == "main")
                 .build(),
         )
         .setup(|app| {
+            let native = read_ui_config(app.handle()).native_titlebar.unwrap_or(false);
+            let win = tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
+                .title("Folio")
+                .inner_size(1120.0, 780.0)
+                .min_inner_size(420.0, 320.0)
+                .center()
+                .visible(false)
+                .decorations(native)
+                .build()?;
             // Safety net: the frontend shows the window once the first paint is ready.
-            // If anything goes wrong there, show it anyway.
-            if let Some(win) = app.get_webview_window("main") {
+            // If anything goes wrong there, show it anyway (not in headless CLI export mode).
+            if !is_cli_export() {
                 std::thread::spawn(move || {
                     std::thread::sleep(Duration::from_millis(1500));
                     let _ = win.show();
@@ -256,7 +339,14 @@ pub fn run() {
             search_files,
             initial_path,
             new_window,
-            log_line
+            log_line,
+            cli_args,
+            set_native_titlebar,
+            native_titlebar,
+            restart,
+            exit_app,
+            export_pdf,
+            remove_temp
         ])
         .run(tauri::generate_context!())
         .expect("error while running Folio");
