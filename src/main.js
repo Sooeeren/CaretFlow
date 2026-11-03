@@ -3325,6 +3325,7 @@ function wireUi() {
  */
 async function runCliExport(args) {
   S.cli = true // never write settings or recent files from a headless export
+  settings.spellcheck = false // no need to load the checker for an export
   const i = args.findIndex((a) => a === '--export-pdf' || a === '--export-html')
   const input = await invoke('initial_path')
   const output = args[i + 2]
@@ -3367,6 +3368,7 @@ async function boot() {
     toast,
     log,
     mode: () => S.mode,
+    readonly: () => S.readonly,
     pmView: view,
     cmView: () => source?.view ?? null,
     openOptions: () => openPrefs('writing'),

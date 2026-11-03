@@ -23,6 +23,7 @@ let engine = null
 let enginePromise = null
 let engineState = 'idle' // 'loading' | 'ready' | 'error'
 let engineError = ''
+let engineKey = '' // engine options the current engine was made with
 const cache = new Map() // block text -> issues
 const CACHE_MAX = 5000
 
@@ -38,6 +39,7 @@ function getEngine() {
   engineState = 'loading'
   publish()
   const o = engineOptions()
+  engineKey = JSON.stringify(o)
   enginePromise = import('./writing-engine.js')
     .then((m) => (o.kind === 'languagetool' ? m.createLanguageTool(o) : m.createHarper(o)))
     .then((e) => {
@@ -63,11 +65,15 @@ export function writingSettingsChanged() {
     if (w) w.spellcheck = false
   }
   nativeOff()
-  engine?.dispose()
-  engine = null
-  enginePromise = null
-  engineState = 'idle'
-  cache.clear()
+  // only rebuild the engine when its own options changed; filters (style, grammar, rules) apply on the fly
+  if (!on() || JSON.stringify(engineOptions()) !== engineKey) {
+    engine?.dispose()
+    engine = null
+    enginePromise = null
+    engineKey = ''
+    engineState = 'idle'
+    cache.clear()
+  }
   if (!on()) {
     clearAll()
     closePanel()
@@ -532,6 +538,10 @@ function cmAdapter(v) {
 
 // ════════════════════════════════════════ actions
 function applyFix(ad, iss, text) {
+  if (H.readonly()) {
+    H.toast('Read-only mode is on (Ctrl+Shift+R)')
+    return false
+  }
   if (!ad.replace(iss, text)) {
     H.toast('The text changed; checking again…')
     refresh(0)
@@ -578,7 +588,7 @@ const ruleLabel = (iss) =>
 let menuFor = null
 
 function openIssueMenu(e, pos) {
-  if (!on()) return false
+  if (!on() || H.readonly()) return false
   const ad = adapter()
   const iss = ad?.issues().find((x) => pos >= x.from && pos <= x.to && x.to > x.from)
   if (!iss) return false
@@ -830,8 +840,11 @@ function change(i) {
 function act(fn) {
   const [ad, iss] = current_()
   if (!iss) return
-  fn(ad, iss)
   current = null
+  fn(ad, iss)
+  // continue with the first issue after the one just handled
+  const list = ad.issues()
+  current = (list.find((x) => x.from >= iss.to) || list[0])?.id ?? null
   renderPanel(true)
   panel.focus()
 }
