@@ -129,48 +129,23 @@ bash scripts/build-linux.sh          # on native Linux
 | Focus / typewriter | `F8` / `F9` | Typing test | `Ctrl+Alt+T` |
 | Vim keybindings | `Ctrl+Alt+V` | Page break | `Ctrl+Enter` |
 
-## Vim mode
+## More features
 
-Settings → **Vim Keybindings** (`Ctrl+Alt+V`). Vim keys apply in source-code mode (`Ctrl+/`);
-enable **Open Files in Source Mode** to always edit that way. Supported: normal/insert/visual/
-visual-block modes, motions, operators, registers, marks, macros, `/` search, `:s`, plus
-`:w`, `:w name`, `:q`, `:q!`, `:wq`, `:x`, `:e [file]` (no file = quick open) and `:pre` to go back
-to the rendered view. Vim's Ctrl keys (`Ctrl+D/U/F/B/O/I/V/R/…`) go to Vim inside the editor.
-In visual mode `Ctrl+A`/`Ctrl+X` add/subtract on every selected line and `g Ctrl+A`/`g Ctrl+X`
-increment progressively (1, 2, 3, …), including in `Ctrl+V` block selections.
-
-## PDF export
-
-**File → Export as PDF…** (`Ctrl+Alt+E`) writes the PDF directly (no print dialog) with:
-paper size, orientation, margins, page numbers (`1`, `1 / 5`, `Page 1 of 5`), header and footer
-text with `{title}` `{file}` `{date}` `{author}` placeholders, and document properties
-(title, author, subject, keywords). Code blocks keep the editor's syntax highlighting.
-**File → Print…** still opens the system print dialog.
-
-From the command line (no window is shown):
-
-```sh
-folio --export-pdf notes.md notes.pdf --header "{title}" --footer "{author}" \
-      --author "Jane Doe" --page-numbers "page n of N" --paper letter --landscape
-folio --export-html notes.md notes.html
-```
-
-**View → Page Preview** (`Ctrl+Alt+L`) shows the actual PDF next to the editor, split into pages
-and refreshed as you type. **Page setup…** in the preview changes paper, margins, header and footer.
-Insert a page break with `Ctrl+Enter` (Paragraph → Page Break); it is stored as
-`<div style="page-break-after: always;"></div>`, which other Markdown tools understand too.
-
-## Callouts
-
-GitHub-style alerts render as colored boxes in the editor and in exports
-(Paragraph → Callout):
-
-```markdown
-> [!WARNING]
-> Back up your files first.
-```
-
-Types: `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`.
+- **Vim mode** (`Ctrl+Alt+V`) works in source mode (`Ctrl+/`): normal, insert, visual and visual-block
+  modes, motions, operators, registers, marks, macros, `/` search, `:s`, and commands like `:w`, `:q`,
+  `:e` and `:pre` (back to the rendered view). `Ctrl+A` / `Ctrl+X` and `g Ctrl+A` work on selections.
+  Turn on **Open Files in Source Mode** to always edit that way.
+- **PDF export** (`Ctrl+Alt+E`) writes the file directly, no print dialog: paper size, orientation,
+  margins, page numbers, header and footer (`{title}` `{file}` `{date}` `{author}`) and document
+  properties. **File → Print…** still opens the system dialog.
+- **Page preview** (`Ctrl+Alt+L`) shows the real PDF next to the editor, refreshed as you type. Page
+  breaks (`Ctrl+Enter`) are stored as `<div style="page-break-after: always;"></div>`, which other
+  Markdown tools understand too.
+- **Callouts** are GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) shown as
+  colored boxes in the editor and in exports (Paragraph → Callout).
+- **Command line export**, no window shown:
+  `folio --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`, `--footer`,
+  `--author`, `--page-numbers`) and `folio --export-html notes.md notes.html`.
 
 ## Notes
 
