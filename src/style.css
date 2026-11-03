@@ -1012,3 +1012,96 @@ button { font: inherit; color: inherit; }
 .pref-sub { margin: 10px 0 6px; font-weight: 600; }
 .pref-sub small { display: block; font-weight: 400; color: var(--muted); }
 .wc-dict { min-height: 80px; }
+
+/* ───────────── Typing companions ───────────── */
+#st-wpm { font-variant-numeric: tabular-nums; color: var(--accent); cursor: default; padding: 0 4px; transition: opacity 0.4s; }
+#st-wpm.idle { opacity: 0.55; color: var(--muted); }
+
+#bongo { position: absolute; right: 18px; bottom: 0; z-index: 40; pointer-events: none; line-height: 0; transition: transform 0.25s; }
+#bongo svg { display: block; overflow: visible; }
+#bongo .fur, #bongo .ear, #bongo .paw ellipse { fill: #fff; stroke: #2a2a2e; stroke-width: 3; stroke-linejoin: round; }
+#bongo .ear-in { fill: #f6b3c0; }
+#bongo .blush { fill: #f59ab0; opacity: 0.5; }
+#bongo .eyes-open circle { fill: #2a2a2e; }
+#bongo .eyes-happy path, #bongo .mouth { fill: none; stroke: #2a2a2e; stroke-width: 2.4; stroke-linecap: round; }
+#bongo .eyes-happy { display: none; }
+#bongo.typing .eyes-happy { display: inline; }
+#bongo.typing .eyes-open { display: none; }
+#bongo .desk { fill: var(--chrome-2); stroke: var(--border); stroke-width: 1.5; }
+#bongo .kbd { fill: #3b3e46; }
+#bongo .kbd-keys rect { fill: #9096a1; }
+#bongo .hit { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
+#bongo .down { display: none; }
+#bongo.l .paw-l.up, #bongo.both .paw-l.up, #bongo.r .paw-r.up, #bongo.both .paw-r.up { display: none; }
+#bongo.l .paw-l.down, #bongo.both .paw-l.down, #bongo.r .paw-r.down, #bongo.both .paw-r.down { display: inline; }
+#bongo.typing .cat-body { transform: translateY(1px); }
+.app-zen #bongo { bottom: 4px; }
+
+/* ───────────── Typing test ───────────── */
+#app { position: relative; }
+#tt {
+  position: absolute;
+  inset: 30px 0 0 0;
+  z-index: 300;
+  background: var(--bg);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-mono);
+}
+.app-zen #tt { inset: 0; }
+#tt .tt-top { width: min(1000px, 92%); display: flex; align-items: center; gap: 16px; padding: 22px 0 0; }
+#tt .tt-logo { font-family: var(--font-ui); font-size: 22px; color: var(--muted); letter-spacing: -0.01em; }
+#tt .tt-logo b { color: var(--accent); font-weight: 700; }
+#tt .tt-cfg { flex: 1; display: flex; justify-content: center; flex-wrap: wrap; align-items: center; gap: 2px; background: var(--chrome); border-radius: 10px; padding: 4px 10px; font-size: 12.5px; }
+#tt .tt-cfg button { border: 0; background: none; color: var(--muted); padding: 5px 8px; cursor: pointer; border-radius: 6px; font-family: inherit; }
+#tt .tt-cfg button:hover { color: var(--fg-strong); }
+#tt .tt-cfg button.on { color: var(--accent); }
+#tt .tt-cfg button.dim { opacity: 0.4; }
+#tt .tt-sep { width: 4px; height: 18px; border-radius: 2px; background: var(--chrome-2); margin: 0 8px; }
+#tt .tt-close { border: 0; background: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+#tt .tt-close:hover { background: var(--chrome-2); color: var(--fg); }
+#tt .tt-stage { flex: 1; width: min(1000px, 92%); display: flex; flex-direction: column; justify-content: center; padding-bottom: 8vh; }
+#tt .tt-live { display: flex; align-items: baseline; gap: 14px; height: 40px; margin-bottom: 8px; }
+#tt .tt-big { color: var(--accent); font-size: 28px; }
+#tt .tt-sub { font-size: 14px; }
+#tt .tt-words { position: relative; height: calc(3 * 2.1em); overflow: hidden; font-size: 26px; line-height: 1.5; cursor: text; user-select: none; }
+#tt .tt-inner { display: flex; flex-wrap: wrap; }
+#tt .tt-word { margin: 0 0.6ch 0.6em 0; height: 1.5em; border-bottom: 2px solid transparent; }
+#tt .tt-word.wrong { border-bottom-color: color-mix(in srgb, var(--wc-spelling) 70%, transparent); }
+#tt .tt-word span { color: var(--muted); opacity: 0.75; }
+#tt .tt-word span.ok { color: var(--fg-strong); opacity: 1; }
+#tt .tt-word span.bad { color: var(--wc-spelling); opacity: 1; }
+#tt .tt-word span.extra { color: var(--wc-spelling); opacity: 0.6; }
+#tt .tt-word span.missed { text-decoration: underline; text-decoration-color: var(--wc-spelling); }
+#tt .tt-caret { position: absolute; left: 0; top: 0; width: 2.5px; border-radius: 2px; background: var(--accent); transition: transform 0.085s ease-out; }
+#tt .tt-caret.blink { animation: tt-blink 1s step-end infinite; }
+@keyframes tt-blink { 50% { opacity: 0; } }
+#tt .tt-input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; left: -100px; }
+#tt .tt-hint { padding: 0 0 22px; font-size: 12px; }
+#tt .tt-hint kbd { background: var(--chrome-2); color: var(--fg); border-radius: 4px; padding: 1px 6px; font-family: inherit; font-size: 11px; }
+
+#tt .tt-result { display: flex; flex-direction: column; gap: 22px; }
+#tt .tt-res-top { display: flex; gap: 28px; align-items: stretch; }
+#tt .tt-res-main { display: flex; flex-direction: column; gap: 14px; min-width: 150px; }
+#tt .tt-stat label { display: block; font-size: 14px; color: var(--muted); }
+#tt .tt-stat b { color: var(--accent); font-weight: 500; font-size: 20px; }
+#tt .tt-stat.big b { font-size: 56px; line-height: 1.05; }
+#tt .tt-stat small { display: block; font-size: 12px; }
+#tt .tt-stat small.pb { color: #3e9b55; }
+#tt .tt-res-row { display: flex; flex-wrap: wrap; gap: 14px 36px; }
+#tt .tt-res-btns { display: flex; gap: 10px; }
+#tt .tt-res-btns button { font-family: var(--font-ui); border: 1px solid var(--border); background: var(--chrome); color: var(--fg); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+#tt .tt-res-btns button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+#tt .tt-chart-wrap { flex: 1; min-width: 0; }
+#tt .tt-chart { width: 100%; height: 150px; overflow: visible; }
+#tt .tt-chart .grid { stroke: var(--border); stroke-width: 1; }
+#tt .tt-chart .axis { fill: var(--muted); font-size: 10px; font-family: var(--font-mono); }
+#tt .tt-chart path { fill: none; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+#tt .tt-chart path.wpm { stroke: var(--accent); }
+#tt .tt-chart path.raw { stroke: var(--muted); opacity: 0.6; }
+#tt .tt-chart .err { fill: var(--wc-spelling); font-size: 13px; font-weight: 700; }
+#tt .tt-legend { display: flex; gap: 14px; font-size: 11px; justify-content: flex-end; }
+#tt .tt-legend .wpm { color: var(--accent); }
+#tt .tt-legend .err { color: var(--wc-spelling); }

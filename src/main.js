@@ -23,6 +23,7 @@ import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema }
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
+import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
 import aiStats from './ai-stats.json'
 import { version as APP_VERSION } from '../package.json'
 
@@ -58,6 +59,8 @@ const DEFAULTS = {
   wcDisabledRules: ['OxfordComma'], // opinionated; Word doesn't require it either
   autocorrect: true,
   autoCapitalize: false,
+  wpm: false, // typing-speed meter in the status bar
+  bongo: false, // the typing cat
   reopenLast: true,
   readonlyDefault: false,
   imageDir: 'assets',
@@ -2073,6 +2076,7 @@ function applySettings() {
     source.setVim(settings.vim)
   }
   document.body.classList.toggle('vim-on', settings.vim)
+  companionSettingsChanged()
   let css = $('#custom-css')
   if (!css) document.head.append((css = el('style', { id: 'custom-css' })))
   css.textContent = settings.customCSS || ''
@@ -2265,6 +2269,23 @@ function focusEditor() {
   else view()?.focus()
 }
 
+// ════════════════════════════════════════ typing test & companions
+let ttMod = null
+const typingTestOpen = () => !!ttMod?.isOpen()
+async function typingTest() {
+  ttMod ||= await import('./typingtest.js')
+  if (ttMod.isOpen()) return ttMod.closeTypingTest()
+  closeMenus()
+  ttMod.openTypingTest({ el, docText: () => currentText(), onKey: companionKey, onClose: () => focusEditor() })
+}
+
+/** Keystrokes that count as writing (for the WPM meter and the cat). */
+function isTypingKey(e) {
+  if (S.readonly || !e.target.closest?.('.ProseMirror, .cm-content')) return false
+  if (S.mode === 'source' && settings.vim && source?.vimNormal()) return false
+  return true
+}
+
 // ════════════════════════════════════════ preferences
 function openPrefs(section) {
   const row = (label, hint, control) => el('div', { class: 'pref-row' }, el('label', {}, label, hint ? el('small', {}, hint) : null), control)
@@ -2334,6 +2355,9 @@ function openPrefs(section) {
       return c
     })()),
     writingPrefs(row, chk, sel),
+    el('div', { class: 'pref-h' }, 'Typing'),
+    row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
+    row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
     el('div', { class: 'pref-h' }, 'Custom CSS'),
     css,
   )
@@ -2553,6 +2577,11 @@ const MENU = [
       k('Always on Top', null, toggleOnTop, { checked: () => onTop }),
       k('Full Screen', 'F11', toggleFullscreen),
       k('Page Preview', 'Ctrl+Alt+L', togglePagePreview, { checked: () => pagePreviewOpen() }),
+      '-',
+      k('Typing Test…', 'Ctrl+Alt+T', typingTest),
+      k('Typing Speed (WPM)', null, toggle('wpm'), { checked: () => settings.wpm }),
+      k('Typing Cat', null, toggle('bongo'), { checked: () => settings.bongo }),
+      '-',
       k('Command Palette…', 'Ctrl+Shift+P', () => commandPalette()),
     ],
   },
@@ -2852,6 +2881,8 @@ function bindKeys() {
         e.preventDefault()
         return
       }
+      // The typing test takes all keys (Esc closes it) except its own toggle and full screen
+      if (typingTestOpen() && combo !== 'Ctrl+Alt+T' && combo !== 'F11') return
       if (e.key === 'Escape') {
         if (openMenu) return closeMenus()
         if (inVim) return // Vim needs Esc
@@ -3341,6 +3372,7 @@ async function boot() {
     openOptions: () => openPrefs('writing'),
   })
   writingStatus($('#st-wc'))
+  initCompanion({ settings, el, isTypingKey })
   bindKeys()
   wireUi()
   wireTitlebar()
