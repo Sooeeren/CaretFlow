@@ -113,7 +113,7 @@ export function visualIncrement(cm, args, vimState) {
   cm.setCursor({ line: segs[0].ln, ch: segs[0].s })
 }
 
-export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, onVimMode }) {
+export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, onVimMode, extensions = [] }) {
   const vimSlot = new Compartment()
   let vimListener = null
   const view = new EditorView({
@@ -137,6 +137,7 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
         syntaxHighlighting(style),
         search({ top: true, createPanel: () => ({ dom: document.createElement('span') }) }),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+        extensions,
         EditorView.updateListener.of((u) => {
           if (u.docChanged) onChange?.(u.state.doc.toString())
           if (u.selectionSet || u.docChanged) onSelection?.(u)

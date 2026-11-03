@@ -4,7 +4,7 @@ import '@milkdown/crepe/theme/frame.css'
 import './style.css'
 
 import { editorViewCtx, serializerCtx, commandsCtx } from '@milkdown/kit/core'
-import { callCommand, $prose } from '@milkdown/kit/utils'
+import { callCommand, $prose, $inputRule } from '@milkdown/kit/utils'
 import { Plugin, PluginKey, TextSelection } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 import * as cmk from '@milkdown/kit/preset/commonmark'
@@ -21,6 +21,8 @@ import { openUrl, openPath as osOpenPath, revealItemInDir } from '@tauri-apps/pl
 import * as P from './paths.js'
 import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema } from './underline.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
+import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
+import { autocorrectRule } from './autocorrect.js'
 import aiStats from './ai-stats.json'
 import { version as APP_VERSION } from '../package.json'
 
@@ -43,7 +45,19 @@ const DEFAULTS = {
   width: 860,
   wide: false,
   autoSave: false,
-  spellcheck: false,
+  spellcheck: true, // Folio's own spelling & grammar check (writing.js)
+  wcGrammar: true,
+  wcStyle: false,
+  wcEngine: 'harper', // 'harper' (offline, English) | 'languagetool' (HTTP, 30+ languages)
+  wcDialect: 'american',
+  ltLanguage: 'auto',
+  ltServer: 'https://api.languagetool.org',
+  wcIgnoreUpper: true,
+  wcIgnoreDigits: true,
+  wcDictionary: [],
+  wcDisabledRules: ['OxfordComma'], // opinionated; Word doesn't require it either
+  autocorrect: true,
+  autoCapitalize: false,
   reopenLast: true,
   readonlyDefault: false,
   imageDir: 'assets',
@@ -334,6 +348,11 @@ function resolveSrc(url) {
 function view() {
   return crepe ? crepe.editor.ctx.get(editorViewCtx) : null
 }
+
+// ── writing check (spelling, grammar, AutoCorrect)
+const writingProse = $prose(() => writingPlugin())
+const isEnglishCheck = () => settings.wcEngine !== 'languagetool' || /^en/i.test(settings.ltLanguage || '')
+const autocorrectInput = $inputRule(() => autocorrectRule(() => ({ enabled: settings.autocorrect, capitalize: settings.autoCapitalize, english: isEnglishCheck() })))
 const run = (cmd, payload) => crepe?.editor.action(callCommand(cmd.key, payload))
 
 async function createEditor(markdown) {
@@ -366,7 +385,7 @@ async function createEditor(markdown) {
       },
     },
   })
-  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(calloutPlugins).use(folioPlugin)
+  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -429,6 +448,7 @@ async function enterSource() {
   source = mod.createSource(host, {
     text,
     vim: settings.vim,
+    extensions: [writingSourceExtension()],
     onVimMode: setVimMode,
     onChange: (t) => {
       setDirty(S.baseline === null ? true : t !== S.baseline)
@@ -442,7 +462,7 @@ async function enterSource() {
   })
   S.mode = 'source'
   S.baseline = clean ? text : null
-  source.view.contentDOM.spellcheck = settings.spellcheck
+  source.view.contentDOM.spellcheck = false // Folio checks spelling itself (writing.js)
   if (S.readonly) source.view.contentDOM.contentEditable = 'false'
   requestAnimationFrame(() => setScrollRatio(ratio))
   source.focus()
@@ -2048,9 +2068,8 @@ function applySettings() {
   document.body.classList.toggle('wide', settings.wide)
   document.body.classList.toggle('focus-mode', settings.focus)
   document.body.classList.toggle('no-sidebar', !settings.sidebar)
-  $('#wysiwyg').spellcheck = settings.spellcheck
+  $('#wysiwyg').spellcheck = false // Folio checks spelling itself (writing.js)
   if (source) {
-    source.view.contentDOM.spellcheck = settings.spellcheck
     source.setVim(settings.vim)
   }
   document.body.classList.toggle('vim-on', settings.vim)
@@ -2089,9 +2108,14 @@ function setTheme(t) {
   }
 }
 
+const WRITING_KEYS = ['spellcheck', 'wcGrammar', 'wcStyle', 'autocorrect']
 const toggle = (k) => () => {
   settings[k] = !settings[k]
   applySettings()
+  if (WRITING_KEYS.includes(k)) {
+    writingSettingsChanged()
+    toast({ spellcheck: 'Spelling & grammar check', wcGrammar: 'Grammar check', wcStyle: 'Style suggestions', autocorrect: 'AutoCorrect' }[k] + (settings[k] ? ' on' : ' off'))
+  }
   const v = view()
   if (k === 'focus' && v) v.dispatch(v.state.tr.setMeta(folioKey, {}))
   if (k === 'typewriter' || k === 'focus') toast(`${k === 'focus' ? 'Focus' : 'Typewriter'} mode ${settings[k] ? 'on' : 'off'}`)
@@ -2242,7 +2266,7 @@ function focusEditor() {
 }
 
 // ════════════════════════════════════════ preferences
-function openPrefs() {
+function openPrefs(section) {
   const row = (label, hint, control) => el('div', { class: 'pref-row' }, el('label', {}, label, hint ? el('small', {}, hint) : null), control)
   const sel = (key, opts, onChange) =>
     customSelect(opts, settings[key], (v) => {
@@ -2254,7 +2278,7 @@ function openPrefs() {
     c.onchange = () => {
       settings[key] = c.checked
       applySettings()
-      if (key === 'spellcheck') toast('Spellcheck ' + (c.checked ? 'on' : 'off'))
+      if (WRITING_KEYS.includes(key) || key.startsWith('wc')) writingSettingsChanged()
     }
     return c
   }
@@ -2299,7 +2323,6 @@ function openPrefs() {
     row('Vim keybindings', 'Normal/insert/visual modes and :w :q :wq in source-code mode (Ctrl+/)', chk('vim')),
     row('Open files in source mode', 'Show raw Markdown instead of the rendered view when opening', chk('startInSource')),
     row('Auto-save', 'Save automatically a moment after you stop typing', chk('autoSave')),
-    row('Spellcheck', null, chk('spellcheck')),
     row('Reopen last file on startup', null, chk('reopenLast')),
     row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
     row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
@@ -2310,10 +2333,99 @@ function openPrefs() {
       c.onchange = () => c.checked !== settings.nativeTitlebar && toggleNativeTitlebar()
       return c
     })()),
-    el('div', { style: 'margin:12px 0 6px;font-weight:600' }, 'Custom CSS'),
+    writingPrefs(row, chk, sel),
+    el('div', { class: 'pref-h' }, 'Custom CSS'),
     css,
   )
-  dialog({ title: 'Preferences', body, wide: true, buttons: [{ label: 'Done', value: true, primary: true, cancel: true }] })
+  dialog({
+    title: 'Preferences',
+    body,
+    wide: true,
+    buttons: [{ label: 'Done', value: true, primary: true, cancel: true }],
+    onMount: () => section && body.querySelector(`[data-section="${section}"]`)?.scrollIntoView({ block: 'start' }),
+  })
+}
+
+function writingPrefs(row, chk, sel) {
+  const changed = () => {
+    saveSettings()
+    writingSettingsChanged()
+    showLt()
+  }
+  const server = el('input', { type: 'text', value: settings.ltServer, spellcheck: 'false', style: 'width:220px' })
+  server.onchange = () => {
+    settings.ltServer = server.value.trim() || DEFAULTS.ltServer
+    changed()
+  }
+  const LT_LANGS = [
+    ['auto', 'Detect automatically'],
+    ['en-US', 'English (US)'],
+    ['en-GB', 'English (UK)'],
+    ['de-DE', 'German (Germany)'],
+    ['de-AT', 'German (Austria)'],
+    ['de-CH', 'German (Switzerland)'],
+    ['fr', 'French'],
+    ['es', 'Spanish'],
+    ['it', 'Italian'],
+    ['pt-PT', 'Portuguese (Portugal)'],
+    ['pt-BR', 'Portuguese (Brazil)'],
+    ['nl', 'Dutch'],
+    ['pl-PL', 'Polish'],
+    ['sv', 'Swedish'],
+    ['da-DK', 'Danish'],
+    ['uk-UA', 'Ukrainian'],
+    ['ru-RU', 'Russian'],
+    ['ca-ES', 'Catalan'],
+  ]
+  const ltRows = [
+    row('Language', 'For LanguageTool', sel('ltLanguage', LT_LANGS, changed)),
+    row('LanguageTool server', 'Your text is sent here. The free public server allows about 20 checks a minute; a self-hosted server has no limit', server),
+  ]
+  const harperRows = [row('English variant', null, sel('wcDialect', [['american', 'American'], ['british', 'British'], ['canadian', 'Canadian'], ['australian', 'Australian'], ['indian', 'Indian']], changed))]
+  const showLt = () => {
+    const lt = settings.wcEngine === 'languagetool'
+    for (const r of ltRows) r.hidden = !lt
+    for (const r of harperRows) r.hidden = lt
+  }
+  showLt()
+  const rules = el('span', {})
+  const drawRules = () => {
+    rules.innerHTML = ''
+    const n = (settings.wcDisabledRules || []).length
+    rules.append(el('span', { style: 'color:var(--muted);margin-right:8px' }, n ? `${n} turned off` : 'All on'))
+    if (n) {
+      const b = el('button', { class: 'fsel' }, 'Turn all back on')
+      b.onclick = () => {
+        settings.wcDisabledRules = []
+        changed()
+        drawRules()
+      }
+      rules.append(b)
+    }
+  }
+  drawRules()
+  return el(
+    'div',
+    { 'data-section': 'writing' },
+    el('div', { class: 'pref-h' }, 'Writing'),
+    row('Check spelling & grammar as you type', 'F7 reviews all issues, Alt+F7 jumps to the next one', chk('spellcheck')),
+    row('Check grammar', 'Agreement, wrong words (their/there, could of), punctuation, repeated words', chk('wcGrammar')),
+    row('Style suggestions', 'Wordiness, redundancy and readability hints', chk('wcStyle')),
+    row(
+      'Checker',
+      'Harper runs on your computer and never sends text anywhere. LanguageTool supports German, French, Spanish and more',
+      sel('wcEngine', [['harper', 'Harper (offline, English)'], ['languagetool', 'LanguageTool (online, 30+ languages)']], changed),
+    ),
+    ...harperRows,
+    ...ltRows,
+    row('Ignore words in UPPERCASE', null, chk('wcIgnoreUpper')),
+    row('Ignore words with numbers', null, chk('wcIgnoreDigits')),
+    row('Rules', 'Rules turned off from the right-click menu', rules),
+    row('AutoCorrect while typing', 'Fixes common typos (teh → the, dont → don’t, i → I) in English. Backspace right after undoes it', chk('autocorrect')),
+    row('Capitalize first letter of sentences', 'Part of AutoCorrect', chk('autoCapitalize')),
+    el('div', { class: 'pref-sub' }, 'Custom dictionary', el('small', {}, 'Words that are never marked as misspelled, one per line')),
+    dictionaryEditor(),
+  )
 }
 
 // ════════════════════════════════════════ menus & commands
@@ -2370,6 +2482,9 @@ const MENU = [
           runFolderSearch()
         }
       }),
+      '-',
+      k('Spelling & Grammar…', 'F7', toggleWritingPanel),
+      k('Next Spelling or Grammar Issue', 'Alt+F7', nextIssueMenu),
       '-',
       k('Read-only Mode', 'Ctrl+Shift+R', toggleReadonly, { checked: () => S.readonly }),
     ],
@@ -2458,7 +2573,8 @@ const MENU = [
       k('Open Files in Source Mode', null, toggle('startInSource'), { checked: () => settings.startInSource }),
       '-',
       k('Auto-save', null, toggle('autoSave'), { checked: () => settings.autoSave }),
-      k('Spellcheck', null, toggle('spellcheck'), { checked: () => settings.spellcheck }),
+      k('Check Spelling & Grammar', null, toggle('spellcheck'), { checked: () => settings.spellcheck }),
+      k('AutoCorrect While Typing', null, toggle('autocorrect'), { checked: () => settings.autocorrect }),
       k('Open Files Read-only', null, toggle('readonlyDefault'), { checked: () => settings.readonlyDefault }),
       k('Reopen Last File on Startup', null, toggle('reopenLast'), { checked: () => settings.reopenLast }),
       k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
@@ -3213,6 +3329,18 @@ async function boot() {
   } catch {}
   applySettings()
   buildMenubar()
+  initWriting({
+    settings,
+    saveSettings,
+    el,
+    toast,
+    log,
+    mode: () => S.mode,
+    pmView: view,
+    cmView: () => source?.view ?? null,
+    openOptions: () => openPrefs('writing'),
+  })
+  writingStatus($('#st-wc'))
   bindKeys()
   wireUi()
   wireTitlebar()
