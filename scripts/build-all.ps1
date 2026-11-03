@@ -8,6 +8,8 @@ $root = Split-Path -Parent $PSScriptRoot
 if (-not $SkipWindows) {
   Write-Host "== Windows build ==" -ForegroundColor Cyan
   Push-Location $root
+  # drop bundles from earlier versions so only the current one gets copied out
+  foreach ($d in "$root\src-tauri\target\release\bundle\nsis", "$root\release\windows") { if (Test-Path $d) { Remove-Item -Recurse -Force $d } }
   npx tauri build --bundles nsis
   if ($LASTEXITCODE -ne 0) { throw "Windows build failed" }
   Pop-Location

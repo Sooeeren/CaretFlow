@@ -1775,7 +1775,7 @@ const MENU = [
       k('Keyboard Shortcuts', 'F1', showShortcuts),
       '-',
       k('About Folio', null, () =>
-        dialog({ title: 'Folio 0.1.0', body: 'A fast, seamless Markdown reader & editor.\nBuilt with Tauri, ProseMirror (Milkdown) and CodeMirror.' }),
+        dialog({ title: 'Folio 0.1.1', body: 'A fast, seamless Markdown reader & editor.\nBuilt with Tauri, ProseMirror (Milkdown) and CodeMirror.' }),
       ),
     ],
   },

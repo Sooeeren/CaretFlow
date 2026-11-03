@@ -25,6 +25,8 @@ if [ "$WORK" != "$SRC" ]; then
 fi
 
 cd "$WORK"
+# drop bundles from earlier versions so only the current one gets copied out
+rm -rf src-tauri/target/release/bundle "$SRC/release/linux"
 npm ci --no-audit --no-fund
 npx tauri build --bundles appimage,deb,rpm
 
