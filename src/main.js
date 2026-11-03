@@ -1980,26 +1980,29 @@ function showAbout() {
     el('p', {}, 'A fast, seamless Markdown reader & editor.'),
     el('p', { class: 'about-sub' }, 'Built with Tauri, ProseMirror (Milkdown), CodeMirror, KaTeX, Mermaid and pdf.js.'),
   )
-  if (s && !s.unavailable && s.total) {
+  if (s && !s.unavailable && s.total && s.byAuthor) {
     const pct = (s.ai / s.total) * 100
-    const bar = (p) => el('div', { class: 'ai-bar' }, el('span', { style: `width:${Math.min(100, p)}%` }))
-    const tbl = el('div', { class: 'ai-table' }, el('b', {}, 'Area'), el('b', {}, 'Lines'), el('b', {}, 'By AI'), el('b', {}, ''))
-    for (const a of s.byArea) {
-      const ap = a.total ? (a.ai / a.total) * 100 : 0
-      tbl.append(el('span', {}, a.area), el('span', {}, a.total.toLocaleString()), el('span', {}, a.ai.toLocaleString() + ' · ' + fmtPct(ap)), bar(ap))
+    const bar = (p, kind) => el('div', { class: 'ai-bar' }, el('span', { class: kind, style: `width:${Math.min(100, p)}%` }))
+    const rows = [...s.byAuthor]
+    if (s.uncommitted) rows.push({ name: 'Not committed yet', kind: 'pending', lines: s.uncommitted })
+    const tbl = el('div', { class: 'ai-table' }, el('b', {}, 'Written by'), el('b', {}, 'Lines'), el('b', {}, 'Share'), el('b', {}, ''))
+    for (const a of rows) {
+      const ap = (a.lines / s.total) * 100
+      tbl.append(
+        el('span', { class: 'ai-who' }, el('i', { class: 'ai-dot ' + a.kind }), a.name, a.kind === 'human' ? el('small', {}, ' (person)') : null),
+        el('span', {}, a.lines.toLocaleString()),
+        el('span', {}, fmtPct(ap)),
+        bar(ap, a.kind),
+      )
     }
-    const extra = [s.human ? `${s.human.toLocaleString()} lines were written by people.` : '', s.uncommitted ? `${s.uncommitted.toLocaleString()} lines were not committed yet at build time.` : '']
-      .filter(Boolean)
-      .join(' ')
     body.append(
-      el('h4', {}, 'AI overview'),
-      el('div', { class: 'ai-hero' }, el('b', {}, fmtPct(pct)), el('span', {}, `of Folio's code was written by AI: ${s.ai.toLocaleString()} of ${s.total.toLocaleString()} lines`)),
-      bar(pct),
+      el('h4', {}, 'Who wrote Folio'),
+      el('div', { class: 'ai-hero' }, el('b', {}, s.total.toLocaleString()), el('span', {}, `lines of code and docs, ${fmtPct(pct)} of them written by AI models`)),
       tbl,
       el(
         'p',
         { class: 'about-note' },
-        `Counted with git blame when this build was made (commit ${s.commit}, ${s.files} files). A line counts as AI-written when the commit that last changed it was authored with Claude (Anthropic). Blank lines, lock files and images are not counted. ${extra}`,
+        `Counted with git blame when this build was made (commit ${s.commit}, ${s.files} files). Each line is credited to the commit that last changed it: to the AI model named in that commit's "Co-Authored-By" line, otherwise to the person who made the commit. Blank lines, lock files and images are not counted.`,
       ),
     )
   } else body.append(el('p', { class: 'about-note' }, 'AI statistics are not available in this build.'))
