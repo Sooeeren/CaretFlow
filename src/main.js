@@ -19,6 +19,7 @@ import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialo
 import { openUrl, openPath as osOpenPath, revealItemInDir } from '@tauri-apps/plugin-opener'
 
 import * as P from './paths.js'
+import { underline as underlinePlugin, toggleUnderlineCommand } from './underline.js'
 import guideMd from './guide.md?raw'
 
 // ════════════════════════════════════════ state & settings
@@ -27,6 +28,7 @@ const html = document.documentElement
 const scroller = $('#scroller')
 const win = getCurrentWindow()
 
+const IS_LINUX = /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent)
 const DEFAULTS = {
   theme: 'paper',
   font: 'auto',
@@ -47,6 +49,8 @@ const DEFAULTS = {
   typewriter: false,
   vim: false,
   startInSource: false,
+  exportTheme: 'paper', // 'paper' | 'sepia' | 'current' — PDF/print & HTML export palette
+  nativeTitlebar: !IS_LINUX, // Linux gets a themed title bar instead of the GTK3 one
   customCSS: '',
 }
 const settings = { ...DEFAULTS, ...readJSON('folio.settings', {}) }
@@ -342,7 +346,7 @@ async function createEditor(markdown) {
       [Crepe.Feature.Placeholder]: { text: 'Start writing…  (type / for blocks)', mode: 'doc' },
     },
   })
-  c.editor.use(folioPlugin)
+  c.editor.use(underlinePlugin).use(folioPlugin)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -1286,14 +1290,25 @@ async function copyMarkdown() {
 }
 
 // ════════════════════════════════════════ export
-function themeVars() {
+/** Theme used for exports: a light print palette by default, or the editor's current theme. */
+function exportThemeName() {
+  return settings.exportTheme === 'current' ? html.dataset.theme : settings.exportTheme || 'paper'
+}
+const DARK_THEMES = ['ink', 'slate']
+
+function themeVars(theme = exportThemeName()) {
+  // Read the palette of `theme` by switching the root attribute for one synchronous style read
+  const prev = html.dataset.theme
+  if (theme !== prev) html.dataset.theme = theme
   const cs = getComputedStyle(html)
-  return [
+  const vars = [
     '--bg', '--fg', '--fg-strong', '--muted', '--chrome', '--border', '--link', '--code-bg', '--code-fg', '--quote', '--quote-bar',
     '--doc-font', '--doc-size', '--doc-width', '--doc-lh', '--font-mono',
   ]
     .map((v) => `${v}:${cs.getPropertyValue(v)}`)
     .join(';')
+  if (theme !== prev) html.dataset.theme = prev
+  return vars + `;color-scheme:${DARK_THEMES.includes(theme) ? 'dark' : 'light'}`
 }
 
 async function exportHtml() {
@@ -1308,7 +1323,7 @@ async function exportHtml() {
     docDir: S.path && P.dirname(S.path),
     targetDir: P.dirname(target),
     themeVars: themeVars(),
-    dark: isDark(),
+    dark: DARK_THEMES.includes(exportThemeName()),
   })
   await invoke('write_text', { path: target, content: out })
   toast('Exported ' + P.basename(target))
@@ -1322,7 +1337,7 @@ async function printDoc() {
     docDir: S.path && P.dirname(S.path),
     resolveForView: convertFileSrc,
     themeVars: themeVars(),
-    dark: isDark(),
+    dark: DARK_THEMES.includes(exportThemeName()),
     inlineKatex: true,
   })
   await printHtml(out)
@@ -1467,8 +1482,44 @@ function toggleZen() {
   document.body.classList.toggle('app-zen')
 }
 
+// ── custom title bar (Linux by default: replaces the dated GTK3 decorations)
+async function applyTitlebar() {
+  const custom = !settings.nativeTitlebar
+  document.body.classList.toggle('custom-titlebar', custom)
+  try {
+    await win.setDecorations(!custom)
+  } catch (e) {
+    log('setDecorations failed:', e)
+  }
+  if (custom) syncMaximized()
+}
+async function syncMaximized() {
+  const max = await win.isMaximized().catch(() => false)
+  document.body.classList.toggle('maximized', max)
+  $('#wc-max').title = max ? 'Restore' : 'Maximize'
+}
+function wireTitlebar() {
+  $('#wc-min').onclick = () => win.minimize()
+  $('#wc-max').onclick = () => win.toggleMaximize()
+  $('#wc-close').onclick = () => win.close()
+  for (const b of document.querySelectorAll('#win-controls button')) b.onmousedown = (e) => e.preventDefault()
+  for (const edge of document.querySelectorAll('#resize-edges div'))
+    edge.onmousedown = (e) => {
+      if (e.button !== 0) return
+      e.preventDefault()
+      win.startResizeDragging(edge.dataset.dir).catch((err) => log('resize failed:', err))
+    }
+  win.onResized(debounce(() => !settings.nativeTitlebar && syncMaximized(), 100))
+}
+async function toggleNativeTitlebar() {
+  settings.nativeTitlebar = !settings.nativeTitlebar
+  saveSettings()
+  await applyTitlebar()
+}
+
 function updateTitle() {
   const name = S.path ? P.basename(S.path) : 'Untitled'
+  $('#tb-title').textContent = `${name}${S.dirty ? ' •' : ''} — Folio`
   win.setTitle(`${name}${S.dirty ? ' •' : ''} — Folio`).catch(() => {})
   const sp = $('#st-path')
   sp.textContent = (S.dirty ? '● ' : '') + (S.path || 'Untitled — not saved yet')
@@ -1546,6 +1597,12 @@ function openPrefs() {
     row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
     row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
     row('Copy dropped images into image folder', null, chk('copyImages')),
+    row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
+    row('Use system title bar', 'Off = Folio draws its own title bar matching the theme', (() => {
+      const c = el('input', { type: 'checkbox', checked: settings.nativeTitlebar })
+      c.onchange = () => c.checked !== settings.nativeTitlebar && toggleNativeTitlebar()
+      return c
+    })()),
     el('div', { style: 'margin:12px 0 6px;font-weight:600' }, 'Custom CSS'),
     css,
   )
@@ -1635,6 +1692,7 @@ const MENU = [
     items: [
       k('Bold', 'Ctrl+B', mark(cmk.toggleStrongCommand, ['**'])),
       k('Italic', 'Ctrl+I', mark(cmk.toggleEmphasisCommand, ['*'])),
+      k('Underline', 'Ctrl+U', mark(toggleUnderlineCommand, ['<u>', '</u>'])),
       k('Strikethrough', 'Alt+Shift+5', mark(gfm.toggleStrikethroughCommand, ['~~'])),
       k('Inline Code', 'Ctrl+Shift+`', mark(cmk.toggleInlineCodeCommand, ['`'])),
       k('Inline Math', 'Ctrl+Shift+E', inlineMath),
@@ -1690,6 +1748,22 @@ const MENU = [
       k('Open Files Read-only', null, toggle('readonlyDefault'), { checked: () => settings.readonlyDefault }),
       k('Reopen Last File on Startup', null, toggle('reopenLast'), { checked: () => settings.reopenLast }),
       k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
+      k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
+      {
+        label: 'Export / PDF Theme',
+        sub: () =>
+          [
+            ['paper', 'Paper (light, recommended for print)'],
+            ['sepia', 'Sepia'],
+            ['current', 'Same as Editor'],
+          ].map(([id, l]) =>
+            k(l, null, () => {
+              settings.exportTheme = id
+              saveSettings()
+              toast('Export theme: ' + l.replace(/ \(.*/, ''))
+            }, { checked: () => settings.exportTheme === id }),
+          ),
+      },
       '-',
       k('Preferences…', 'Ctrl+,', openPrefs),
     ],
@@ -1736,7 +1810,7 @@ for (const m of MENU) for (const it of m.items) if (typeof it === 'object' && it
 // ── menubar rendering
 let openMenu = null
 function buildMenubar() {
-  const bar = $('#menubar')
+  const bar = $('#menus')
   for (const m of MENU) {
     const root = el('div', { class: 'menu-root' })
     const btn = el('button', {}, m.label)
@@ -2264,6 +2338,8 @@ async function boot() {
   buildMenubar()
   bindKeys()
   wireUi()
+  wireTitlebar()
+  applyTitlebar()
   setTab(settings.sidebarTab)
 
   let path = null

@@ -19,7 +19,25 @@
   </head>
   <body>
     <div id="app">
-      <header id="menubar"></header>
+      <header id="menubar" data-tauri-drag-region>
+        <div id="menus"></div>
+        <div id="tb-title" data-tauri-drag-region></div>
+        <div id="win-controls">
+          <button id="wc-min" title="Minimize" tabindex="-1">
+            <svg viewBox="0 0 10 10"><path d="M1.5 5h7" /></svg>
+          </button>
+          <button id="wc-max" title="Maximize" tabindex="-1">
+            <svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" rx="1" /></svg>
+          </button>
+          <button id="wc-close" title="Close" tabindex="-1">
+            <svg viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6" /></svg>
+          </button>
+        </div>
+      </header>
+      <div id="resize-edges">
+        <div data-dir="North"></div><div data-dir="South"></div><div data-dir="East"></div><div data-dir="West"></div>
+        <div data-dir="NorthEast"></div><div data-dir="NorthWest"></div><div data-dir="SouthEast"></div><div data-dir="SouthWest"></div>
+      </div>
       <div id="main">
         <aside id="sidebar">
           <div class="sb-tabs">

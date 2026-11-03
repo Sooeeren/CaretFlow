@@ -61,7 +61,56 @@ export function defineVimCommands(h) {
   })
   Vim.defineEx('preview', 'pre', () => h.toggleMode())
   Vim.defineEx('wysiwyg', 'wys', () => h.toggleMode())
-  // jk / jj are common Esc alternatives — off by default; users can :imap themselves
+
+  // Visual-mode number increment, missing from the Vim plugin:
+  //   {Visual}CTRL-A / CTRL-X   add/subtract [count] to the first number on every selected line
+  //   {Visual}g CTRL-A / g CTRL-X   progressive: line n gets n×[count]
+  Vim.defineAction('folioVisualIncrement', visualIncrement)
+  for (const [keys, increase, progressive] of [
+    ['<C-a>', true, false],
+    ['<C-x>', false, false],
+    ['g<C-a>', true, true],
+    ['g<C-x>', false, true],
+  ])
+    Vim.mapCommand(keys, 'action', 'folioVisualIncrement', { increase, progressive }, { context: 'visual', isEdit: true })
+}
+
+const posLess = (a, b) => a.line < b.line || (a.line === b.line && a.ch < b.ch)
+
+export function visualIncrement(cm, args, vimState) {
+  const step = BigInt((args.increase ? 1 : -1) * (args.repeat || 1))
+  // One segment (line + column range) per selected line. Block mode yields one range per line.
+  const byLine = new Map()
+  for (const r of cm.listSelections()) {
+    const [from, to] = posLess(r.head, r.anchor) ? [r.head, r.anchor] : [r.anchor, r.head]
+    for (let ln = from.line; ln <= to.line; ln++) {
+      const len = cm.getLine(ln).length
+      const s = vimState.visualLine ? 0 : ln === from.line ? from.ch : 0
+      const e = vimState.visualLine ? len : ln === to.line ? Math.max(to.ch, s + 1) : len
+      if (!byLine.has(ln)) byLine.set(ln, { ln, s, e })
+    }
+  }
+  const segs = [...byLine.values()].sort((a, b) => a.ln - b.ln)
+  if (!segs.length) return
+  let k = 0
+  cm.operation(() => {
+    for (const g of segs) {
+      const text = cm.getLine(g.ln)
+      const m = /(-?)(\d+)/.exec(text.slice(g.s, g.e))
+      if (!m) continue
+      k++
+      const numStart = g.s + m.index + m[1].length
+      // a '-' directly after a word character is not a sign (e.g. "item-3")
+      const neg = m[1] === '-' && !(numStart - 1 > 0 && /\w/.test(text[numStart - 2]))
+      const value = (neg ? -1n : 1n) * BigInt(m[2]) + step * BigInt(args.progressive ? k : 1)
+      let digits = (value < 0n ? -value : value).toString()
+      if (m[2].length > 1 && m[2][0] === '0') digits = digits.padStart(m[2].length, '0')
+      const from = neg ? numStart - 1 : numStart
+      cm.replaceRange((value < 0n ? '-' : '') + digits, { line: g.ln, ch: from }, { line: g.ln, ch: numStart + m[2].length })
+    }
+  })
+  Vim.exitVisualMode(cm, false)
+  cm.setCursor({ line: segs[0].ln, ch: segs[0].s })
 }
 
 export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, onVimMode }) {
@@ -73,6 +122,8 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
       doc: text,
       extensions: [
         vimSlot.of(vimOn ? vim({ status: false }) : []), // must precede other keymaps
+        // Vim visual-block mode (and block insert) is built on multiple selections
+        EditorState.allowMultipleSelections.of(true),
         highlightSpecialChars(),
         history(),
         drawSelection(),

@@ -21,6 +21,7 @@ Outputs:
 | Windows | `release/windows/Folio-portable.exe` | runs without installing (needs WebView2, preinstalled on Win 10/11) |
 | Linux | `release/linux/Folio_*_amd64.AppImage` | portable: `chmod +x` and run |
 | Linux | `release/linux/Folio_*_amd64.deb` | `sudo apt install ./Folio_*.deb` |
+| Linux | `release/linux/Folio-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./Folio-*.rpm` |
 | Linux | `release/linux/folio` | raw binary, needs `libwebkit2gtk-4.1` installed |
 
 ### Linux prerequisites (one time)
@@ -40,6 +41,15 @@ enable **Open Files in Source Mode** to always edit that way. Supported: normal/
 visual-block modes, motions, operators, registers, marks, macros, `/` search, `:s`, plus
 `:w`, `:w name`, `:q`, `:q!`, `:wq`, `:x`, `:e [file]` (no file = quick open) and `:pre` to go back
 to the rendered view. Vim's Ctrl keys (`Ctrl+D/U/F/B/O/I/V/R/…`) go to Vim inside the editor.
+In visual mode `Ctrl+A`/`Ctrl+X` add/subtract on every selected line and `g Ctrl+A`/`g Ctrl+X`
+increment progressively (1, 2, 3, …), including in `Ctrl+V` block selections.
+
+## Notes
+
+- **Underline** (`Ctrl+U`) is saved as `<u>text</u>`, since Markdown has no underline syntax.
+- **Print / Export PDF** uses a light print theme by default (Settings → Export / PDF Theme).
+- **Linux** uses a themed title bar and the desktop's native (xdg-portal) file dialogs;
+  Settings → Use System Title Bar switches back to the GTK one.
 
 ## Layout
 
