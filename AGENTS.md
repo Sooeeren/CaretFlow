@@ -67,8 +67,9 @@ These decide most design questions:
 - New UI must work in all four themes (use the CSS variables) and at small window sizes.
 - Update `README.md` and `src/guide.md` when you add or change user-facing features.
   Regenerate screenshots with `npm run screenshots` when the UI changes visibly.
-- Bump the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`
-  (+ `Cargo.lock`) only for a release.
+- Bump the version in `package.json` (+ `package-lock.json`), `src-tauri/tauri.conf.json` and
+  `src-tauri/Cargo.toml` (+ `Cargo.lock`) only for a release. Pushing a `vX.Y.Z` tag runs
+  `.github/workflows/release.yml`, which builds Windows and Linux files into a draft release.
 
 ## Commits and credit
 

@@ -103,6 +103,9 @@ Outputs:
 | Linux | `release/linux/Folio-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./Folio-*.rpm` |
 | Linux | `release/linux/folio` | raw binary, needs `libwebkit2gtk-4.1` installed |
 
+Releases are built by GitHub Actions: pushing a tag like `v0.4.0` runs
+`.github/workflows/release.yml`, which builds all of the files above and attaches them to a draft release.
+
 ### Linux prerequisites (one time)
 
 From Windows, the Linux build runs inside WSL (default distro `Ubuntu`; pass `-Distro <name>` to
