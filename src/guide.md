@@ -19,6 +19,14 @@ You can write **bold**, *italic*, ~~strikethrough~~, `inline code`, [links](http
 > Blockquotes look like this.
 > They can span several lines.
 
+## Callouts
+
+> [!TIP]
+> Paragraph → Callout turns a paragraph into a note, tip, important, warning or caution box.
+
+> [!WARNING]
+> Click on the title line to see (and change) the `[!WARNING]` marker.
+
 ## Lists
 
 1. Ordered item
@@ -66,4 +74,4 @@ Paste an image from the clipboard or drag one in from Explorer. Folio copies it 
 
 ---
 
-Export with **File → Export as HTML** or **File → Print / Export PDF**.
+Check page layout with **View → Page Preview** (`Ctrl+Alt+L`), add page breaks with `Ctrl+Enter`, and export with **File → Export as PDF** or **File → Export as HTML**.

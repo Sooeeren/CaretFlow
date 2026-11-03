@@ -20,6 +20,9 @@ import { openUrl, openPath as osOpenPath, revealItemInDir } from '@tauri-apps/pl
 
 import * as P from './paths.js'
 import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema } from './underline.js'
+import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
+import aiStats from './ai-stats.json'
+import { version as APP_VERSION } from '../package.json'
 
 const UNDERLINE_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M5 21v-2h14v2H5Zm7-4q-2.525 0-3.925-1.575T6.675 11.2V3h2.55v8.35q0 1.4.775 2.275T12 14.5q1.225 0 1.988-.875t.762-2.275V3h2.55v8.2q0 2.65-1.4 4.225T12 17Z"/></svg>'
@@ -67,6 +70,7 @@ function readJSON(k, d) {
   }
 }
 function saveSettings() {
+  if (S.cli) return
   try {
     localStorage.setItem('folio.settings', JSON.stringify(settings))
   } catch {}
@@ -83,6 +87,7 @@ const S = {
   mtime: 0,
   readonly: false,
   externalChange: false,
+  cli: false,
   vimMode: null, // 'normal' | 'insert' | 'visual …' | 'replace' while Vim is active in source mode
 }
 
@@ -361,7 +366,7 @@ async function createEditor(markdown) {
       },
     },
   })
-  c.editor.use(underlinePlugin).use(folioPlugin)
+  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(calloutPlugins).use(folioPlugin)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -629,6 +634,7 @@ async function reloadFromDisk() {
 }
 
 function addRecent(p) {
+  if (S.cli) return // headless exports must not touch the user's recent files
   recent = [p, ...recent.filter((r) => r.toLowerCase() !== p.toLowerCase())].slice(0, 20)
   try {
     localStorage.setItem('folio.recent', JSON.stringify(recent))
@@ -864,6 +870,7 @@ const docInfo = debounce(() => {
   updateCount()
 }, 180)
 function scheduleDocInfo(now) {
+  if (pagePreviewOpen()) schedulePreview()
   if (now) {
     renderOutline()
     updateCount()
@@ -1212,6 +1219,64 @@ const mark = (cmd, md) => () => (inSource() ? source.wrap(md[0], md[1] ?? md[0])
 function codeBlock(lang = '') {
   if (inSource()) return source.insert('\n```' + lang + '\n' + source.selectedText() + '\n```\n')
   run(cmk.createCodeBlockCommand, lang)
+}
+
+// ── page breaks & callouts
+function pageBreak() {
+  if (inSource()) return source.insert('\n' + PAGE_BREAK_HTML + '\n\n')
+  run(insertPageBreakCommand)
+  if (pagePreviewOpen()) schedulePreview()
+}
+
+/** Wrap the current block (or selection) in a GitHub-style alert: > [!WARNING] … */
+function callout(kind) {
+  const marker = `[!${kind.toUpperCase()}]`
+  if (inSource()) {
+    const sel = source.selectedText()
+    const body = (sel || '').split('\n').map((l) => '> ' + l).join('\n')
+    return source.insert(`\n> ${marker}\n${sel ? body : '> '}\n`)
+  }
+  const v = view()
+  if (!v) return
+  const { schema } = v.state
+  const $f = v.state.selection.$from
+  // inside an existing quote: just (re)set its marker
+  for (let d = $f.depth; d > 0; d--) {
+    if ($f.node(d).type.name === 'blockquote') {
+      const bq = $f.node(d)
+      const start = $f.start(d) + 1 // inside first paragraph
+      const m = /^\[!(note|tip|important|warning|caution)\][ \t]*/i.exec(bq.firstChild.textContent)
+      const tr = m ? v.state.tr.insertText(marker, start, start + m[0].trimEnd().length) : v.state.tr.insert($f.start(d), schema.nodes.paragraph.create(null, schema.text(marker)))
+      v.dispatch(tr)
+      return v.focus()
+    }
+  }
+  const block = $f.depth >= 1 ? $f.node(1) : null
+  const from = $f.depth >= 1 ? $f.before(1) : $f.pos
+  const to = $f.depth >= 1 ? $f.after(1) : $f.pos
+  const head = schema.nodes.paragraph.create(null, schema.text(marker))
+  let quote
+  let tr
+  if (block && !block.isTextblock) {
+    // lists, tables, code…: keep the block intact and put it inside the callout
+    try {
+      quote = schema.nodes.blockquote.createChecked(null, [head, block])
+      tr = v.state.tr.replaceWith(from, to, quote)
+    } catch {
+      quote = schema.nodes.blockquote.create(null, [head, schema.nodes.paragraph.create()])
+      tr = v.state.tr.insert(from, quote)
+    }
+    v.dispatch(tr.setSelection(TextSelection.near(tr.doc.resolve(from + 1 + head.nodeSize + 1))).scrollIntoView())
+    return v.focus()
+  }
+  // paragraphs/headings: their text becomes the callout body (inline marks are kept)
+  const content = block && block.content.size ? schema.nodes.paragraph.create(null, block.content) : schema.nodes.paragraph.create()
+  quote = schema.nodes.blockquote.create(null, [head, content])
+  tr = block ? v.state.tr.replaceWith(from, to, quote) : v.state.tr.insert(from, quote)
+  // caret at the end of the body paragraph
+  const end = from + 1 + head.nodeSize + 1 + content.content.size
+  v.dispatch(tr.setSelection(TextSelection.create(tr.doc, end)).scrollIntoView())
+  v.focus()
 }
 
 /** Insert a code block with content (replaces the current block if it is an empty paragraph). */
@@ -1642,7 +1707,8 @@ async function exportPdfTo(out, options) {
   }
 }
 
-async function exportPdfDialog() {
+/** @param settingsOnly  just edit the saved PDF settings (used by the page preview) */
+async function exportPdfDialog(settingsOnly = false) {
   const p = { ...PDF_DEFAULTS, ...(settings.pdf || {}) }
   const meta = { title: docTitle(), subject: '', keywords: p.keywords }
   const row = (label, hint, control) => el('div', { class: 'pref-row' }, el('label', {}, label, hint ? el('small', {}, hint) : null), control)
@@ -1694,12 +1760,12 @@ async function exportPdfDialog() {
     row('Open PDF after export', null, openAfter),
   )
   const go = await dialog({
-    title: 'Export as PDF',
+    title: settingsOnly ? 'PDF page settings' : 'Export as PDF',
     body,
     wide: true,
     buttons: [
       { label: 'Cancel', value: false, cancel: true },
-      { label: 'Export PDF…', value: true, primary: true },
+      { label: settingsOnly ? 'Apply' : 'Export PDF…', value: true, primary: true },
     ],
   })
   if (!go) return
@@ -1713,6 +1779,8 @@ async function exportPdfDialog() {
   })
   settings.pdf = { ...p } // remembered for next time (title/subject are per document)
   saveSettings()
+  if (pagePreviewOpen()) schedulePreview(0)
+  if (settingsOnly) return
   const out = await saveDialog({
     defaultPath: S.path ? S.path.replace(/\.[^.\\/]+$/, '') + '.pdf' : (title.value || 'document').replace(/[\\/:*?"<>|]+/g, '') + '.pdf',
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
@@ -1727,6 +1795,215 @@ async function exportPdfDialog() {
     log('pdf export failed:', e)
     await dialog({ title: 'PDF export failed', body: String(e) })
   }
+}
+
+// ── page preview: the real PDF (same pipeline as Export as PDF), rendered with pdf.js
+const PV = { open: false, doc: null, busy: false, pending: false, zoom: 0, file: null, token: 0, fitScale: 1 }
+const pagePreviewOpen = () => PV.open
+const pvStatus = (t) => ($('#pv-status').textContent = t)
+
+function togglePagePreview() {
+  PV.open ? closePagePreview() : openPagePreview()
+}
+function openPagePreview() {
+  PV.open = true
+  $('#pagepreview').hidden = false
+  $('#pv-resizer').hidden = false
+  html.style.setProperty('--pv-width', (settings.pvWidth || 520) + 'px')
+  pvStatus('Rendering…')
+  schedulePreview(0)
+}
+function closePagePreview() {
+  PV.open = false
+  PV.token++
+  $('#pagepreview').hidden = true
+  $('#pv-resizer').hidden = true
+  $('#pv-pages').innerHTML = ''
+  PV.doc?.destroy()
+  PV.doc = null
+  if (PV.file) invoke('remove_temp', { path: PV.file }).catch(() => {})
+  PV.file = null
+}
+let pvTimer
+function schedulePreview(ms = 1500) {
+  clearTimeout(pvTimer)
+  pvTimer = setTimeout(refreshPreview, ms)
+}
+async function refreshPreview() {
+  if (!PV.open) return
+  if (PV.busy) {
+    PV.pending = true
+    return
+  }
+  PV.busy = true
+  pvStatus('Updating…')
+  try {
+    PV.file ||= P.join(await invoke('temp_dir'), `folio-preview-${Math.random().toString(36).slice(2, 10)}.pdf`)
+    await exportPdfTo(PV.file, pdfOptionsFor(settings.pdf))
+    if (!PV.open) return
+    const bytes = await invoke('read_bytes', { path: PV.file })
+    const pdfjs = await loadPdfjs()
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise
+    if (!PV.open) return doc.destroy()
+    const old = PV.doc
+    PV.doc = doc
+    await layoutPages()
+    old?.destroy()
+    pvStatus(`${doc.numPages} page${doc.numPages === 1 ? '' : 's'}`)
+  } catch (e) {
+    log('page preview failed:', e)
+    pvStatus('Preview failed — ' + String(e).slice(0, 80))
+  } finally {
+    PV.busy = false
+    if (PV.pending) {
+      PV.pending = false
+      schedulePreview(200)
+    }
+  }
+}
+let pdfjsP
+function loadPdfjs() {
+  pdfjsP ||= (async () => {
+    // legacy build: polyfills new JS APIs (Map.getOrInsertComputed, Math.sumPrecise…) that
+    // WebKitGTK on many Linux distros doesn't have yet
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.min.mjs')
+    const { default: workerSrc } = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
+    pdfjs.GlobalWorkerOptions.workerSrc = workerSrc
+    return pdfjs
+  })()
+  return pdfjsP
+}
+/** (Re)build the page list. Old canvases stay as stand-ins until the new page is drawn (no flicker). */
+async function layoutPages() {
+  const doc = PV.doc
+  if (!doc) return
+  const box = $('#pv-pages')
+  const ratio = box.scrollTop / Math.max(1, box.scrollHeight - box.clientHeight)
+  const token = ++PV.token
+  const oldCanvases = [...box.querySelectorAll('.pv-page canvas')]
+  const first = await doc.getPage(1)
+  PV.fitScale = Math.max(0.15, (box.clientWidth - 40) / first.getViewport({ scale: 1 }).width)
+  const scale = PV.zoom || PV.fitScale
+  $('#pv-zoom').textContent = PV.zoom ? Math.round(PV.zoom * 100) + '%' : 'Fit'
+  const frag = document.createDocumentFragment()
+  const wraps = []
+  for (let i = 1; i <= doc.numPages; i++) {
+    const page = i === 1 ? first : await doc.getPage(i)
+    if (token !== PV.token) return
+    const vp = page.getViewport({ scale })
+    const wrap = el('div', { class: 'pv-page', style: `width:${vp.width}px;height:${vp.height}px` }, el('span', { class: 'pv-num' }, String(i)))
+    if (oldCanvases[i - 1]) wrap.prepend(oldCanvases[i - 1])
+    wrap._page = page
+    wrap._scale = scale
+    wraps.push(wrap)
+    frag.append(wrap)
+  }
+  box.innerHTML = ''
+  box.append(frag)
+  box.scrollTop = ratio * Math.max(0, box.scrollHeight - box.clientHeight)
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const en of entries)
+        if (en.isIntersecting) {
+          io.unobserve(en.target)
+          drawPage(en.target, token)
+        }
+    },
+    { root: box, rootMargin: '600px 0px' },
+  )
+  wraps.forEach((w) => io.observe(w))
+}
+async function drawPage(wrap, token) {
+  if (token !== PV.token) return
+  const dpr = devicePixelRatio || 1
+  const vp = wrap._page.getViewport({ scale: wrap._scale * dpr })
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.floor(vp.width)
+  canvas.height = Math.floor(vp.height)
+  try {
+    await wrap._page.render({ canvas, canvasContext: canvas.getContext('2d'), viewport: vp }).promise
+  } catch (e) {
+    return log('pdf page render failed:', e)
+  }
+  if (token !== PV.token) return
+  wrap.querySelector('canvas')?.remove()
+  wrap.prepend(canvas)
+  if (PV.debug) {
+    PV.debug = false
+    log('preview: rendered', PV.doc?.numPages, 'pages; first canvas', canvas.width + 'x' + canvas.height)
+  }
+}
+function wirePagePreview() {
+  $('#pv-close').onclick = closePagePreview
+  $('#pv-refresh').onclick = () => schedulePreview(0)
+  $('#pv-settings').onclick = () => exportPdfDialog(true)
+  $('#pv-export').onclick = () => exportPdfDialog()
+  const zoomBy = (f) => {
+    PV.zoom = Math.max(0.25, Math.min(3, (PV.zoom || PV.fitScale) * f))
+    layoutPages()
+  }
+  $('#pv-zoom-in').onclick = () => zoomBy(1.2)
+  $('#pv-zoom-out').onclick = () => zoomBy(1 / 1.2)
+  $('#pv-zoom').onclick = () => {
+    PV.zoom = 0
+    layoutPages()
+  }
+  $('#pv-zoom').title = 'Click to fit width'
+  new ResizeObserver(debounce(() => PV.open && !PV.zoom && PV.doc && layoutPages(), 150)).observe($('#pv-pages'))
+  const rz = $('#pv-resizer')
+  rz.onmousedown = (e) => {
+    e.preventDefault()
+    rz.classList.add('drag')
+    const move = (ev) => {
+      settings.pvWidth = Math.max(280, Math.min(innerWidth - 360, innerWidth - ev.clientX))
+      html.style.setProperty('--pv-width', settings.pvWidth + 'px')
+    }
+    const up = () => {
+      rz.classList.remove('drag')
+      removeEventListener('mousemove', move)
+      removeEventListener('mouseup', up)
+      saveSettings()
+    }
+    addEventListener('mousemove', move)
+    addEventListener('mouseup', up)
+  }
+  addEventListener('beforeunload', () => PV.file && invoke('remove_temp', { path: PV.file }))
+}
+
+// ── about
+const fmtPct = (p) => (p >= 100 ? '100' : (Math.floor(p * 10) / 10).toFixed(1)) + '%'
+function showAbout() {
+  const s = aiStats
+  const body = el(
+    'div',
+    { class: 'about' },
+    el('p', {}, 'A fast, seamless Markdown reader & editor.'),
+    el('p', { class: 'about-sub' }, 'Built with Tauri, ProseMirror (Milkdown), CodeMirror, KaTeX, Mermaid and pdf.js.'),
+  )
+  if (s && !s.unavailable && s.total) {
+    const pct = (s.ai / s.total) * 100
+    const bar = (p) => el('div', { class: 'ai-bar' }, el('span', { style: `width:${Math.min(100, p)}%` }))
+    const tbl = el('div', { class: 'ai-table' }, el('b', {}, 'Area'), el('b', {}, 'Lines'), el('b', {}, 'By AI'), el('b', {}, ''))
+    for (const a of s.byArea) {
+      const ap = a.total ? (a.ai / a.total) * 100 : 0
+      tbl.append(el('span', {}, a.area), el('span', {}, a.total.toLocaleString()), el('span', {}, a.ai.toLocaleString() + ' · ' + fmtPct(ap)), bar(ap))
+    }
+    const extra = [s.human ? `${s.human.toLocaleString()} lines were written by people.` : '', s.uncommitted ? `${s.uncommitted.toLocaleString()} lines were not committed yet at build time.` : '']
+      .filter(Boolean)
+      .join(' ')
+    body.append(
+      el('h4', {}, 'AI overview'),
+      el('div', { class: 'ai-hero' }, el('b', {}, fmtPct(pct)), el('span', {}, `of Folio's code was written by AI: ${s.ai.toLocaleString()} of ${s.total.toLocaleString()} lines`)),
+      bar(pct),
+      tbl,
+      el(
+        'p',
+        { class: 'about-note' },
+        `Counted with git blame when this build was made (commit ${s.commit}, ${s.files} files). A line counts as AI-written when the commit that last changed it was authored with Claude (Anthropic). Blank lines, lock files and images are not counted. ${extra}`,
+      ),
+    )
+  } else body.append(el('p', { class: 'about-note' }, 'AI statistics are not available in this build.'))
+  dialog({ title: `Folio ${APP_VERSION}`, body, wide: true, buttons: [{ label: 'Close', value: true, primary: true, cancel: true }] })
 }
 
 async function printDoc() {
@@ -2107,12 +2384,17 @@ const MENU = [
       k('Math Block', 'Ctrl+Shift+M', mathBlock),
       k('Mermaid Diagram…', 'Ctrl+Shift+D', mermaidGallery),
       k('Quote', 'Ctrl+Shift+Q', blockquote),
+      {
+        label: 'Callout',
+        sub: () => Object.entries(CALLOUTS).map(([kind, label]) => k(label, null, () => callout(kind))),
+      },
       '-',
       k('Ordered List', 'Ctrl+Shift+[', () => list('ol')),
       k('Bullet List', 'Ctrl+Shift+]', () => list('ul')),
       k('Task List', 'Ctrl+Shift+X', () => list('task')),
       '-',
       k('Horizontal Rule', 'Ctrl+Shift+H', hr),
+      k('Page Break', 'Ctrl+Enter', pageBreak),
     ],
   },
   {
@@ -2152,6 +2434,7 @@ const MENU = [
       '-',
       k('Always on Top', null, toggleOnTop, { checked: () => onTop }),
       k('Full Screen', 'F11', toggleFullscreen),
+      k('Page Preview', 'Ctrl+Alt+L', togglePagePreview, { checked: () => pagePreviewOpen() }),
       k('Command Palette…', 'Ctrl+Shift+P', () => commandPalette()),
     ],
   },
@@ -2203,9 +2486,7 @@ const MENU = [
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       '-',
-      k('About Folio', null, () =>
-        dialog({ title: 'Folio 0.2.0', body: 'A fast, seamless Markdown reader & editor.\nBuilt with Tauri, ProseMirror (Milkdown) and CodeMirror.' }),
-      ),
+      k('About Folio', null, showAbout),
     ],
   },
 ]
@@ -2440,6 +2721,7 @@ function bindKeys() {
     (e) => {
       document.body.classList.toggle('ctrl-down', e.ctrlKey)
       if (!$('#modal').hidden) return
+      if (languagePickerKey(e)) return
       const combos = eventCombos(e)
       const combo = combos.find((c) => KEYMAP.has(c)) || combos[0]
       const inVim = settings.vim && inSource() && source.vimOn() && !!e.target.closest?.('.cm-editor')
@@ -2481,6 +2763,8 @@ function bindKeys() {
         e.stopPropagation()
         return
       }
+      // Ctrl+Enter keeps its normal meaning inside code blocks (exit the block)
+      if (combo === 'Ctrl+Enter' && e.target.closest?.('.milkdown-code-block')) return
       const fn = KEYMAP.get(combo)
       if (!fn) return
       const inInput = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !e.target.closest('.cm-editor')
@@ -2499,6 +2783,66 @@ function bindKeys() {
   })
   window.addEventListener('keyup', (e) => document.body.classList.toggle('ctrl-down', e.ctrlKey))
   window.addEventListener('blur', () => document.body.classList.remove('ctrl-down'))
+}
+
+// ── code-block language picker: keyboard navigation + keep it on screen
+function languagePickerKey(e) {
+  const picker = e.target.closest?.('.milkdown-code-block .language-picker')
+  if (!picker || !['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Home', 'End'].includes(e.key) || e.ctrlKey || e.altKey) return false
+  const items = [...picker.querySelectorAll('.language-list-item:not(.no-result)')]
+  const block = picker.closest('.milkdown-code-block')
+  const stop = () => {
+    e.preventDefault()
+    e.stopPropagation()
+    return true
+  }
+  if (e.key === 'Escape') {
+    block.querySelector('.language-button')?.click()
+    return stop()
+  }
+  if (!items.length) return e.key === 'Enter' ? stop() : false
+  const at = items.indexOf(document.activeElement)
+  if (e.key === 'Enter') {
+    ;(items[at] || items.find((i) => i.classList.contains('kb-active')) || items[0]).click()
+    return stop()
+  }
+  let next
+  if (e.key === 'Home') next = 0
+  else if (e.key === 'End') next = items.length - 1
+  else if (at < 0) next = e.key === 'ArrowDown' ? 0 : items.length - 1
+  else next = Math.max(0, Math.min(items.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))
+  items.forEach((i) => i.classList.remove('kb-active'))
+  items[next].classList.add('kb-active')
+  items[next].focus({ preventScroll: true })
+  items[next].scrollIntoView({ block: 'nearest' })
+  return stop()
+}
+
+/** When a picker opens, flip it upwards if it would run off the bottom of the editor. */
+function wireLanguagePicker() {
+  document.addEventListener(
+    'click',
+    (e) => {
+      const btn = e.target.closest?.('.milkdown-code-block .language-button')
+      if (!btn) return
+      const fit = (tries = 0) => {
+        const picker = btn.parentElement.querySelector('.language-picker')
+        const wrap = picker?.querySelector('.list-wrapper')
+        if (!wrap) return tries < 5 && requestAnimationFrame(() => fit(tries + 1))
+        picker.classList.remove('open-up')
+        const bounds = scroller.getBoundingClientRect()
+        const r = wrap.getBoundingClientRect()
+        const below = bounds.bottom - btn.getBoundingClientRect().bottom
+        const above = btn.getBoundingClientRect().top - bounds.top
+        if (r.bottom > bounds.bottom - 8 && above > below) picker.classList.add('open-up')
+        // keep it fully visible
+        const r2 = wrap.getBoundingClientRect()
+        if (r2.bottom > bounds.bottom - 8 || r2.top < bounds.top + 8) wrap.scrollIntoView({ block: 'nearest' })
+      }
+      requestAnimationFrame(() => fit())
+    },
+    true,
+  )
 }
 
 function showShortcuts() {
@@ -2681,6 +3025,8 @@ $('#palette').addEventListener('mousedown', (e) => e.target.id === 'palette' && 
 
 // ════════════════════════════════════════ wiring
 function wireUi() {
+  wireLanguagePicker()
+  wirePagePreview()
   wireTablePlus()
   // sidebar
   for (const b of document.querySelectorAll('.sb-tabs button')) b.onclick = () => setTab(b.dataset.tab)
@@ -2828,6 +3174,7 @@ function wireUi() {
  * Uses the PDF options saved in the app. Exit code 0 on success, 1 on failure.
  */
 async function runCliExport(args) {
+  S.cli = true // never write settings or recent files from a headless export
   const i = args.findIndex((a) => a === '--export-pdf' || a === '--export-html')
   const input = await invoke('initial_path')
   const output = args[i + 2]
@@ -2876,6 +3223,14 @@ async function boot() {
   try {
     path = await invoke('initial_path')
   } catch {}
+  // forget recent files that no longer exist (moved, deleted, temp files)
+  const alive = await Promise.all(recent.map((r) => invoke('exists', { path: r }).catch(() => false)))
+  if (alive.includes(false)) {
+    recent = recent.filter((_, i) => alive[i])
+    try {
+      localStorage.setItem('folio.recent', JSON.stringify(recent))
+    } catch {}
+  }
   if (!path && settings.reopenLast && recent[0]) path = recent[0]
 
   let opened = false
@@ -2891,6 +3246,11 @@ async function boot() {
   updateTitle()
   await win.show()
   focusEditor()
+  if (args.includes('--preview')) {
+    PV.debug = true // logs one line once the first page is drawn (used by tests)
+    openPagePreview() // `folio --preview file.md`
+  }
+  if (args.includes('--about')) showAbout()
 }
 
 boot().catch((e) => {

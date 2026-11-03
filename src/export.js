@@ -6,6 +6,7 @@ import { languages } from '@codemirror/language-data'
 import { LanguageDescription, defaultHighlightStyle } from '@codemirror/language'
 import { highlightCode } from '@lezer/highlight'
 import { isAbs, join, relative, decodeSrc, encodeSrc } from './paths.js'
+import { renderCallouts } from './blocks.js'
 
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const unesc = (s) =>
@@ -47,6 +48,12 @@ async function highlightBlocks(html) {
   return parts.join('')
 }
 const highlightCss = () => defaultHighlightStyle.module?.getRules() || ''
+
+const CALLOUT_CSS = `
+.callout{border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 8%,transparent);border-radius:0 6px 6px 0;padding:.55em 1em;color:var(--fg)}
+.callout-title{font-weight:650;color:var(--c);margin:0 0 .3em}
+.callout>:last-child{margin-bottom:0}
+.callout-note{--c:#2f74d0}.callout-tip{--c:#2c9a4b}.callout-important{--c:#8250df}.callout-warning{--c:#b7791f}.callout-caution{--c:#cf3a33}`
 const tex = (s, displayMode) => katex.renderToString(s, { displayMode, throwOnError: false })
 
 marked.use({
@@ -116,6 +123,7 @@ export async function toHtml(md, o) {
   let html = marked.parse(md)
   html = await renderMermaidBlocks(html, o.dark)
   html = await highlightBlocks(html)
+  html = renderCallouts(html)
 
   // Rewrite relative image paths
   html = html.replace(/(<img[^>]*?\ssrc=")([^"]+)(")/g, (all, a, src, b) => {
@@ -136,7 +144,8 @@ export async function toHtml(md, o) {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(o.title || 'Document')}</title>
 ${katexLink}
-<style>${highlightCss()}</style>
+<style>${highlightCss()}${CALLOUT_CSS}
+div[style*="page-break-after"]{height:0;margin:0;border:0}</style>
 <style>
 :root{${o.themeVars}}
 html{background:var(--bg);color:var(--fg)}

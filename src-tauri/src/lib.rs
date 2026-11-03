@@ -274,10 +274,26 @@ fn restart(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
 /// Delete a temporary export file. Only Folio's own temp files can be removed.
 #[tauri::command]
 fn remove_temp(path: String) -> Result<(), String> {
-    if !path.ends_with(".folio-tmp.html") {
+    let p = Path::new(&path);
+    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let preview = name.starts_with("folio-preview-")
+        && name.ends_with(".pdf")
+        && p.parent().map(|d| d == std::env::temp_dir().as_path()).unwrap_or(false);
+    if !(path.ends_with(".folio-tmp.html") || preview) {
         return Err("refusing to delete a non-temporary file".into());
     }
-    fs::remove_file(&path).map_err(|e| e.to_string())
+    fs::remove_file(p).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn temp_dir() -> String {
+    std::env::temp_dir().to_string_lossy().to_string()
+}
+
+/// Raw file bytes (sent as binary, not JSON) — used by the PDF page preview.
+#[tauri::command]
+fn read_bytes(path: String) -> Result<tauri::ipc::Response, String> {
+    fs::read(&path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -346,7 +362,9 @@ pub fn run() {
             restart,
             exit_app,
             export_pdf,
-            remove_temp
+            remove_temp,
+            temp_dir,
+            read_bytes
         ])
         .run(tauri::generate_context!())
         .expect("error while running Folio");

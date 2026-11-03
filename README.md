@@ -60,6 +60,23 @@ folio --export-pdf notes.md notes.pdf --header "{title}" --footer "{author}" \
 folio --export-html notes.md notes.html
 ```
 
+**View → Page Preview** (`Ctrl+Alt+L`) shows the actual PDF next to the editor, split into pages
+and refreshed as you type. **Page setup…** in the preview changes paper, margins, header and footer.
+Insert a page break with `Ctrl+Enter` (Paragraph → Page Break); it is stored as
+`<div style="page-break-after: always;"></div>`, which other Markdown tools understand too.
+
+## Callouts
+
+GitHub-style alerts render as colored boxes in the editor and in exports
+(Paragraph → Callout):
+
+```markdown
+> [!WARNING]
+> Back up your files first.
+```
+
+Types: `NOTE`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`.
+
 ## Notes
 
 - **Underline** (`Ctrl+U`, or the selection toolbar) is saved as `<u>text</u>`, since Markdown has no underline syntax.
