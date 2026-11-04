@@ -1,0 +1,24 @@
+# Arch Linux package for Folio, repackaged from the release .deb (same binary, icons and .desktop file).
+# The release workflow sets pkgver and the checksum and attaches the built package to each release;
+# the same file works for the AUR (as folio-bin). Install a release file with:
+#   sudo pacman -U ./folio-bin-<version>-1-x86_64.pkg.tar.zst
+pkgname=folio-bin
+_ver=0.4.1 # Folio's version; pkgver can't contain '-'
+pkgver=${_ver//-/_}
+pkgrel=1
+pkgdesc='A fast, seamless Markdown reader & editor'
+arch=('x86_64')
+url='https://github.com/Sooeeren/folio'
+license=('LicenseRef-unknown')
+depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme')
+optdepends=('xdg-desktop-portal: native file dialogs')
+provides=('folio')
+conflicts=('folio')
+options=('!strip' '!debug')
+source=("https://github.com/Sooeeren/folio/releases/download/v${_ver}/Folio_${_ver}_amd64.deb")
+sha256sums=('ed3caaa858e295bc02933f794a2a42fe3f5d63090fceeff872dc30333dd319c9')
+
+package() {
+  bsdtar -xf data.tar.* -C "$pkgdir"
+  chmod 755 "$pkgdir/usr/bin/folio"
+}

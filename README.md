@@ -101,10 +101,13 @@ Outputs:
 | Linux | `release/linux/Folio_*_amd64.AppImage` | portable: `chmod +x` and run |
 | Linux | `release/linux/Folio_*_amd64.deb` | `sudo apt install ./Folio_*.deb` |
 | Linux | `release/linux/Folio-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./Folio-*.rpm` |
+| Linux | `folio-bin-*-x86_64.pkg.tar.zst` (releases only) | Arch/Manjaro: `sudo pacman -U ./folio-bin-*.pkg.tar.zst` |
 | Linux | `release/linux/folio` | raw binary, needs `libwebkit2gtk-4.1` installed |
 
 Releases are built by GitHub Actions: pushing a tag like `v0.4.0` runs
 `.github/workflows/release.yml`, which builds all of the files above and attaches them to a draft release.
+The Arch package is made from the `.deb` by `packaging/arch/PKGBUILD` (in an Arch container); the same
+`PKGBUILD` can be published to the AUR as `folio-bin`.
 
 ### Signed updates
 
@@ -162,7 +165,8 @@ bash scripts/build-linux.sh          # on native Linux
 - **Updates**: Folio can check GitHub for a new version when it starts (it asks once; Preferences →
   Check for updates automatically, or Help → Check for Updates…). **Update & Restart** downloads the
   new version, verifies its signature, installs it and opens Folio again. This works for the Windows
-  installer, the AppImage, `.deb` and `.rpm`; `Folio-portable.exe` and the raw binary get a download link.
+  installer, the AppImage, `.deb` and `.rpm`; `Folio-portable.exe`, the raw binary and the Arch package
+  (updated by pacman) get a download link.
 - **Command line export**, no window shown:
   `folio --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`, `--footer`,
   `--author`, `--page-numbers`) and `folio --export-html notes.md notes.html`.

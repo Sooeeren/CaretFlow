@@ -100,8 +100,38 @@ jobs:
           name: linux
           path: out/*
 
+  arch:
+    # pacman package (packaging/arch/PKGBUILD), repackaged from the .deb in an Arch container
+    needs: linux
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux
+          path: linux
+      - name: Build package
+        run: |
+          pacman -Syu --noconfirm --needed base-devel
+          V="${TAG#v}"
+          mkdir -p /tmp/pkg out
+          cp packaging/arch/PKGBUILD "linux/Folio_${V}_amd64.deb" /tmp/pkg/
+          cd /tmp/pkg
+          sed -i "s/^_ver=[^ ]*/_ver=$V/; s/^sha256sums=.*/sha256sums=('$(sha256sum "Folio_${V}_amd64.deb" | cut -d' ' -f1)')/" PKGBUILD
+          useradd -m builder && chown -R builder .   # makepkg refuses to run as root
+          su builder -c "makepkg --nodeps --noconfirm"
+          cp *.pkg.tar.zst "$GITHUB_WORKSPACE/out/"
+          ls -lh "$GITHUB_WORKSPACE/out"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch
+          path: out/*
+
   publish:
-    needs: [windows, linux]
+    needs: [windows, linux, arch]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

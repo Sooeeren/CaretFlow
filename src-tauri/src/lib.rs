@@ -307,8 +307,9 @@ async fn export_pdf(app: tauri::AppHandle, url: String, out: String, options: pd
 }
 
 /// How this copy of Folio was installed, so the updater knows whether it can replace it:
-/// "nsis" (Windows installer), "appimage", "deb", "rpm", or "portable" (a loose exe/binary,
-/// which the updater can't update in place; the user is pointed to the download page instead).
+/// "nsis" (Windows installer), "appimage", "deb", "rpm", "pacman" (Arch package, updated by the
+/// package manager), or "portable" (a loose exe/binary, which the updater can't update in place).
+/// For "pacman" and "portable" the user is pointed to the download page instead.
 #[tauri::command]
 fn install_kind() -> &'static str {
     use tauri::utils::{config::BundleType, platform::bundle_type};
@@ -327,6 +328,14 @@ fn install_kind() -> &'static str {
     }
     // deb/rpm install to /usr/bin; the raw `folio` binary can live anywhere
     let packaged = exe.map(|e| e.starts_with("/usr")).unwrap_or(false);
+    // the Arch package reuses the .deb's binary, so check pacman's database before trusting that
+    let pacman = packaged
+        && fs::read_dir("/var/lib/pacman/local")
+            .map(|d| d.flatten().any(|e| e.file_name().to_string_lossy().starts_with("folio-bin-")))
+            .unwrap_or(false);
+    if pacman {
+        return "pacman";
+    }
     match bundle_type() {
         Some(BundleType::Deb) if packaged => "deb",
         Some(BundleType::Rpm) if packaged => "rpm",

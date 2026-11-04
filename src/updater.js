@@ -6,7 +6,9 @@ import { relaunch } from '@tauri-apps/plugin-process'
 import { invoke } from '@tauri-apps/api/core'
 
 const RELEASES = 'https://github.com/Sooeeren/folio/releases'
-// the manifest key to read for copies the updater can't replace (they only get a download link)
+// copies the updater can replace; the others (portable, pacman) only get a download link
+const SELF_UPDATING = ['nsis', 'appimage', 'deb', 'rpm']
+// the manifest key to read the version from for those
 const PORTABLE_TARGET = navigator.userAgent.includes('Windows') ? 'windows-x86_64-nsis' : 'linux-x86_64-appimage'
 
 let busy = false
@@ -20,7 +22,7 @@ export async function checkForUpdates(ctx, { manual = false } = {}) {
   busy = true
   try {
     const kind = await invoke('install_kind').catch(() => 'portable')
-    const portable = kind === 'portable'
+    const portable = !SELF_UPDATING.includes(kind)
     if (manual) ctx.toast('Checking for updates…')
     let update
     try {
@@ -36,7 +38,7 @@ export async function checkForUpdates(ctx, { manual = false } = {}) {
     }
     // automatic checks never interrupt another dialog; they offer it again next time
     if (!manual && (ctx.settings.updateSkip === update.version || !document.querySelector('#modal').hidden)) return update.close()
-    await offer(ctx, update, portable)
+    await offer(ctx, update, portable && kind)
   } finally {
     busy = false
   }
@@ -55,7 +57,9 @@ async function offer(ctx, update, portable) {
   body.append(
     el('p', { class: 'about-note' }, el('a', { href: '#', onclick: (e) => (e.preventDefault(), ctx.openUrl(page)) }, 'Full release notes on GitHub')),
   )
-  if (portable)
+  if (portable === 'pacman')
+    body.append(el('p', { class: 'about-note' }, 'Folio was installed with pacman, so your package manager updates it (or download the new package and run sudo pacman -U on it).'))
+  else if (portable)
     body.append(el('p', { class: 'about-note' }, 'This copy of Folio runs without an installer, so it can’t update itself. Download the new version, or use the installer to get automatic updates.'))
 
   const r = await ctx.dialog({
