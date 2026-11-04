@@ -4,7 +4,7 @@
 
 **A fast, quiet Markdown editor for Windows and Linux.** You write, CaretFlow renders it in place:
 no split preview, no clutter. Raw Markdown and Vim are one shortcut away, and a built-in spelling
-and grammar checker catches mistakes like a word processor would.
+and grammar checker catches mistakes as you type.
 
 CaretFlow was called **Folio** until 0.5.0. Updating keeps your settings; the Windows installer removes
 the old Folio install.
@@ -17,7 +17,7 @@ the old Folio install.
   <a href="#keyboard-shortcuts">Shortcuts</a>
 </p>
 
-Inspired by Typora. Built with Tauri 2 (Rust + the system webview), Milkdown/ProseMirror for live
+Built with Tauri 2 (Rust + the system webview), Milkdown/ProseMirror for live
 editing and CodeMirror 6 for source mode.
 
 ## Highlights
@@ -42,7 +42,7 @@ optional style hints. Right-click a marked word to fix it, ignore it or add it t
 
 ![Right-click menu with spelling suggestions](docs/screenshots/writing.png)
 
-Press `F7` to walk through every issue, like Word's Spelling & Grammar pane. Number keys pick a
+Press `F7` to walk through every issue one by one in a review panel. Number keys pick a
 suggestion, `Enter` applies the first one, and a clean document shows readability statistics.
 
 ![The Spelling & Grammar review panel in the Sepia theme](docs/screenshots/review.png)
