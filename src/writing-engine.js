@@ -26,6 +26,11 @@ function maskPattern({ ignoreUpper = true, ignoreDigits = true } = {}) {
   return parts.join('|')
 }
 
+// A name Harper skips (masked: camelCase, ALLCAPS, …) leaves a gap that looks like a sentence
+// boundary, so "CaretFlow opens …" got "opens" flagged as a sentence without a capital letter.
+const SKIPPED_WORD_BEFORE = /\b(?:[A-Za-z]*[a-z][A-Z][A-Za-z]*|[A-Z]{2,}s?|\w*\d\w*|\w+_\w*)\s+$/
+const capitalAfterSkippedWord = (rule, text, start) => /capitali[sz]/i.test(rule) && SKIPPED_WORD_BEFORE.test(text.slice(Math.max(0, start - 60), start))
+
 // ─────────────────────────────── Harper
 const DIALECTS = { american: 0, british: 1, australian: 2, canadian: 3, indian: 4 }
 
@@ -70,6 +75,10 @@ export async function createHarper({ dialect = 'american', ignoreUpper, ignoreDi
         for (const [rule, lints] of Object.entries(groups)) {
           for (const l of lints) {
             const span = l.span()
+            if (capitalAfterSkippedWord(rule, text, span.start)) {
+              l.free?.()
+              continue
+            }
             const problem = l.get_problem_text()
             const kind = l.lint_kind()
             const sugg = l.suggestions().map((s) => {
