@@ -117,7 +117,7 @@ backup, since updates for existing installs can't be signed without it.
 - **GitHub Actions** reads the key from the repository secret `TAURI_SIGNING_PRIVATE_KEY` (contents
   of the key file; set with `gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/folio.key`). A key
   with a password also needs `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; the current key has none. The
-  workflow then uploads the `.sig` files and `latest.json` with the release.
+  workflow then adds `latest.json` (which contains the signatures) to the release.
 - Installed copies see a release once it is **published** (drafts and pre-releases are ignored, since
   the app reads `releases/latest/download/latest.json`). Write the release notes before tagging, or
   run the workflow again from the Actions tab afterwards, so the update popup can show them.

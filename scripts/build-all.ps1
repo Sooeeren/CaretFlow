@@ -42,7 +42,7 @@ if (-not $SkipLinux) {
   }
 }
 
-# latest.json for the in-app updater: upload it to the GitHub release together with the other files
+# latest.json for the in-app updater (it contains the signatures): upload it with the other files, the .sig files aren't needed
 if ($sign) { node "$root\scripts\update-manifest.mjs" (Join-Path $root 'release') --out (Join-Path $root 'release\latest.json') }
 
 Write-Host "`nDone. Artifacts:" -ForegroundColor Green

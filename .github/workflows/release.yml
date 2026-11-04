@@ -123,4 +123,5 @@ jobs:
             gh release view "$TAG" --json body -q .body > notes.md
             node scripts/update-manifest.mjs files --version "${TAG#v}" --notes notes.md --repo "$GH_REPO"
           fi
-          gh release upload "$TAG" files/* --clobber
+          # the .sig files are only needed for latest.json (which contains the signatures), not as downloads
+          find files -maxdepth 1 -type f ! -name '*.sig' -print0 | xargs -0 gh release upload "$TAG" --clobber
