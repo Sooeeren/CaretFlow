@@ -926,6 +926,17 @@ function scheduleDocInfo(now) {
 document.addEventListener('selectionchange', debounce(updateCount, 200))
 
 // ════════════════════════════════════════ file tree
+/** Empty the file tree (and folder search), as if no file had been opened. The open document stays. */
+function closeFolder() {
+  if (!S.root) return
+  S.root = null
+  quickCache = null
+  $('#search-input').value = ''
+  $('#search-results').innerHTML = ''
+  renderTree()
+  toast('Folder closed')
+}
+
 function setRoot(p, showFiles) {
   S.root = p
   renderTree()
@@ -941,6 +952,7 @@ async function renderTree() {
   const root = S.root
   $('#root-name').textContent = root ? P.basename(root) || root : 'No folder'
   $('#root-name').title = root || ''
+  $('#btn-closefolder').hidden = !root
   if (!root) {
     tree.innerHTML = ''
     tree.append(el('div', { class: 'tree-empty' }, 'Open a file or folder (Ctrl+Shift+O) to browse documents here.'))
@@ -1065,7 +1077,7 @@ const runFolderSearch = debounce(async () => {
   const q = $('#search-input').value.trim()
   const box = $('#search-results')
   box.innerHTML = ''
-  const root = S.root || (S.path && P.dirname(S.path))
+  const root = S.root
   if (!q) return
   if (!root) return box.append(el('div', { class: 'sb-hint' }, 'Open a folder first.'))
   const hits = await invoke('search_files', { root, query: q })
@@ -2540,6 +2552,7 @@ const MENU = [
       '-',
       k('Open…', 'Ctrl+O', openFileDialog),
       k('Open Folder…', 'Ctrl+Shift+O', openFolderDialog),
+      k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
       k('Quick Open…', 'Ctrl+P', () => quickOpen()),
       { label: 'Open Recent', sub: () => recentMenu() },
       '-',
@@ -3271,6 +3284,7 @@ function wireUi() {
   for (const b of document.querySelectorAll('.sb-tabs button')) b.onclick = () => setTab(b.dataset.tab)
   $('#sb-toggle').onclick = () => setSidebar()
   $('#btn-openfolder').onclick = openFolderDialog
+  $('#btn-closefolder').onclick = closeFolder
   $('#btn-newfile').onclick = () => createFileIn()
   $('#search-input').addEventListener('input', runFolderSearch)
   $('#st-mode').onclick = toggleSource
