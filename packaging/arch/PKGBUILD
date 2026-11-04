@@ -16,7 +16,7 @@ provides=('folio')
 conflicts=('folio')
 options=('!strip' '!debug')
 source=("https://github.com/Sooeeren/folio/releases/download/v${_ver}/Folio_${_ver}_amd64.deb")
-sha256sums=('ed3caaa858e295bc02933f794a2a42fe3f5d63090fceeff872dc30333dd319c9')
+sha256sums=('54522538bc3c305ddc17b42429d5aca1ce9703e0f2250eb8e535cc0df5375729')
 
 package() {
   bsdtar -xf data.tar.* -C "$pkgdir"
