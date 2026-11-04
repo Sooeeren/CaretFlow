@@ -114,9 +114,10 @@ backup, since updates for existing installs can't be signed without it.
 
 - **Local builds** (`npm run app:build:all`) sign automatically when that file exists and write
   `release/latest.json`, the manifest the app reads.
-- **GitHub Actions** needs the key as repository secrets: `TAURI_SIGNING_PRIVATE_KEY` (contents of
-  the key file) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (empty for the current key). The workflow
-  then uploads the `.sig` files and `latest.json` with the release.
+- **GitHub Actions** reads the key from the repository secret `TAURI_SIGNING_PRIVATE_KEY` (contents
+  of the key file; set with `gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/folio.key`). A key
+  with a password also needs `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; the current key has none. The
+  workflow then uploads the `.sig` files and `latest.json` with the release.
 - Installed copies see a release once it is **published** (drafts and pre-releases are ignored, since
   the app reads `releases/latest/download/latest.json`). Write the release notes before tagging, or
   run the workflow again from the Actions tab afterwards, so the update popup can show them.
@@ -200,8 +201,6 @@ Errors are logged to `%TEMP%\folio.log` (`/tmp/folio.log` on Linux).
 
 Folio is written almost entirely by AI coding assistants, steered and tested by its maintainer.
 **Help → About Folio** shows how many lines each model wrote, counted from the git history.
-
-![About dialog listing lines written per model](docs/screenshots/about.png)
 
 Working on Folio with an AI assistant? Start with [AGENTS.md](AGENTS.md): it explains the project,
 its goals and conventions, and how to credit the model in commits.
