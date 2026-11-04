@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas to discuss
+    url: https://github.com/Sooeeren/CaretFlow/discussions
+    about: Ask how something works or float an idea before opening an issue.
+  - name: Download the latest release
+    url: https://github.com/Sooeeren/CaretFlow/releases/latest
+    about: Check whether the problem is already fixed in the newest version.

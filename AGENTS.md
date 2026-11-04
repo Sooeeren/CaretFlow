@@ -122,3 +122,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Arch package, folio-markdown rpm, issue #4 (code colors in exports, line numbers, Vim command line, heading spacing, sliders/zoom, Close Folder), Preferences categories |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Rename to CaretFlow with the new icon (Windows installer migration, caretflow packages), JetBrains code colors, Word-style line numbers, Close File, welcome page |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Issues #8/#9: drawn caret on Linux, no giant caret beside tables, Vim command line without scroll jumps, custom shortcuts (Preferences → Keyboard) |
+| Claude Opus 5.5 | Claude Code | 2026-11-04 | GitHub issue forms (bug report, feature request), README download link to the CaretFlow repo |

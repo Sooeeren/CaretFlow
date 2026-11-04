@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest an idea or improvement for CaretFlow
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        CaretFlow aims to be a fast, quiet editor, so ideas that keep it uncluttered are the easiest to say yes to.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the problem or workflow first, before the solution.
+      placeholder: When I write long documents, I keep losing track of ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like CaretFlow to do?
+      description: How it could work, e.g. a menu entry, a shortcut, a setting.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Rendered editor
+        - Source mode / Vim
+        - Spelling & grammar / AutoCorrect
+        - Export / page preview
+        - Files and sidebar
+        - Themes and appearance
+        - Typing test and extras
+        - Shortcuts / command palette
+        - Packaging / platforms
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds
+      description: Anything you do today instead, or how other editors handle it.
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contributing
+      options:
+        - label: I'd be willing to help build or test this.

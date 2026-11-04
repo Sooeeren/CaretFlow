@@ -1,0 +1,114 @@
+name: Bug report
+description: Something in CaretFlow doesn't work as it should
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please check the [open issues](https://github.com/Sooeeren/CaretFlow/issues) first in case it's already known.
+
+  - type: input
+    id: version
+    attributes:
+      label: CaretFlow version
+      description: Help → About CaretFlow
+      placeholder: e.g. 0.5.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Windows installer (.exe setup)
+        - Windows portable (CaretFlow-portable.exe)
+        - Linux AppImage
+        - Linux .deb
+        - Linux .rpm
+        - Arch package (caretflow-bin)
+        - Raw Linux binary
+        - Built from source
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: On Linux, please include the distro, desktop and whether you use Wayland or X11.
+      placeholder: e.g. Windows 11 23H2 / Fedora 43, GNOME, Wayland
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Rendered editor (Milkdown)
+        - Source mode / Vim
+        - Spelling & grammar (Harper)
+        - Spelling & grammar (LanguageTool)
+        - AutoCorrect
+        - PDF / HTML export or page preview
+        - Files, sidebar, folder search, quick open
+        - Updater
+        - Themes, focus / typewriter / zen mode
+        - Typing test, WPM meter, typing cat
+        - Keyboard shortcuts / command palette
+        - Installer or packaging
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a file containing ...
+        2. Press Ctrl+/ ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Screenshots or a short screen recording help a lot.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample Markdown
+      description: The smallest bit of Markdown that triggers the problem, if it depends on content.
+      render: markdown
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log output
+      description: |
+        Relevant lines from `%TEMP%\caretflow.log` (Windows) or `/tmp/caretflow.log` (Linux).
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this hasn't been reported yet.
+          required: true
+        - label: This still happens on the latest release.
