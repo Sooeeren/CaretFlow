@@ -2,6 +2,9 @@
 
 # Shell scripts must keep LF endings or bash on Linux/WSL will fail to run them
 *.sh text eol=lf
+# packaging files are read by rpmbuild / makepkg on Linux
+*.spec text eol=lf
+PKGBUILD text eol=lf
 
 *.png binary
 *.ico binary
