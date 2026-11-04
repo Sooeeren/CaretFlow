@@ -17,6 +17,7 @@ import {
   highlightSelectionMatches,
 } from '@codemirror/search'
 import { tags as t } from '@lezer/highlight'
+import { codeStyle } from './codestyle.js'
 
 const style = HighlightStyle.define([
   { tag: t.heading1, fontWeight: '700', fontSize: '1.35em', color: 'var(--fg-strong)' },
@@ -30,11 +31,6 @@ const style = HighlightStyle.define([
   { tag: [t.processingInstruction, t.meta, t.contentSeparator, t.labelName], color: 'var(--muted)' },
   { tag: t.quote, color: 'var(--quote)', fontStyle: 'italic' },
   { tag: t.list, color: 'var(--accent)' },
-  { tag: t.keyword, color: '#b05bc8' },
-  { tag: [t.string, t.special(t.string)], color: '#4f9a54' },
-  { tag: [t.number, t.bool, t.atom], color: '#c7762e' },
-  { tag: t.comment, color: 'var(--muted)', fontStyle: 'italic' },
-  { tag: [t.function(t.variableName), t.typeName, t.className], color: '#3f87c4' },
 ])
 
 /** Register Vim ex commands (:w, :q, …) once. `h` = { save, close, forceClose, toggleMode, quickOpen, open } */
@@ -135,6 +131,7 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
         EditorView.lineWrapping,
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         syntaxHighlighting(style),
+        syntaxHighlighting(codeStyle), // code inside fences: same colors as code blocks and exports
         search({ top: true, createPanel: () => ({ dom: document.createElement('span') }) }),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         extensions,

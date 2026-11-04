@@ -3,18 +3,20 @@ import { marked } from 'marked'
 import katex from 'katex'
 import katexCss from 'katex/dist/katex.min.css?inline'
 import { languages } from '@codemirror/language-data'
-import { LanguageDescription, defaultHighlightStyle } from '@codemirror/language'
+import { LanguageDescription } from '@codemirror/language'
 import { highlightCode } from '@lezer/highlight'
 import { isAbs, join, relative, decodeSrc, encodeSrc } from './paths.js'
 import { renderCallouts } from './blocks.js'
+import { codeStyle } from './codestyle.js'
 
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 const unesc = (s) =>
   s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
 
 /**
- * Syntax-highlight fenced code blocks with the same Lezer parsers and highlight style the
- * editor's code blocks use, so exports/PDFs look like the editor.
+ * Syntax-highlight fenced code blocks with the same Lezer parsers and highlight style (codestyle.js)
+ * the editor's code blocks use, so exports/PDFs look like the editor. The colors come from the
+ * --tok-* variables in themeVars.
  */
 async function highlightBlocks(html) {
   const re = /<pre><code class="language-([\w+#.-]+)">([\s\S]*?)<\/code><\/pre>/g
@@ -37,7 +39,7 @@ async function highlightBlocks(html) {
     highlightCode(
       code,
       tree,
-      defaultHighlightStyle,
+      codeStyle,
       (text, classes) => (out += classes ? `<span class="${classes}">${esc(text)}</span>` : esc(text)),
       () => (out += '\n'),
     )
@@ -47,7 +49,7 @@ async function highlightBlocks(html) {
   parts.push(html.slice(last))
   return parts.join('')
 }
-const highlightCss = () => defaultHighlightStyle.module?.getRules() || ''
+const highlightCss = () => codeStyle.module?.getRules() || ''
 
 const CALLOUT_CSS = `
 .callout{border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 8%,transparent);border-radius:0 6px 6px 0;padding:.55em 1em;color:var(--fg)}

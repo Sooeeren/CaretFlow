@@ -20,6 +20,8 @@ import { openUrl, openPath as osOpenPath, revealItemInDir } from '@tauri-apps/pl
 
 import * as P from './paths.js'
 import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema } from './underline.js'
+import { syntaxHighlighting } from '@codemirror/language'
+import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
@@ -379,7 +381,8 @@ async function createEditor(markdown) {
     features: { [Crepe.Feature.TopBar]: false, [Crepe.Feature.AI]: false },
     featureConfigs: {
       [Crepe.Feature.ImageBlock]: { onUpload: storeImageFile, proxyDomURL: resolveSrc },
-      [Crepe.Feature.CodeMirror]: { renderPreview, previewOnlyByDefault: true },
+      // codeStyle instead of Crepe's default One Dark theme, so code looks like it does in exports
+      [Crepe.Feature.CodeMirror]: { theme: syntaxHighlighting(codeStyle), renderPreview, previewOnlyByDefault: true },
       [Crepe.Feature.Placeholder]: { text: 'Start writing…  (type / for blocks)', mode: 'doc' },
       [Crepe.Feature.Toolbar]: {
         // add Underline to the selection toolbar, next to bold / italic / strikethrough
@@ -1640,6 +1643,7 @@ function themeVars(theme = exportThemeName()) {
   const vars = [
     '--bg', '--fg', '--fg-strong', '--muted', '--chrome', '--border', '--link', '--code-bg', '--code-fg', '--quote', '--quote-bar',
     '--doc-font', '--doc-size', '--doc-width', '--doc-lh', '--font-mono',
+    ...TOKEN_VARS,
   ]
     .map((v) => `${v}:${cs.getPropertyValue(v)}`)
     .join(';')
