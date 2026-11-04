@@ -3,7 +3,7 @@
 # the same file works for the AUR (as folio-bin). Install a release file with:
 #   sudo pacman -U ./folio-bin-<version>-1-x86_64.pkg.tar.zst
 pkgname=folio-bin
-_ver=0.4.1 # Folio's version; pkgver can't contain '-'
+_ver=0.4.2 # Folio's version; pkgver can't contain '-'
 pkgver=${_ver//-/_}
 pkgrel=1
 pkgdesc='A fast, seamless Markdown reader & editor'
