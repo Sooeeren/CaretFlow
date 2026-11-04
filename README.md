@@ -155,7 +155,9 @@ bash scripts/build-linux.sh          # on native Linux
 - **Vim mode** (`Ctrl+Alt+V`) works in source mode (`Ctrl+/`): normal, insert, visual and visual-block
   modes, motions, operators, registers, marks, macros, `/` search, `:s`, and commands like `:w`, `:q`,
   `:e` and `:pre` (back to the rendered view). `Ctrl+A` / `Ctrl+X` and `g Ctrl+A` work on selections.
-  Turn on **Open Files in Source Mode** to always edit that way.
+  Turn on **Open Files in Source Mode** to always edit that way. Vim mode shows line numbers (optionally
+  relative, like `:set relativenumber`; without Vim, every fifth line can be numbered: Settings → Line
+  Numbers), and Folio starts in source mode again when you quit there.
 - **PDF export** (`Ctrl+Alt+E`) writes the file directly, no print dialog: paper size, orientation,
   margins, page numbers, header and footer (`{title}` `{file}` `{date}` `{author}`) and document
   properties. **File → Print…** still opens the system dialog.

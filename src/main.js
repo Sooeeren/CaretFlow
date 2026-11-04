@@ -2417,43 +2417,91 @@ function openPrefs(section) {
     applySettings()
   }, 300)
 
-  const body = el(
-    'div',
-    {},
-    row('Theme', null, sel('theme', [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ['system', 'Follow system']], setTheme)),
-    row('Document font', null, sel('font', [['auto', 'Theme default'], ['sans', 'Sans-serif'], ['serif', 'Serif'], ['mono', 'Monospace']])),
-    row('Font size', 'Ctrl+Shift+= / Ctrl+Shift+-', num('fontSize', 11, 28, 1, 'px')),
-    row('Line height', null, num('lineHeight', 1.3, 2.2, 0.05, '')),
-    row('Heading spacing', 'Space above and below headings, also in exports', num('headingSpacing', 0.5, 2, 0.1, '×')),
-    row('Content width', null, num('width', 560, 1400, 20, 'px')),
-    row('Full-width content', 'Ignore the width above', chk('wide')),
-    row('Vim keybindings', 'Normal/insert/visual modes and :w :q :wq in source-code mode (Ctrl+/)', chk('vim')),
-    row('Open files in source mode', 'Show raw Markdown instead of the rendered view when opening', chk('startInSource')),
-    row('Auto-save', 'Save automatically a moment after you stop typing', chk('autoSave')),
-    row('Reopen last file on startup', null, chk('reopenLast')),
-    row('Check for updates automatically', 'On startup, ask GitHub whether a new version is out. Only the version file is downloaded; nothing is sent', chk('updateCheck')),
-    row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
-    row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
-    row('Copy dropped images into image folder', null, chk('copyImages')),
-    row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
-    row('Use system title bar', 'Off = Folio draws its own title bar matching the theme', (() => {
-      const c = el('input', { type: 'checkbox', checked: settings.nativeTitlebar })
-      c.onchange = () => c.checked !== settings.nativeTitlebar && toggleNativeTitlebar()
-      return c
-    })()),
-    writingPrefs(row, chk, sel),
-    el('div', { class: 'pref-h' }, 'Typing'),
-    row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
-    row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
-    el('div', { class: 'pref-h' }, 'Custom CSS'),
-    css,
-  )
+  const titlebar = el('input', { type: 'checkbox', checked: settings.nativeTitlebar })
+  titlebar.onchange = () => titlebar.checked !== settings.nativeTitlebar && toggleNativeTitlebar()
+
+  const PAGES = [
+    ['general', 'General', [
+      row('Reopen last file on startup', null, chk('reopenLast')),
+      row('Check for updates automatically', 'On startup, ask GitHub whether a new version is out. Only the version file is downloaded; nothing is sent', chk('updateCheck')),
+      row('Use system title bar', 'Off = Folio draws its own title bar matching the theme', titlebar),
+    ]],
+    ['appearance', 'Appearance', [
+      row('Theme', null, sel('theme', [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ['system', 'Follow system']], setTheme)),
+      row('Document font', null, sel('font', [['auto', 'Theme default'], ['sans', 'Sans-serif'], ['serif', 'Serif'], ['mono', 'Monospace']])),
+      row('Font size', 'Ctrl+Shift+= / Ctrl+Shift+-', num('fontSize', 11, 28, 1, 'px')),
+      row('Line height', null, num('lineHeight', 1.3, 2.2, 0.05, '')),
+      row('Heading spacing', 'Space above and below headings, also in exports', num('headingSpacing', 0.5, 2, 0.1, '×')),
+      row('Content width', null, num('width', 560, 1400, 20, 'px')),
+      row('Full-width content', 'Ignore the width above', chk('wide')),
+    ]],
+    ['editing', 'Editing', [
+      row('Auto-save', 'Save automatically a moment after you stop typing', chk('autoSave')),
+      row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
+      row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
+      row('Copy dropped images into image folder', null, chk('copyImages')),
+    ]],
+    ['source', 'Source & Vim', [
+      row('Open files in source mode', 'Show raw Markdown instead of the rendered view when opening (Ctrl+/ switches)', chk('startInSource')),
+      row('Vim keybindings', 'Normal/insert/visual modes and :w :q :wq in source mode. Folio starts in source mode again if you quit there', chk('vim')),
+      row('Line numbers in Vim mode', null, chk('vimLineNumbers')),
+      row('Relative line numbers', 'In Vim mode: count from the cursor’s line, like :set relativenumber', chk('relativeLineNumbers')),
+      row('Number every fifth line', 'In source mode without Vim', chk('fifthLineNumbers')),
+    ]],
+    ['writing', 'Writing', [writingPrefs(row, chk, sel)]],
+    ['typing', 'Typing', [
+      row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
+      row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
+    ]],
+    ['export', 'Export', [
+      row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
+    ]],
+    ['css', 'Custom CSS', [el('p', { class: 'about-note' }, 'Applied on top of the theme while you type.'), css]],
+  ]
+
+  // a list of categories on the left, one page at a time on the right
+  const nav = el('div', { class: 'prefs-nav' })
+  const pages = el('div', { class: 'prefs-pages' })
+  const tabs = {}
+  const show = (id) => {
+    if (!tabs[id]) id = 'general'
+    for (const [k, t] of Object.entries(tabs)) {
+      t.btn.classList.toggle('on', k === id)
+      t.page.hidden = k !== id
+    }
+    pages.scrollTop = 0
+    try {
+      localStorage.setItem('folio.prefsPage', id)
+    } catch {}
+  }
+  for (const [id, label, rows] of PAGES) {
+    const btn = el('button', { type: 'button', onclick: () => show(id) }, label)
+    const page = el('div', { class: 'prefs-page' }, el('h4', {}, label), ...rows)
+    tabs[id] = { btn, page }
+    nav.append(btn)
+    pages.append(page)
+  }
+  nav.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const ids = Object.keys(tabs)
+    const cur = ids.findIndex((k) => !tabs[k].page.hidden)
+    const next = ids[(cur + (e.key === 'ArrowDown' ? 1 : -1) + ids.length) % ids.length]
+    show(next)
+    tabs[next].btn.focus()
+  })
+  let last = 'general'
+  try {
+    last = localStorage.getItem('folio.prefsPage') || last
+  } catch {}
+  show(section || last)
+
   dialog({
     title: 'Preferences',
-    body,
+    body: el('div', { class: 'prefs' }, nav, pages),
     wide: true,
     buttons: [{ label: 'Done', value: true, primary: true, cancel: true }],
-    onMount: () => section && body.querySelector(`[data-section="${section}"]`)?.scrollIntoView({ block: 'start' }),
+    onMount: (box) => box.classList.add('prefs-dialog'),
   })
 }
 
@@ -2518,7 +2566,6 @@ function writingPrefs(row, chk, sel) {
   return el(
     'div',
     { 'data-section': 'writing' },
-    el('div', { class: 'pref-h' }, 'Writing'),
     row('Check spelling & grammar as you type', 'F7 reviews all issues, Alt+F7 jumps to the next one', chk('spellcheck')),
     row('Check grammar', 'Agreement, wrong words (their/there, could of), punctuation, repeated words', chk('wcGrammar')),
     row('Style suggestions', 'Wordiness, redundancy and readability hints', chk('wcStyle')),
