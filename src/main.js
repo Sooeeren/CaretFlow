@@ -22,6 +22,7 @@ import * as P from './paths.js'
 import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema } from './underline.js'
 import { syntaxHighlighting } from '@codemirror/language'
 import { codeStyle, TOKEN_VARS } from './codestyle.js'
+import { createLineNumbers } from './linenumbers.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
@@ -76,7 +77,7 @@ const DEFAULTS = {
   vim: false,
   vimLineNumbers: true, // line numbers in source mode while Vim keys are on
   relativeLineNumbers: false, // … counted from the cursor's line (Vim's relativenumber)
-  fifthLineNumbers: false, // without Vim: number every fifth line
+  fifthLineNumbers: false, // number every fifth line: in the rendered view, and in source mode without Vim
   lastMode: 'wysiwyg', // editor mode at the last switch; Vim users get source mode back on start
   startInSource: false,
   exportTheme: 'paper', // 'paper' | 'sepia' | 'current' — PDF/print & HTML export palette
@@ -2140,6 +2141,9 @@ async function copyHtml() {
 }
 
 // ════════════════════════════════════════ view settings
+// Word-style line numbers in the rendered view (Settings → Line Numbers → Every Fifth Line)
+const wvLines = createLineNumbers($('#wysiwyg'), $('#scroller'))
+
 function applySettings() {
   let t = settings.theme
   if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'ink' : 'paper'
@@ -2161,6 +2165,8 @@ function applySettings() {
     source.setNumbers(lineNumberOpts())
   }
   document.body.classList.toggle('vim-on', settings.vim)
+  wvLines.set(settings.fifthLineNumbers ? 5 : 0)
+  wvLines.refresh() // font size, width, spacing … change where lines wrap
   companionSettingsChanged()
   let css = $('#custom-css')
   if (!css) document.head.append((css = el('style', { id: 'custom-css' })))
@@ -2446,7 +2452,7 @@ function openPrefs(section) {
       row('Vim keybindings', 'Normal/insert/visual modes and :w :q :wq in source mode. Folio starts in source mode again if you quit there', chk('vim')),
       row('Line numbers in Vim mode', null, chk('vimLineNumbers')),
       row('Relative line numbers', 'In Vim mode: count from the cursor’s line, like :set relativenumber', chk('relativeLineNumbers')),
-      row('Number every fifth line', 'In source mode without Vim', chk('fifthLineNumbers')),
+      row('Number every fifth line', 'Like Word: in the rendered view, and in source mode without Vim', chk('fifthLineNumbers')),
     ]],
     ['writing', 'Writing', [writingPrefs(row, chk, sel)]],
     ['typing', 'Typing', [
@@ -2739,7 +2745,7 @@ const MENU = [
         sub: () => [
           k('In Vim Mode', null, toggle('vimLineNumbers'), { checked: () => settings.vimLineNumbers }),
           k('Relative (Vim Mode)', null, toggle('relativeLineNumbers'), { checked: () => settings.relativeLineNumbers }),
-          k('Every Fifth Line (without Vim)', null, toggle('fifthLineNumbers'), { checked: () => settings.fifthLineNumbers }),
+          k('Every Fifth Line', null, toggle('fifthLineNumbers'), { checked: () => settings.fifthLineNumbers, hint: 'Rendered view, and source mode without Vim' }),
         ],
       },
       k('Open Files in Source Mode', null, toggle('startInSource'), { checked: () => settings.startInSource }),

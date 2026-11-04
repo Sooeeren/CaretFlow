@@ -456,6 +456,10 @@ button { font: inherit; color: inherit; }
 .focus-mode #source .cm-line { opacity: 0.3; transition: opacity 0.15s; }
 .focus-mode #source .cm-activeLine { opacity: 1; }
 
+/* Line numbers in the rendered view (linenumbers.js): right-aligned just left of the text */
+.wv-lines { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; }
+.wv-lines span { position: absolute; transform: translate(calc(-100% - 16px), -50%); font: 12px/1 var(--font-ui); font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--muted) 80%, transparent); user-select: none; white-space: nowrap; }
+
 /* Read-only */
 .readonly #wysiwyg .ProseMirror { caret-color: transparent; }
 
