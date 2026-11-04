@@ -272,9 +272,13 @@ button { font: inherit; color: inherit; }
 .sb-pane.active { display: block; }
 .sb-head { display: flex; align-items: center; padding: 4px 8px 6px; gap: 6px; }
 #root-name { flex: 1; font-weight: 600; color: var(--fg-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sb-actions { display: flex; gap: 2px; }
 .sb-actions button {
-  border: 0; background: none; width: 22px; height: 22px; border-radius: 5px; color: var(--muted); font-size: 15px; line-height: 1;
+  border: 0; background: none; width: 24px; height: 24px; border-radius: 5px; color: var(--muted); font-size: 15px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; padding: 0;
 }
+.sb-foot { display: block; margin: 10px 8px 0; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.sb-foot:hover { background: var(--chrome-2); color: var(--fg); }
 .sb-actions button:hover { background: var(--chrome-2); color: var(--fg); }
 
 .tree-row, .ol-item, .sr-item {

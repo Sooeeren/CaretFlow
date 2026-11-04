@@ -49,12 +49,13 @@
             <div class="sb-head">
               <span id="root-name" title=""></span>
               <span class="sb-actions">
-                <button id="btn-newfile" title="New file in folder">+</button>
-                <button id="btn-openfolder" title="Open folder…">…</button>
-                <button id="btn-closefolder" title="Close folder">×</button>
+                <button id="btn-newfile" title="New file in folder"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.5H4.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V5z"/><path d="M9 1.5V5h3.5M8 7.5v4M6 9.5h4"/></svg></button>
+                <button id="btn-openfolder" title="Open folder… (Ctrl+Shift+O)"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4a1 1 0 0 1 1-1h3.2l1.5 1.5h6.3a1 1 0 0 1 1 1v6.5a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/></svg></button>
+                <button id="btn-closefolder" title="Close folder"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
               </span>
             </div>
             <div id="tree"></div>
+            <button id="btn-closefolder2" class="sb-foot" hidden>Close folder</button>
           </div>
           <div class="sb-pane" id="sb-outline"><div id="outline"></div></div>
           <div class="sb-pane" id="sb-search">

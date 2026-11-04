@@ -575,6 +575,22 @@ async function openFile(p, { force = false } = {}) {
   }
 }
 
+/** File → Close File: an empty, unsaved document takes its place (the folder stays open) */
+async function closeFile() {
+  if (!(await confirmDiscard())) return false
+  S.path = null
+  S.mtime = 0
+  S.eol = '\n'
+  S.readonly = false
+  hideNotice()
+  await loadText('')
+  applyReadonly()
+  renderTree()
+  updateTitle()
+  focusEditor()
+  return true
+}
+
 async function newFile() {
   if (!(await confirmDiscard())) return
   S.path = null
@@ -927,9 +943,11 @@ function scheduleDocInfo(now) {
 document.addEventListener('selectionchange', debounce(updateCount, 200))
 
 // ════════════════════════════════════════ file tree
-/** Empty the file tree (and folder search), as if no file had been opened. The open document stays. */
-function closeFolder() {
+/** Empty the file tree (and folder search), as if no file had been opened. */
+async function closeFolder() {
   if (!S.root) return
+  // a document from that folder closes too: saving it or New File would bring the folder back
+  if (S.path && P.isInside(S.path, S.root) && !(await closeFile())) return
   S.root = null
   quickCache = null
   $('#search-input').value = ''
@@ -954,6 +972,7 @@ async function renderTree() {
   $('#root-name').textContent = root ? P.basename(root) || root : 'No folder'
   $('#root-name').title = root || ''
   $('#btn-closefolder').hidden = !root
+  $('#btn-closefolder2').hidden = !root
   if (!root) {
     tree.innerHTML = ''
     tree.append(el('div', { class: 'tree-empty' }, 'Open a file or folder (Ctrl+Shift+O) to browse documents here.'))
@@ -1028,8 +1047,8 @@ async function renderDir(dir, parent, open, depth) {
 }
 
 async function createFileIn(dir) {
-  dir ||= S.root || (S.path && P.dirname(S.path))
-  if (!dir) return saveAs()
+  dir ||= S.root
+  if (!dir) return newFile() // no folder open: a new, unsaved document
   const name = await dialog({
     title: 'New file',
     input: { value: 'Untitled.md', selectStem: true },
@@ -2611,6 +2630,7 @@ const MENU = [
       '-',
       k('Save', 'Ctrl+S', save),
       k('Save As…', 'Ctrl+Shift+S', saveAs),
+      k('Close File', 'Ctrl+F4', closeFile, { enabled: () => !!S.path || S.dirty }),
       k('Reload from Disk', null, reloadFromDisk, { enabled: () => !!S.path }),
       k('Rename…', null, () => S.path && renameFile(S.path), { enabled: () => !!S.path }),
       '-',
@@ -3338,6 +3358,7 @@ function wireUi() {
   $('#sb-toggle').onclick = () => setSidebar()
   $('#btn-openfolder').onclick = openFolderDialog
   $('#btn-closefolder').onclick = closeFolder
+  $('#btn-closefolder2').onclick = closeFolder
   $('#btn-newfile').onclick = () => createFileIn()
   $('#search-input').addEventListener('input', runFolderSearch)
   $('#st-mode').onclick = toggleSource
