@@ -9,7 +9,7 @@ and grammar checker catches mistakes like a word processor would.
 CaretFlow was called **Folio** until 0.5.0. Updating keeps your settings; the Windows installer removes
 the old Folio install.
 
-![CaretFlow editing a Markdown file with the file sidebar open](docs/screenshots/editor.png)
+![CaretFlow editing a Markdown file with the file sidebar open](docs/screenshots/hero.png)
 
 <p align="center">
   <a href="https://github.com/Sooeeren/folio/releases/latest"><b>Download the latest release</b></a> ·
