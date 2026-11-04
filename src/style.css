@@ -464,6 +464,17 @@ button { font: inherit; color: inherit; }
 .wv-lines { position: absolute; top: 0; left: 0; width: 0; height: 0; pointer-events: none; z-index: 1; }
 .wv-lines span { position: absolute; transform: translate(calc(-100% - 16px), -50%); font: 12px/1 var(--font-ui); font-variant-numeric: tabular-nums; color: color-mix(in srgb, var(--muted) 80%, transparent); user-select: none; white-space: nowrap; }
 
+/* ProseMirror hides the caret with this class while table cells or a node are selected; our
+   caret-color above is more specific than its rule, which left a caret as tall as the table */
+#wysiwyg .milkdown .ProseMirror.ProseMirror-hideselection { caret-color: transparent; }
+
+/* Drawn caret (caret.js), Linux by default: the native one stays invisible */
+.drawn-caret #wysiwyg .milkdown .ProseMirror { caret-color: transparent; }
+.pm-caret { position: absolute; top: 0; left: 0; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; z-index: 2; }
+.pm-caret[hidden] { display: none; }
+.pm-caret.blink { animation: pm-caret-blink 1.06s step-end 0.5s infinite; }
+@keyframes pm-caret-blink { 50% { opacity: 0; } }
+
 /* Read-only */
 .readonly #wysiwyg .ProseMirror { caret-color: transparent; }
 

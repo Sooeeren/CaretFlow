@@ -23,6 +23,7 @@ import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema }
 import { syntaxHighlighting } from '@codemirror/language'
 import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
+import { drawnCaretPlugin } from './caret.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
@@ -70,6 +71,7 @@ const DEFAULTS = {
   readonlyDefault: false,
   imageDir: 'assets',
   copyImages: true,
+  drawnCaret: IS_LINUX, // CaretFlow draws the caret in the rendered view (WebKitGTK leaves stale carets behind)
   sidebar: true,
   sidebarTab: 'outline',
   sidebarWidth: 260,
@@ -378,6 +380,7 @@ function view() {
 
 // ── writing check (spelling, grammar, AutoCorrect)
 const writingProse = $prose(() => writingPlugin())
+const caretProse = $prose(() => drawnCaretPlugin(scroller, () => settings.drawnCaret))
 const isEnglishCheck = () => settings.wcEngine !== 'languagetool' || /^en/i.test(settings.ltLanguage || '')
 const autocorrectInput = $inputRule(() => autocorrectRule(() => ({ enabled: settings.autocorrect, capitalize: settings.autoCapitalize, english: isEnglishCheck() })))
 const run = (cmd, payload) => crepe?.editor.action(callCommand(cmd.key, payload))
@@ -413,7 +416,7 @@ async function createEditor(markdown) {
       },
     },
   })
-  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(autocorrectInput)
+  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -2189,6 +2192,8 @@ function applySettings() {
   document.body.classList.toggle('wide', settings.wide)
   document.body.classList.toggle('focus-mode', settings.focus)
   document.body.classList.toggle('no-sidebar', !settings.sidebar)
+  document.body.classList.toggle('drawn-caret', settings.drawnCaret)
+  view()?.dispatch(view().state.tr) // show or hide the drawn caret
   $('#wysiwyg').spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (source) {
     source.setVim(settings.vim)
@@ -2476,6 +2481,7 @@ function openPrefs(section) {
       row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
       row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
       row('Copy dropped images into image folder', null, chk('copyImages')),
+      row('Draw the text cursor', 'CaretFlow draws the blinking cursor itself instead of the system. On by default on Linux, where the system cursor can leave copies behind', chk('drawnCaret')),
     ]],
     ['source', 'Source & Vim', [
       row('Open files in source mode', 'Show raw Markdown instead of the rendered view when opening (Ctrl+/ switches)', chk('startInSource')),
