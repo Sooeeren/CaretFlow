@@ -85,6 +85,16 @@ These decide most design questions:
   `src-tauri/Cargo.toml` (+ `Cargo.lock`) only for a release. Pushing a `vX.Y.Z` tag runs
   `.github/workflows/release.yml`, which builds Windows and Linux files into a draft release.
   Builds are signed for the in-app updater (see README → Signed updates); never commit the private key.
+- Releasing, step by step:
+  1. Commit the version bump (`Release X.Y.Z` plus a short list of changes); in
+     `packaging/arch/PKGBUILD` set `_ver` and `sha256sums=('SKIP')`.
+  2. Write the release notes (same layout as the previous release: New / Fixed / Updating / Downloads,
+     no comparisons to other apps), push the commit and the `vX.Y.Z` tag, and **right away** create
+     the draft yourself: `gh release create vX.Y.Z --draft --title "CaretFlow X.Y.Z" --notes-file notes.md`.
+     The release is then listed as made by the repository owner, not by `github-actions[bot]`, and
+     the workflow puts the notes into `latest.json`, so the update popup shows them.
+  3. When the workflow is done, put the sha256 of the release `.deb` into `PKGBUILD`
+     (`PKGBUILD: checksum of the X.Y.Z .deb`) and publish the draft only when asked to.
 
 ## Commits and credit
 
