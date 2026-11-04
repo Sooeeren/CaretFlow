@@ -12,7 +12,7 @@ the old Folio install.
 ![CaretFlow editing a Markdown file with the file sidebar open](docs/screenshots/hero.png)
 
 <p align="center">
-  <a href="https://github.com/Sooeeren/folio/releases/latest"><b>Download the latest release</b></a> ·
+  <a href="https://github.com/Sooeeren/CaretFlow/releases/latest"><b>Download the latest release</b></a> ·
   <a href="#build">Build from source</a> ·
   <a href="#keyboard-shortcuts">Shortcuts</a>
 </p>
