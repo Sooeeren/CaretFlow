@@ -480,8 +480,7 @@ button { font: inherit; color: inherit; }
 
 /* ───────────── Source mode ───────────── */
 #source { max-width: calc(var(--doc-width) + 128px); margin: 0 auto; padding: 32px 48px 0; }
-/* At least as tall as the window, so CodeMirror's sticky bottom panel (the Vim : command line)
-   sits at the bottom, above the status bar, even when the document is short */
+/* At least as tall as the window, so clicking below a short document still lands in the editor */
 #source:not([hidden]) { display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; }
 #source .cm-editor { flex: 1 0 auto; }
 #source .cm-scroller { flex-grow: 1; }
@@ -499,10 +498,12 @@ button { font: inherit; color: inherit; }
 /* Vim */
 #source .cm-fat-cursor { background: color-mix(in srgb, var(--accent) 55%, transparent) !important; color: var(--bg) !important; border: 0 !important; }
 #source .cm-editor:not(.cm-focused) .cm-fat-cursor { background: none !important; outline: 1px solid var(--accent) !important; }
-#source .cm-panels { background: var(--chrome); color: var(--fg); border-color: var(--border); font-family: var(--font-mono); z-index: 3; }
-#source .cm-panels-bottom { border-top: 1px solid var(--border); }
-#source .cm-vim-panel { padding: 4px 10px; }
-#source .cm-vim-panel input { color: var(--fg); background: transparent; font-family: var(--font-mono); }
+/* the Vim : command line, below the scroll area (#source-panels, see source.js) */
+#source-panels { flex: none; }
+#source-panels .cm-panels { background: var(--chrome); color: var(--fg); font-family: var(--font-mono); font-size: calc(var(--doc-size) * 0.94); }
+#source-panels .cm-panels-bottom { border-top: 1px solid var(--border); }
+#source-panels .cm-vim-panel { padding: 4px 10px; }
+#source-panels .cm-vim-panel input { border: 0; outline: 0; color: var(--fg); background: transparent; font: inherit; width: 80%; }
 #st-flags .vim-flag { background: var(--accent); color: #fff; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; }
 #source .cm-searchMatch { background: var(--hit); }
 #source .cm-searchMatch-selected { background: var(--hit-cur); }

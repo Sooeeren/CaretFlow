@@ -1,5 +1,5 @@
 // Source-code mode: a lean CodeMirror 6 markdown editor (lazy-loaded).
-import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, highlightSpecialChars, gutter, GutterMarker, highlightActiveLineGutter } from '@codemirror/view'
+import { EditorView, keymap, panels, drawSelection, highlightActiveLine, dropCursor, highlightSpecialChars, gutter, GutterMarker, highlightActiveLineGutter } from '@codemirror/view'
 import { EditorState, EditorSelection, Compartment } from '@codemirror/state'
 import { vim, getCM, Vim } from '@replit/codemirror-vim'
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo } from '@codemirror/commands'
@@ -151,7 +151,7 @@ export function visualIncrement(cm, args, vimState) {
   cm.setCursor({ line: segs[0].ln, ch: segs[0].s })
 }
 
-export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, numbers = null, onVimMode, extensions = [] }) {
+export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, numbers = null, onVimMode, extensions = [], panelHost = null }) {
   const vimSlot = new Compartment()
   const numberSlot = new Compartment()
   let numberKey = JSON.stringify(numbers)
@@ -162,6 +162,9 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
       doc: text,
       extensions: [
         vimSlot.of(vimOn ? vim({ status: false }) : []), // must precede other keymaps
+        // The Vim : command line lives below the scroll area: inside it, focusing its input
+        // scrolled the document to the panel's place at the end of the text
+        panelHost ? panels({ bottomContainer: panelHost }) : [],
         numberSlot.of(lineNumbers(numbers)),
         // Vim visual-block mode (and block insert) is built on multiple selections
         EditorState.allowMultipleSelections.of(true),

@@ -481,6 +481,7 @@ async function enterSource() {
     vim: settings.vim,
     numbers: lineNumberOpts(),
     extensions: [writingSourceExtension()],
+    panelHost: $('#source-panels'),
     onVimMode: setVimMode,
     onChange: (t) => {
       setDirty(S.baseline === null ? true : t !== S.baseline)
