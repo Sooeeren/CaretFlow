@@ -1,5 +1,5 @@
 // Source-code mode: a lean CodeMirror 6 markdown editor (lazy-loaded).
-import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, highlightSpecialChars } from '@codemirror/view'
+import { EditorView, keymap, drawSelection, highlightActiveLine, dropCursor, highlightSpecialChars, gutter, GutterMarker, highlightActiveLineGutter } from '@codemirror/view'
 import { EditorState, EditorSelection, Compartment } from '@codemirror/state'
 import { vim, getCM, Vim } from '@replit/codemirror-vim'
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo } from '@codemirror/commands'
@@ -32,6 +32,48 @@ const style = HighlightStyle.define([
   { tag: t.quote, color: 'var(--quote)', fontStyle: 'italic' },
   { tag: t.list, color: 'var(--accent)' },
 ])
+
+class LineNumber extends GutterMarker {
+  constructor(text) {
+    super()
+    this.text = text
+  }
+  eq(other) {
+    return other.text === this.text
+  }
+  toDOM() {
+    return document.createTextNode(this.text)
+  }
+}
+
+/**
+ * Line numbers. `opts`: null (none) or { relative, every }: `relative` shows the distance from the
+ * cursor's line (which keeps its own number, like Vim's `number` + `relativenumber`); `every: 5`
+ * numbers only every fifth line.
+ */
+function lineNumbers(opts) {
+  if (!opts) return []
+  const label = (state, n) => {
+    if (opts.relative) {
+      const cur = state.doc.lineAt(state.selection.main.head).number
+      return n === cur ? String(n) : String(Math.abs(n - cur))
+    }
+    return opts.every > 1 && n % opts.every ? '' : String(n)
+  }
+  return [
+    gutter({
+      class: 'cm-lineNumbers',
+      lineMarker(view, line) {
+        const text = label(view.state, view.state.doc.lineAt(line.from).number)
+        return text ? new LineNumber(text) : null
+      },
+      lineMarkerChange: (u) => !!opts.relative && u.selectionSet,
+      initialSpacer: (view) => new LineNumber(String(view.state.doc.lines)),
+      updateSpacer: (spacer, u) => (u.docChanged ? new LineNumber(String(u.view.state.doc.lines)) : spacer),
+    }),
+    highlightActiveLineGutter(),
+  ]
+}
 
 /** Register Vim ex commands (:w, :q, …) once. `h` = { save, close, forceClose, toggleMode, quickOpen, open } */
 let exDefined = false
@@ -109,8 +151,10 @@ export function visualIncrement(cm, args, vimState) {
   cm.setCursor({ line: segs[0].ln, ch: segs[0].s })
 }
 
-export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, onVimMode, extensions = [] }) {
+export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, numbers = null, onVimMode, extensions = [] }) {
   const vimSlot = new Compartment()
+  const numberSlot = new Compartment()
+  let numberKey = JSON.stringify(numbers)
   let vimListener = null
   const view = new EditorView({
     parent,
@@ -118,6 +162,7 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
       doc: text,
       extensions: [
         vimSlot.of(vimOn ? vim({ status: false }) : []), // must precede other keymaps
+        numberSlot.of(lineNumbers(numbers)),
         // Vim visual-block mode (and block insert) is built on multiple selections
         EditorState.allowMultipleSelections.of(true),
         highlightSpecialChars(),
@@ -162,6 +207,12 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
       view.dispatch({ effects: vimSlot.reconfigure(on ? vim({ status: false }) : []) })
       if (on) attachVim()
       else onVimMode?.(null)
+    },
+    setNumbers(opts) {
+      const key = JSON.stringify(opts)
+      if (key === numberKey) return
+      numberKey = key
+      view.dispatch({ effects: numberSlot.reconfigure(lineNumbers(opts)) })
     },
     /** true when Vim is in normal/visual mode (not inserting) */
     vimNormal() {

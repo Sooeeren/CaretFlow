@@ -74,6 +74,10 @@ const DEFAULTS = {
   focus: false,
   typewriter: false,
   vim: false,
+  vimLineNumbers: true, // line numbers in source mode while Vim keys are on
+  relativeLineNumbers: false, // … counted from the cursor's line (Vim's relativenumber)
+  fifthLineNumbers: false, // without Vim: number every fifth line
+  lastMode: 'wysiwyg', // editor mode at the last switch; Vim users get source mode back on start
   startInSource: false,
   exportTheme: 'paper', // 'paper' | 'sepia' | 'current' — PDF/print & HTML export palette
   nativeTitlebar: false, // mirrored from Rust's ui.json at startup (decides decorations)
@@ -462,6 +466,7 @@ async function enterSource() {
   source = mod.createSource(host, {
     text,
     vim: settings.vim,
+    numbers: lineNumberOpts(),
     extensions: [writingSourceExtension()],
     onVimMode: setVimMode,
     onChange: (t) => {
@@ -500,7 +505,15 @@ async function exitSource() {
   afterModeSwitch()
 }
 
+/** Line numbers for source mode (see source.js lineNumbers) */
+function lineNumberOpts() {
+  if (settings.vim) return settings.vimLineNumbers ? { relative: settings.relativeLineNumbers, every: 1 } : null
+  return settings.fifthLineNumbers ? { relative: false, every: 5 } : null
+}
+
 function afterModeSwitch() {
+  settings.lastMode = S.mode
+  saveSettings()
   $('#st-mode').classList.toggle('on', S.mode === 'source')
   if (!$('#findbar').hidden) runFind()
   scheduleDocInfo()
@@ -2133,6 +2146,7 @@ function applySettings() {
   $('#wysiwyg').spellcheck = false // Folio checks spelling itself (writing.js)
   if (source) {
     source.setVim(settings.vim)
+    source.setNumbers(lineNumberOpts())
   }
   document.body.classList.toggle('vim-on', settings.vim)
   companionSettingsChanged()
@@ -2660,6 +2674,14 @@ const MENU = [
     label: 'Settings',
     items: [
       k('Vim Keybindings', 'Ctrl+Alt+V', toggleVim, { checked: () => settings.vim, hint: 'Vim keys in source-code mode' }),
+      {
+        label: 'Line Numbers',
+        sub: () => [
+          k('In Vim Mode', null, toggle('vimLineNumbers'), { checked: () => settings.vimLineNumbers }),
+          k('Relative (Vim Mode)', null, toggle('relativeLineNumbers'), { checked: () => settings.relativeLineNumbers }),
+          k('Every Fifth Line (without Vim)', null, toggle('fifthLineNumbers'), { checked: () => settings.fifthLineNumbers }),
+        ],
+      },
       k('Open Files in Source Mode', null, toggle('startInSource'), { checked: () => settings.startInSource }),
       '-',
       k('Auto-save', null, toggle('autoSave'), { checked: () => settings.autoSave }),
@@ -3474,6 +3496,8 @@ async function boot() {
     await loadText('')
     if (settings.startInSource) await enterSource()
   }
+  // Vim keys only work in source mode: if Folio was closed there, start there again
+  if (settings.vim && settings.lastMode === 'source' && S.mode !== 'source') await enterSource()
   renderTree()
   updateTitle()
   await win.show()

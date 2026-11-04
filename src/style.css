@@ -460,6 +460,11 @@ button { font: inherit; color: inherit; }
 
 /* ───────────── Source mode ───────────── */
 #source { max-width: calc(var(--doc-width) + 128px); margin: 0 auto; padding: 32px 48px 0; }
+/* At least as tall as the window, so CodeMirror's sticky bottom panel (the Vim : command line)
+   sits at the bottom, above the status bar, even when the document is short */
+#source:not([hidden]) { display: flex; flex-direction: column; min-height: 100%; box-sizing: border-box; }
+#source .cm-editor { flex: 1 0 auto; }
+#source .cm-scroller { flex-grow: 1; }
 .wide #source { max-width: none; }
 #source .cm-editor { background: transparent; color: var(--fg); font-family: var(--font-mono); font-size: calc(var(--doc-size) * 0.94); }
 #source .cm-editor.cm-focused { outline: none; }
@@ -468,7 +473,9 @@ button { font: inherit; color: inherit; }
 #source .cm-cursor { border-left-color: var(--accent); border-left-width: 2px; }
 #source .cm-selectionBackground, #source .cm-focused .cm-selectionBackground { background: var(--sel) !important; }
 #source .cm-activeLine { background: color-mix(in srgb, var(--fg) 4%, transparent); }
-#source .cm-gutters { display: none; }
+#source .cm-gutters { background: transparent; border: 0; color: color-mix(in srgb, var(--muted) 75%, transparent); font-size: 0.85em; }
+#source .cm-lineNumbers .cm-gutterElement { min-width: 2.5ch; padding: 0 1.1em 0 0; text-align: right; font-variant-numeric: tabular-nums; }
+#source .cm-activeLineGutter { background: transparent; color: var(--fg); }
 /* Vim */
 #source .cm-fat-cursor { background: color-mix(in srgb, var(--accent) 55%, transparent) !important; color: var(--bg) !important; border: 0 !important; }
 #source .cm-editor:not(.cm-focused) .cm-fat-cursor { background: none !important; outline: 1px solid var(--accent) !important; }
