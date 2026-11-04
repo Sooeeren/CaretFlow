@@ -7,7 +7,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q build-essential curl wget file pkg-config libssl-dev \
   libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev \
-  patchelf xdg-utils rsync
+  patchelf xdg-utils rsync rpm cpio
 sudo -u "$TARGET_USER" -H bash -lc '
   set -e
   if ! command -v cargo >/dev/null && [ ! -x "$HOME/.cargo/bin/cargo" ]; then

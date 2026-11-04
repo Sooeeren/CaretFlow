@@ -307,9 +307,10 @@ async fn export_pdf(app: tauri::AppHandle, url: String, out: String, options: pd
 }
 
 /// How this copy of Folio was installed, so the updater knows whether it can replace it:
-/// "nsis" (Windows installer), "appimage", "deb", "rpm", "pacman" (Arch package, updated by the
-/// package manager), or "portable" (a loose exe/binary, which the updater can't update in place).
-/// For "pacman" and "portable" the user is pointed to the download page instead.
+/// "nsis" (Windows installer), "appimage", "deb", "rpm", "rpm-dnf" (an rpm system that only installs
+/// GPG-signed packages), "pacman" (Arch package, updated by the package manager), or "portable"
+/// (a loose exe/binary, which the updater can't update in place).
+/// For "rpm-dnf", "pacman" and "portable" the user is pointed to the download page instead.
 #[tauri::command]
 fn install_kind() -> &'static str {
     use tauri::utils::{config::BundleType, platform::bundle_type};
@@ -338,7 +339,20 @@ fn install_kind() -> &'static str {
     }
     match bundle_type() {
         Some(BundleType::Deb) if packaged => "deb",
-        Some(BundleType::Rpm) if packaged => "rpm",
+        Some(BundleType::Rpm) if packaged => {
+            // The updater installs with `rpm -U`. RPM 6 (Fedora 43 and later) refuses packages
+            // without a GPG signature that way, and Folio's aren't GPG-signed; dnf installs them.
+            let level = std::process::Command::new("rpm")
+                .args(["--eval", "%{_pkgverify_level}"])
+                .output()
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .unwrap_or_default();
+            if matches!(level.as_str(), "all" | "signature") {
+                "rpm-dnf"
+            } else {
+                "rpm"
+            }
+        }
         _ => "portable",
     }
 }

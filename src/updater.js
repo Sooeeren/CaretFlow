@@ -57,7 +57,15 @@ async function offer(ctx, update, portable) {
   body.append(
     el('p', { class: 'about-note' }, el('a', { href: '#', onclick: (e) => (e.preventDefault(), ctx.openUrl(page)) }, 'Full release notes on GitHub')),
   )
-  if (portable === 'pacman')
+  if (portable === 'rpm-dnf')
+    body.append(
+      el(
+        'p',
+        { class: 'about-note' },
+        `Your system only lets rpm install GPG-signed packages, so Folio can’t update itself here. Download folio-markdown-${update.version}-1.x86_64.rpm and run: sudo dnf install ./folio-markdown-${update.version}-1.x86_64.rpm`,
+      ),
+    )
+  else if (portable === 'pacman')
     body.append(el('p', { class: 'about-note' }, 'Folio was installed with pacman, so your package manager updates it (or download the new package and run sudo pacman -U on it).'))
   else if (portable)
     body.append(el('p', { class: 'about-note' }, 'This copy of Folio runs without an installer, so it can’t update itself. Download the new version, or use the installer to get automatic updates.'))

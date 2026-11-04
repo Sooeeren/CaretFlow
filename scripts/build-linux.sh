@@ -44,9 +44,13 @@ mkdir -p "$OUT"
 B="$WORK/src-tauri/target/release"
 cp -f "$B"/bundle/appimage/*.AppImage "$OUT/"
 cp -f "$B"/bundle/deb/*.deb "$OUT/"
-cp -f "$B"/bundle/rpm/*.rpm "$OUT/"
 cp -f "$B/folio" "$OUT/folio"
-cp -f "$B"/bundle/*/*.sig "$OUT/" 2>/dev/null || true
+cp -f "$B"/bundle/appimage/*.sig "$B"/bundle/deb/*.sig "$OUT/" 2>/dev/null || true
+# Tauri names the .rpm "folio", like an unrelated app in Fedora's repos: rebuild it as folio-markdown
+bash scripts/rpm-repackage.sh "$B"/bundle/rpm/*.rpm "$OUT"
+if [ ${#SIGN[@]} -gt 0 ]; then
+  npx tauri signer sign --app-version "$(node -p "require('./package.json').version")" "$OUT"/folio-markdown-*.rpm
+fi
 chmod +x "$OUT"/*.AppImage "$OUT/folio"
 echo
 echo "Linux build ready in $OUT:"

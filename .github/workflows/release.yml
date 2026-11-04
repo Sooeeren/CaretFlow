@@ -72,7 +72,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q build-essential curl wget file pkg-config libssl-dev \
-            libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils rpm
+            libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils rpm cpio
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -90,8 +90,11 @@ jobs:
         run: |
           mkdir -p out
           B=src-tauri/target/release
-          cp "$B"/bundle/appimage/*.AppImage "$B"/bundle/deb/*.deb "$B"/bundle/rpm/*.rpm out/
-          cp "$B"/bundle/*/*.sig out/ 2>/dev/null || true
+          cp "$B"/bundle/appimage/*.AppImage "$B"/bundle/deb/*.deb out/
+          cp "$B"/bundle/appimage/*.sig "$B"/bundle/deb/*.sig out/ 2>/dev/null || true
+          # Tauri names the .rpm "folio", like an unrelated app in Fedora's repos: rebuild it as folio-markdown
+          bash scripts/rpm-repackage.sh "$B"/bundle/rpm/*.rpm out
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then npx tauri signer sign --app-version "${TAG#v}" out/folio-markdown-*.rpm; fi
           cp "$B/folio" out/folio
           chmod +x out/*.AppImage out/folio
           ls -lh out

@@ -100,14 +100,16 @@ Outputs:
 | Windows | `release/windows/Folio-portable.exe` | runs without installing (needs WebView2, preinstalled on Win 10/11) |
 | Linux | `release/linux/Folio_*_amd64.AppImage` | portable: `chmod +x` and run |
 | Linux | `release/linux/Folio_*_amd64.deb` | `sudo apt install ./Folio_*.deb` |
-| Linux | `release/linux/Folio-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./Folio-*.rpm` |
+| Linux | `release/linux/folio-markdown-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./folio-markdown-*.rpm` |
 | Linux | `folio-bin-*-x86_64.pkg.tar.zst` (releases only) | Arch/Manjaro: `sudo pacman -U ./folio-bin-*.pkg.tar.zst` |
 | Linux | `release/linux/folio` | raw binary, needs `libwebkit2gtk-4.1` installed |
 
 Releases are built by GitHub Actions: pushing a tag like `v0.4.0` runs
 `.github/workflows/release.yml`, which builds all of the files above and attaches them to a draft release.
 The Arch package is made from the `.deb` by `packaging/arch/PKGBUILD` (in an Arch container); the same
-`PKGBUILD` can be published to the AUR as `folio-bin`.
+`PKGBUILD` can be published to the AUR as `folio-bin`. The `.rpm` is rebuilt by `scripts/rpm-repackage.sh`
+as `folio-markdown`: Tauri would call it `folio`, like an unrelated app in Fedora's repos that `dnf upgrade`
+then installed in its place. It replaces Folio's own `folio` packages up to 0.4.1.
 
 ### Signed updates
 
@@ -165,8 +167,9 @@ bash scripts/build-linux.sh          # on native Linux
 - **Updates**: Folio can check GitHub for a new version when it starts (it asks once; Preferences →
   Check for updates automatically, or Help → Check for Updates…). **Update & Restart** downloads the
   new version, verifies its signature, installs it and opens Folio again. This works for the Windows
-  installer, the AppImage, `.deb` and `.rpm`; `Folio-portable.exe`, the raw binary and the Arch package
-  (updated by pacman) get a download link.
+  installer, the AppImage, `.deb` and `.rpm`; `Folio-portable.exe`, the raw binary, the Arch package
+  (updated by pacman) and the `.rpm` on systems whose `rpm` only installs GPG-signed packages (Fedora 43
+  and later; update with `dnf`) get a download link.
 - **Command line export**, no window shown:
   `folio --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`, `--footer`,
   `--author`, `--page-numbers`) and `folio --export-html notes.md notes.html`.

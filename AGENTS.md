@@ -52,6 +52,7 @@ These decide most design questions:
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
+| `packaging/rpm/folio-markdown.spec`, `scripts/rpm-repackage.sh` | The `.rpm`, rebuilt from Tauri's under its own name (`folio` clashes with a Fedora package) |
 | `packaging/arch/PKGBUILD` | Arch package (`folio-bin`) made from the release `.deb`; built by release.yml |
 | `scripts/update-manifest.mjs` | Writes `latest.json` (the updater manifest) from signed release files |
 | `scripts/screenshots.mjs` | Runs the frontend in Chrome/Edge with a fake Tauri backend; README screenshots and UI checks |
