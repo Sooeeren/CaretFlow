@@ -30,32 +30,33 @@
   --hit-cur: #ffb648;
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.14), 0 1px 3px rgba(0, 0, 0, 0.08);
 
-  /* code syntax colors (codestyle.js), the same in the editor and in exports: One Light */
-  --tok-keyword: #a626a4;
-  --tok-string: #50a14f;
-  --tok-number: #986801;
-  --tok-comment: #a0a1a7;
-  --tok-function: #4078f2;
-  --tok-type: #c18401;
-  --tok-property: #0184bc;
-  --tok-tag: #e45649;
-  --tok-operator: #0184bc;
-  --tok-meta: #8a8f98;
-  --tok-invalid: #ca1243;
+  /* code syntax colors (codestyle.js), the same in the editor and in exports:
+     JetBrains IntelliJ Light */
+  --tok-keyword: #0033b3;
+  --tok-string: #067d17;
+  --tok-number: #1750eb;
+  --tok-comment: #8c8c8c;
+  --tok-function: #00627a;
+  --tok-type: #000000;
+  --tok-property: #871094;
+  --tok-tag: #0033b3;
+  --tok-operator: #080808;
+  --tok-meta: #9e880d;
+  --tok-invalid: #f50000;
 }
-/* One Dark for the dark themes */
+/* JetBrains' default dark color scheme ("Dark", IntelliJ / CLion / WebStorm) for the dark themes */
 :root:is([data-theme='ink'], [data-theme='slate']) {
-  --tok-keyword: #c678dd;
-  --tok-string: #98c379;
-  --tok-number: #d19a66;
-  --tok-comment: #7f848e;
-  --tok-function: #61afef;
-  --tok-type: #e5c07b;
-  --tok-property: #56b6c2;
-  --tok-tag: #e06c75;
-  --tok-operator: #56b6c2;
-  --tok-meta: #7f848e;
-  --tok-invalid: #f44747;
+  --tok-keyword: #cf8e6d;
+  --tok-string: #6aab73;
+  --tok-number: #2aacb8;
+  --tok-comment: #7a7e85;
+  --tok-function: #56a8f5;
+  --tok-type: #bcbec4;
+  --tok-property: #c77dbb;
+  --tok-tag: #d5b778;
+  --tok-operator: #bcbec4;
+  --tok-meta: #b3ae60;
+  --tok-invalid: #f75464;
 }
 :root[data-theme='sepia'] {
   --bg: #f6efdf;
