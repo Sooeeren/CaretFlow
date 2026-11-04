@@ -152,7 +152,8 @@ div[style*="page-break-after"]{height:0;margin:0;border:0}</style>
 :root{${o.themeVars}}
 html{background:var(--bg);color:var(--fg)}
 body{font-family:var(--doc-font);font-size:var(--doc-size);line-height:var(--doc-lh);max-width:var(--doc-width);margin:0 auto;padding:48px 32px 80px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-h1,h2,h3,h4,h5,h6{color:var(--fg-strong);line-height:1.3;margin:1.3em 0 .6em;font-weight:650}
+h1,h2,h3,h4,h5,h6{color:var(--fg-strong);line-height:1.3;margin:calc(var(--doc-size)*1.4*var(--heading-space,1)) 0 0;font-weight:650}
+:is(h1,h2,h3,h4,h5,h6)+*{margin-top:calc(var(--doc-size)*.5*var(--heading-space,1))!important}
 h1{font-size:2.15em;border-bottom:1px solid var(--border);padding-bottom:.25em}
 h2{font-size:1.65em;border-bottom:1px solid var(--border);padding-bottom:.2em}
 h3{font-size:1.35em}h4{font-size:1.15em}h6{color:var(--muted)}

@@ -45,6 +45,7 @@ const DEFAULTS = {
   font: 'auto',
   fontSize: 16,
   lineHeight: 1.7,
+  headingSpacing: 1, // multiplies the space above/below headings (editor and exports)
   width: 860,
   wide: false,
   autoSave: false,
@@ -1642,7 +1643,7 @@ function themeVars(theme = exportThemeName()) {
   const cs = getComputedStyle(html)
   const vars = [
     '--bg', '--fg', '--fg-strong', '--muted', '--chrome', '--border', '--link', '--code-bg', '--code-fg', '--quote', '--quote-bar',
-    '--doc-font', '--doc-size', '--doc-width', '--doc-lh', '--font-mono',
+    '--doc-font', '--doc-size', '--doc-width', '--doc-lh', '--heading-space', '--font-mono',
     ...TOKEN_VARS,
   ]
     .map((v) => `${v}:${cs.getPropertyValue(v)}`)
@@ -2121,6 +2122,7 @@ function applySettings() {
   const st = html.style
   st.setProperty('--doc-size', settings.fontSize + 'px')
   st.setProperty('--doc-lh', settings.lineHeight)
+  st.setProperty('--heading-space', settings.headingSpacing)
   st.setProperty('--doc-width', settings.width + 'px')
   st.setProperty('--sb-width', settings.sidebarWidth + 'px')
   if (settings.font === 'auto') st.removeProperty('--doc-font')
@@ -2396,6 +2398,7 @@ function openPrefs(section) {
     row('Document font', null, sel('font', [['auto', 'Theme default'], ['sans', 'Sans-serif'], ['serif', 'Serif'], ['mono', 'Monospace']])),
     row('Font size', 'Ctrl+Shift+= / Ctrl+Shift+-', num('fontSize', 11, 28, 1, 'px')),
     row('Line height', null, num('lineHeight', 1.3, 2.2, 0.05, '')),
+    row('Heading spacing', 'Space above and below headings, also in exports', num('headingSpacing', 0.5, 2, 0.1, '×')),
     row('Content width', null, num('width', 560, 1400, 20, 'px')),
     row('Full-width content', 'Ignore the width above', chk('wide')),
     row('Vim keybindings', 'Normal/insert/visual modes and :w :q :wq in source-code mode (Ctrl+/)', chk('vim')),

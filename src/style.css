@@ -8,6 +8,7 @@
   --doc-size: 16px;
   --doc-width: 860px;
   --doc-lh: 1.7;
+  --heading-space: 1; /* Preferences → Heading spacing */
   color-scheme: light;
 
   --bg: #ffffff;
@@ -408,9 +409,12 @@ button { font: inherit; color: inherit; }
   font-weight: 650;
   color: var(--fg-strong);
   line-height: 1.3;
-  margin: 1.3em 0 0.6em;
+  /* in body-text units, so big headings don't get bigger gaps; the next block's own top margin
+     would otherwise collapse into (and widen) the gap below */
+  margin: calc(var(--doc-size) * 1.4 * var(--heading-space)) 0 0;
   padding: 0;
 }
+#wysiwyg .milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) + * { margin-top: calc(var(--doc-size) * 0.5 * var(--heading-space)) !important; }
 #wysiwyg .milkdown .ProseMirror h1 { font-size: 2.15em; padding-bottom: 0.25em; border-bottom: 1px solid var(--border); }
 #wysiwyg .milkdown .ProseMirror h2 { font-size: 1.65em; padding-bottom: 0.2em; border-bottom: 1px solid var(--border); }
 #wysiwyg .milkdown .ProseMirror h3 { font-size: 1.35em; }
