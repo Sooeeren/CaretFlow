@@ -75,6 +75,9 @@ const DEFAULTS = {
   exportTheme: 'paper', // 'paper' | 'sepia' | 'current' — PDF/print & HTML export palette
   nativeTitlebar: false, // mirrored from Rust's ui.json at startup (decides decorations)
   customCSS: '',
+  updateCheck: null, // look for new versions on startup: null = not asked yet (no network until the user agrees)
+  updateSkip: '', // version the user chose to skip
+  updatedFrom: '', // set right before installing an update; shows "updated" once on the next start
 }
 const settings = { ...DEFAULTS, ...readJSON('folio.settings', {}) }
 let recent = readJSON('folio.recent', [])
@@ -2032,6 +2035,52 @@ function showAbout() {
   dialog({ title: `Folio ${APP_VERSION}`, body, wide: true, buttons: [{ label: 'Close', value: true, primary: true, cancel: true }] })
 }
 
+// ── updates (lazy, see updater.js). Automatic checks only after the user agreed once.
+async function checkUpdates(manual) {
+  const { checkForUpdates } = await import('./updater.js')
+  const ctx = { el, dialog, toast, settings, saveSettings, confirmDiscard, openUrl, version: APP_VERSION }
+  return checkForUpdates(ctx, { manual })
+}
+
+function noteUpdated() {
+  if (!settings.updatedFrom) return
+  if (settings.updatedFrom !== APP_VERSION) toast(`Folio was updated to ${APP_VERSION}`, 3500)
+  settings.updatedFrom = ''
+  saveSettings()
+}
+
+async function startupUpdateCheck() {
+  if (import.meta.env.DEV) return
+  if (!$('#modal').hidden) return // e.g. --about; ask next time
+  if (settings.updateCheck === null) {
+    const r = await dialog({
+      title: 'Check for updates automatically?',
+      body: 'Folio can look on GitHub for a new version when it starts and offer to install it. Only the version file is downloaded; nothing about you or your documents is sent. You can change this in Preferences.',
+      buttons: [
+        { label: 'No Thanks', value: false, cancel: true },
+        { label: 'Check Automatically', value: true, primary: true },
+      ],
+    })
+    settings.updateCheck = r === true
+    saveSettings()
+  }
+  if (!settings.updateCheck) return
+  autoCheck()
+  // Folio often stays open for days
+  setInterval(autoCheck, 12 * 3600e3)
+}
+
+// every window is its own process: only one of them checks (and pops up) per half hour
+function autoCheck() {
+  if (!settings.updateCheck) return
+  const last = +localStorage.getItem('folio.updateChecked') || 0
+  if (Date.now() - last < 30 * 60e3) return
+  try {
+    localStorage.setItem('folio.updateChecked', String(Date.now()))
+  } catch {}
+  checkUpdates(false)
+}
+
 async function printDoc() {
   toast('Preparing…')
   const { toHtml, printHtml } = await import('./export.js')
@@ -2345,6 +2394,7 @@ function openPrefs(section) {
     row('Open files in source mode', 'Show raw Markdown instead of the rendered view when opening', chk('startInSource')),
     row('Auto-save', 'Save automatically a moment after you stop typing', chk('autoSave')),
     row('Reopen last file on startup', null, chk('reopenLast')),
+    row('Check for updates automatically', 'On startup, ask GitHub whether a new version is out. Only the version file is downloaded; nothing is sent', chk('updateCheck')),
     row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
     row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
     row('Copy dropped images into image folder', null, chk('copyImages')),
@@ -2606,6 +2656,7 @@ const MENU = [
       k('AutoCorrect While Typing', null, toggle('autocorrect'), { checked: () => settings.autocorrect }),
       k('Open Files Read-only', null, toggle('readonlyDefault'), { checked: () => settings.readonlyDefault }),
       k('Reopen Last File on Startup', null, toggle('reopenLast'), { checked: () => settings.reopenLast }),
+      k('Check for Updates Automatically', null, toggle('updateCheck'), { checked: () => settings.updateCheck }),
       k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
       k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
       {
@@ -2634,6 +2685,7 @@ const MENU = [
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       '-',
+      k('Check for Updates…', null, () => checkUpdates(true)),
       k('About Folio', null, showAbout),
     ],
   },
@@ -3416,6 +3468,8 @@ async function boot() {
     openPagePreview() // `folio --preview file.md`
   }
   if (args.includes('--about')) showAbout()
+  noteUpdated()
+  setTimeout(startupUpdateCheck, 2500)
 }
 
 boot().catch((e) => {

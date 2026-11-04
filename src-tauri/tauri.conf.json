@@ -54,5 +54,16 @@
         "installMode": "currentUser"
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIyQUY1QUY3Nzg1MDhDODMKUldTRGpGQjQ5MXF2SXI1MjMycUV4SWl5YW5WQnhnRUdoLzNZMkFLWEwwdWRBZnB2KzgxVlhWeWYK",
+      "endpoints": [
+        "https://github.com/Sooeeren/folio/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

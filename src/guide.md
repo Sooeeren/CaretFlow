@@ -11,6 +11,7 @@ Folio is a **seamless** Markdown reader and editor: what you type is rendered *i
 - `Ctrl+Shift+R` read-only mode — `Ctrl+Click` (or just click, when read-only) opens links
 - Type `/` on an empty line for the block menu
 - Prefer Vim? **Settings → Vim Keybindings** (`Ctrl+Alt+V`) — works in source mode, with `:w`, `:q`, `:wq`
+- **Help → Check for Updates…** finds a new version; **Update & Restart** installs it and opens Folio again
 
 ## Spelling & grammar
 

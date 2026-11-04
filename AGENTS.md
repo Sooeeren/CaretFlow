@@ -46,11 +46,13 @@ These decide most design questions:
 | `src/companion.js` | WPM meter and typing cat |
 | `src/source.js` | Source mode + Vim (lazy) |
 | `src/export.js` | HTML export and print-to-PDF (lazy) |
+| `src/updater.js` | In-app updates (lazy): check, signed download, install, restart |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
+| `scripts/update-manifest.mjs` | Writes `latest.json` (the updater manifest) from signed release files |
 | `scripts/screenshots.mjs` | Runs the frontend in Chrome/Edge with a fake Tauri backend; README screenshots and UI checks |
 
 ## How to work here
@@ -70,6 +72,7 @@ These decide most design questions:
 - Bump the version in `package.json` (+ `package-lock.json`), `src-tauri/tauri.conf.json` and
   `src-tauri/Cargo.toml` (+ `Cargo.lock`) only for a release. Pushing a `vX.Y.Z` tag runs
   `.github/workflows/release.yml`, which builds Windows and Linux files into a draft release.
+  Builds are signed for the in-app updater (see README → Signed updates); never commit the private key.
 
 ## Commits and credit
 
@@ -93,3 +96,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11 | Initial version: editor, source mode, Vim, files, export, themes |
 | Claude Opus 5.5 | Claude Code | 2026-11-03 | 0.1.1–0.3.0: Vim visual increment and block mode, PDF export options, page preview, callouts, custom title bar, Linux fixes |
 | Claude Opus 5.5 | Claude Code | 2026-11-03 | Spelling & grammar check (Harper/LanguageTool, F7 panel, AutoCorrect), typing test, WPM meter, typing cat, per-model About stats, README screenshots, this file |
+| Claude Opus 5.5 | Claude Code | 2026-11-04 | In-app updater: update popup, signed download and install, restart; signed release builds and `latest.json` |

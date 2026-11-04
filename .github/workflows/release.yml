@@ -17,6 +17,10 @@ permissions:
 
 env:
   TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  # Signs the installers for the in-app updater (key made with `npx tauri signer generate`).
+  # Without the secret the build still works, but the release has no automatic update.
+  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
 jobs:
   windows:
@@ -35,12 +39,17 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci --no-audit --no-fund
-      - run: npx tauri build --bundles nsis
+      - name: Build
+        shell: bash
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then SIGN=(--config '{"bundle":{"createUpdaterArtifacts":true}}'); else SIGN=(); echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set: no in-app update for this build"; fi
+          npx tauri build --bundles nsis "${SIGN[@]}"
       - name: Collect files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item src-tauri/target/release/bundle/nsis/*.exe out/
+          Copy-Item src-tauri/target/release/bundle/nsis/*.exe.sig out/ -ErrorAction SilentlyContinue
           Copy-Item src-tauri/target/release/folio.exe out/Folio-portable.exe
           Get-ChildItem out
       - uses: actions/upload-artifact@v4
@@ -73,12 +82,16 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci --no-audit --no-fund
-      - run: npx tauri build --bundles appimage,deb,rpm
+      - name: Build
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then SIGN=(--config '{"bundle":{"createUpdaterArtifacts":true}}'); else SIGN=(); echo "::warning::TAURI_SIGNING_PRIVATE_KEY not set: no in-app update for this build"; fi
+          npx tauri build --bundles appimage,deb,rpm "${SIGN[@]}"
       - name: Collect files
         run: |
           mkdir -p out
           B=src-tauri/target/release
           cp "$B"/bundle/appimage/*.AppImage "$B"/bundle/deb/*.deb "$B"/bundle/rpm/*.rpm out/
+          cp "$B"/bundle/*/*.sig out/ 2>/dev/null || true
           cp "$B/folio" out/folio
           chmod +x out/*.AppImage out/folio
           ls -lh out
@@ -91,6 +104,9 @@ jobs:
     needs: [windows, linux]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
       - uses: actions/download-artifact@v4
         with:
           path: files
@@ -102,4 +118,9 @@ jobs:
         run: |
           ls -lh files
           gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "Folio ${TAG#v}" --notes "Release notes to follow."
+          # update manifest for the in-app updater; notes come from the release text if it's written already
+          if ls files/*.sig >/dev/null 2>&1; then
+            gh release view "$TAG" --json body -q .body > notes.md
+            node scripts/update-manifest.mjs files --version "${TAG#v}" --notes notes.md --repo "$GH_REPO"
+          fi
           gh release upload "$TAG" files/* --clobber

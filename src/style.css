@@ -909,6 +909,12 @@ button { font: inherit; color: inherit; }
 .ai-bar span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 .ai-bar span.human { background: #4f9a54; }
 .ai-bar span.pending { background: var(--muted); }
+/* updater */
+.update-notes { white-space: pre-wrap; max-height: 260px; overflow: auto; font-size: 12.5px; line-height: 1.5; padding: 10px 12px; border-radius: 6px; background: var(--chrome-2); margin: 8px 0; }
+.update-bar { margin: 14px 0 4px; }
+.update-bar span { transition: width 0.15s; }
+.update-bar span.indeterminate { width: 30% !important; animation: update-slide 1.2s ease-in-out infinite; }
+@keyframes update-slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 .ai-who { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .ai-who small { color: var(--muted); }
 .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }

@@ -28,7 +28,16 @@ cd "$WORK"
 # drop bundles from earlier versions so only the current one gets copied out
 rm -rf src-tauri/target/release/bundle "$SRC/release/linux"
 npm ci --no-audit --no-fund
-npx tauri build --bundles appimage,deb,rpm
+# sign for the in-app updater when a key is available (passed from build-all.ps1 or ~/.tauri/folio.key)
+SIGN=()
+if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ] && [ -f "$HOME/.tauri/folio.key" ]; then
+  TAURI_SIGNING_PRIVATE_KEY="$(cat "$HOME/.tauri/folio.key")"
+fi
+if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+  export TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+  SIGN=(--config '{"bundle":{"createUpdaterArtifacts":true}}')
+fi
+npx tauri build --bundles appimage,deb,rpm "${SIGN[@]}"
 
 OUT="$SRC/release/linux"
 mkdir -p "$OUT"
@@ -37,6 +46,7 @@ cp -f "$B"/bundle/appimage/*.AppImage "$OUT/"
 cp -f "$B"/bundle/deb/*.deb "$OUT/"
 cp -f "$B"/bundle/rpm/*.rpm "$OUT/"
 cp -f "$B/folio" "$OUT/folio"
+cp -f "$B"/bundle/*/*.sig "$OUT/" 2>/dev/null || true
 chmod +x "$OUT"/*.AppImage "$OUT/folio"
 echo
 echo "Linux build ready in $OUT:"

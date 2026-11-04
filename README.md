@@ -106,6 +106,21 @@ Outputs:
 Releases are built by GitHub Actions: pushing a tag like `v0.4.0` runs
 `.github/workflows/release.yml`, which builds all of the files above and attaches them to a draft release.
 
+### Signed updates
+
+The in-app updater only installs files signed with Folio's private key (the public key is in
+`src-tauri/tauri.conf.json`). The key lives outside the repository in `~/.tauri/folio.key`; keep a
+backup, since updates for existing installs can't be signed without it.
+
+- **Local builds** (`npm run app:build:all`) sign automatically when that file exists and write
+  `release/latest.json`, the manifest the app reads.
+- **GitHub Actions** needs the key as repository secrets: `TAURI_SIGNING_PRIVATE_KEY` (contents of
+  the key file) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (empty for the current key). The workflow
+  then uploads the `.sig` files and `latest.json` with the release.
+- Installed copies see a release once it is **published** (drafts and pre-releases are ignored, since
+  the app reads `releases/latest/download/latest.json`). Write the release notes before tagging, or
+  run the workflow again from the Actions tab afterwards, so the update popup can show them.
+
 ### Linux prerequisites (one time)
 
 From Windows, the Linux build runs inside WSL (default distro `Ubuntu`; pass `-Distro <name>` to
@@ -143,6 +158,10 @@ bash scripts/build-linux.sh          # on native Linux
   Markdown tools understand too.
 - **Callouts** are GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) shown as
   colored boxes in the editor and in exports (Paragraph → Callout).
+- **Updates**: Folio can check GitHub for a new version when it starts (it asks once; Preferences →
+  Check for updates automatically, or Help → Check for Updates…). **Update & Restart** downloads the
+  new version, verifies its signature, installs it and opens Folio again. This works for the Windows
+  installer, the AppImage, `.deb` and `.rpm`; `Folio-portable.exe` and the raw binary get a download link.
 - **Command line export**, no window shown:
   `folio --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`, `--footer`,
   `--author`, `--page-numbers`) and `folio --export-html notes.md notes.html`.
@@ -156,6 +175,7 @@ bash scripts/build-linux.sh          # on native Linux
   Settings → Use System Title Bar switches back (on Linux this applies after a restart).
 - **Linux**: uses the desktop's native (xdg-portal) file dialogs, and sets
   `WEBKIT_DISABLE_DMABUF_RENDERER=1` (unless you set it yourself) to avoid WebKitGTK freezes on Wayland.
+- **Update checks** download only `latest.json` from GitHub, and only after you agree. No data is sent.
 - **LanguageTool** sends the text being checked to the server you configure; the free public server
   allows about 20 checks a minute. Harper (the default) never sends anything.
 
@@ -168,6 +188,7 @@ bash scripts/build-linux.sh          # on native Linux
 - `src/typingtest.js` – typing test (lazy-loaded); `src/companion.js` – WPM meter and typing cat
 - `src/source.js` – source-code mode + Vim (lazy-loaded)
 - `src/export.js` – HTML export / print-to-PDF (lazy-loaded)
+- `src/updater.js` – update check, download, install and restart (lazy-loaded)
 - `src/blocks.js`, `src/underline.js` – page breaks, callouts, underline
 - `src/style.css` – themes (Paper, Sepia, Ink, Slate) and typography
 - `src-tauri/src/lib.rs` – file I/O commands (atomic save, folder listing, folder search); `pdf.rs` – PDF stamping

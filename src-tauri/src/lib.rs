@@ -306,11 +306,41 @@ async fn export_pdf(app: tauri::AppHandle, url: String, out: String, options: pd
     pdf::export(app, url, out, options).await
 }
 
+/// How this copy of Folio was installed, so the updater knows whether it can replace it:
+/// "nsis" (Windows installer), "appimage", "deb", "rpm", or "portable" (a loose exe/binary,
+/// which the updater can't update in place; the user is pointed to the download page instead).
+#[tauri::command]
+fn install_kind() -> &'static str {
+    use tauri::utils::{config::BundleType, platform::bundle_type};
+    let exe = std::env::current_exe().ok();
+    if cfg!(windows) {
+        // the NSIS installer puts uninstall.exe next to folio.exe; Folio-portable.exe has none
+        let installed = exe
+            .as_ref()
+            .and_then(|e| e.parent())
+            .map(|d| d.join("uninstall.exe").exists())
+            .unwrap_or(false);
+        return if installed { "nsis" } else { "portable" };
+    }
+    if std::env::var_os("APPIMAGE").is_some() {
+        return "appimage";
+    }
+    // deb/rpm install to /usr/bin; the raw `folio` binary can live anywhere
+    let packaged = exe.map(|e| e.starts_with("/usr")).unwrap_or(false);
+    match bundle_type() {
+        Some(BundleType::Deb) if packaged => "deb",
+        Some(BundleType::Rpm) if packaged => "rpm",
+        _ => "portable",
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(
@@ -364,7 +394,8 @@ pub fn run() {
             export_pdf,
             remove_temp,
             temp_dir,
-            read_bytes
+            read_bytes,
+            install_kind
         ])
         .run(tauri::generate_context!())
         .expect("error while running Folio");
