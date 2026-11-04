@@ -58,6 +58,7 @@ These decide most design questions:
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
 | `src/welcome.md` | Welcome page, shown on the very first start and from Help → Welcome Page |
 | `src/linenumbers.js` | Every-fifth-line numbers in the rendered view, measured from the text layout |
+| `src/caret.js` | The text cursor CaretFlow draws itself in the rendered view (Linux default; WebKitGTK leaves stale carets) |
 | `src-tauri/windows/installer-hooks.nsh` | Windows installer hooks: remove an old Folio install, recreate its shortcuts |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -110,3 +111,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | In-app updater: update popup, signed download and install, restart; signed release builds and `latest.json` |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Arch package, folio-markdown rpm, issue #4 (code colors in exports, line numbers, Vim command line, heading spacing, sliders/zoom, Close Folder), Preferences categories |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Rename to CaretFlow with the new icon (Windows installer migration, caretflow packages), JetBrains code colors, Word-style line numbers, Close File, welcome page |
+| Claude Opus 5.5 | Claude Code | 2026-11-04 | Issues #8/#9: drawn caret on Linux, no giant caret beside tables, Vim command line without scroll jumps, custom shortcuts (Preferences → Keyboard) |

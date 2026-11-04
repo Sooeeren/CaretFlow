@@ -86,6 +86,7 @@ const DEFAULTS = {
   exportTheme: 'paper', // 'paper' | 'sepia' | 'current' — PDF/print & HTML export palette
   nativeTitlebar: false, // mirrored from Rust's ui.json at startup (decides decorations)
   customCSS: '',
+  keybindings: {}, // action id ('Group/Label') → shortcut, '' = none; only changed ones are stored
   updateCheck: null, // look for new versions on startup: null = not asked yet (no network until the user agrees)
   updateSkip: '', // version the user chose to skip
   updatedFrom: '', // set right before installing an update; shows "updated" once on the next start
@@ -2491,6 +2492,7 @@ function openPrefs(section) {
       row('Relative line numbers', 'In Vim mode: count from the cursor’s line, like :set relativenumber', chk('relativeLineNumbers')),
       row('Number every fifth line', 'Like Word: in the rendered view, and in source mode without Vim', chk('fifthLineNumbers')),
     ]],
+    ['keys', 'Keyboard', [keyboardPrefs()]],
     ['writing', 'Writing', [writingPrefs(row, chk, sel)]],
     ['typing', 'Typing', [
       row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
@@ -2546,6 +2548,108 @@ function openPrefs(section) {
     buttons: [{ label: 'Done', value: true, primary: true, cancel: true }],
     onMount: (box) => box.classList.add('prefs-dialog'),
   })
+}
+
+/** Preferences → Keyboard: every menu command with its shortcut; click one and press new keys. */
+function keyboardPrefs() {
+  const kb = () => (settings.keybindings ||= {})
+  const filter = el('input', { type: 'search', class: 'kb-filter', placeholder: 'Filter commands or keys…', spellcheck: 'false' })
+  const list = el('div', { class: 'kb-list' })
+  const resetAll = el('button', { type: 'button', class: 'fsel' }, 'Reset all')
+  let recording = null // { a, btn, stop }
+
+  const set = (a, keys) => {
+    if (keys === a.defaultKeys) delete kb()[a.id]
+    else kb()[a.id] = keys || ''
+  }
+  const changed = () => {
+    applyKeybindings()
+    saveSettings()
+    draw()
+  }
+  const assign = (a, keys) => {
+    // a shortcut does one thing: whatever had it loses it (the same command in two menus may share it)
+    const other = keys && ACTIONS.find((o) => o !== a && o.fn !== a.fn && o.keys && canon(o.keys) === keys)
+    if (other) {
+      set(other, '')
+      toast(`${keys} was the shortcut for ${other.group} › ${other.label}, which now has none`, 4500)
+    }
+    set(a, keys)
+    changed()
+  }
+  const record = (a, btn) => {
+    recording?.stop()
+    btn.classList.add('recording')
+    btn.textContent = 'Press keys…'
+    const onKey = (e) => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.shiftKey) return stop(true)
+      if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        stop()
+        return assign(a, '')
+      }
+      const combo = recordCombo(e)
+      if (!combo) return
+      // a plain letter, digit or editing key would steal it from typing
+      if (/^(Shift\+)?(.|Enter|Tab|Arrow\w+|Home|End|Page\w+)$/.test(combo)) {
+        btn.textContent = 'Add Ctrl or Alt…'
+        return
+      }
+      stop()
+      assign(a, combo)
+    }
+    const stop = (redraw) => {
+      window.removeEventListener('keydown', onKey, true)
+      document.removeEventListener('mousedown', onDown, true)
+      recording = null
+      if (redraw) draw()
+    }
+    const onDown = (e) => e.target !== btn && stop(true)
+    // window capture runs before the dialog's own Esc/Enter handling (on document)
+    window.addEventListener('keydown', onKey, true)
+    document.addEventListener('mousedown', onDown, true)
+    recording = { a, btn, stop }
+  }
+
+  const draw = () => {
+    recording?.stop()
+    const q = filter.value.trim().toLowerCase()
+    const rows = []
+    let group = null
+    for (const a of ACTIONS) {
+      if (q && !`${a.group} ${a.label} ${a.keys || ''}`.toLowerCase().includes(q)) continue
+      if (a.group !== group) rows.push(el('div', { class: 'kb-group' }, (group = a.group)))
+      const custom = a.id in kb()
+      const btn = el('button', { type: 'button', class: 'kb-keys' + (a.keys ? '' : ' none'), title: 'Click, then press the new shortcut. Backspace removes it, Esc cancels' }, a.keys || 'None')
+      btn.onclick = () => record(a, btn)
+      const reset = el('button', { type: 'button', class: 'kb-reset', title: `Back to ${a.defaultKeys || 'no shortcut'}`, hidden: !custom }, '↺')
+      reset.onclick = () => {
+        delete kb()[a.id]
+        // the default may be in use by another command now
+        const other = a.defaultKeys && ACTIONS.find((o) => o !== a && o.fn !== a.fn && o.keys && canon(o.keys) === canon(a.defaultKeys))
+        if (other) set(other, '')
+        changed()
+      }
+      rows.push(el('div', { class: 'kb-row' + (custom ? ' custom' : '') }, el('span', { class: 'kb-label' }, a.label), reset, btn))
+    }
+    if (!rows.length) rows.push(el('p', { class: 'about-note' }, 'No command matches.'))
+    list.replaceChildren(...rows)
+    resetAll.disabled = !Object.keys(kb()).length
+  }
+  filter.oninput = draw
+  resetAll.onclick = () => {
+    settings.keybindings = {}
+    changed()
+  }
+  draw()
+  return el(
+    'div',
+    { class: 'kb-prefs' },
+    el('p', { class: 'about-note' }, 'Click a shortcut and press the keys you want. Backspace removes it, Esc cancels. Vim keys in source mode are not affected.'),
+    el('div', { class: 'kb-top' }, filter, resetAll),
+    list,
+  )
 }
 
 function writingPrefs(row, chk, sel) {
@@ -2822,6 +2926,7 @@ const MENU = [
       k('Markdown Guide', null, openGuide),
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
+      k('Customize Shortcuts…', null, () => openPrefs('keys')),
       '-',
       k('Check for Updates…', null, () => checkUpdates(true)),
       k('About CaretFlow', null, showAbout),
@@ -2859,8 +2964,16 @@ function recentMenu() {
   ]
 }
 
-// collect all actions for keyboard & palette
-for (const m of MENU) for (const it of m.items) if (typeof it === 'object' && it.fn) ACTIONS.push({ ...it, group: m.label })
+// collect all actions for keyboard & palette. The menu items themselves, so a changed shortcut
+// shows up in the menus, the palette and the shortcut list alike.
+for (const m of MENU)
+  for (const it of m.items)
+    if (typeof it === 'object' && it.fn) {
+      it.group = m.label
+      it.id = `${m.label}/${it.label}`
+      it.defaultKeys = it.keys
+      ACTIONS.push(it)
+    }
 
 // ── menubar rendering
 let openMenu = null
@@ -3056,14 +3169,32 @@ const RELOAD_KEYS = ['F5', 'Ctrl+R', 'Ctrl+F5', 'Shift+F5']
 const VIM_PASSTHROUGH = new Set(
   ['F', 'B', 'D', 'U', 'E', 'Y', 'O', 'I', 'V', 'R', 'A', 'X', 'W', 'H', 'T', '['].map((c) => 'Ctrl+' + c),
 )
-function bindKeys() {
-  for (const a of ACTIONS) if (a.keys && !a.native) KEYMAP.set(canon(a.keys), a.fn)
-  KEYMAP.set('Ctrl+Shift+Q', blockquote)
-  KEYMAP.set('F1', () => commandPalette())
+/** Apply the user's shortcuts (settings.keybindings) on top of the defaults and rebuild KEYMAP. */
+function applyKeybindings() {
+  const kb = settings.keybindings || {}
+  for (const a of ACTIONS) a.keys = a.id in kb ? kb[a.id] || null : a.defaultKeys
+  KEYMAP.clear()
+  // Undo/Redo are left to the editors unless the user gave them other keys
+  for (const a of ACTIONS) if (a.keys && !(a.native && a.keys === a.defaultKeys)) KEYMAP.set(canon(a.keys), a.fn)
+  // A default the user moved or removed does nothing, also where the editor has the same key
+  // built in (Ctrl+B in Milkdown): otherwise removing a shortcut wouldn't remove it
+  for (const a of ACTIONS) if (a.defaultKeys && a.keys !== a.defaultKeys && !KEYMAP.has(canon(a.defaultKeys))) KEYMAP.set(canon(a.defaultKeys), () => {})
   // Zoom on every layout: Shift+= gives '+' on US keyboards; German ones have their own + key
   // (Shift gives '*') and - key (Shift gives '_'), which never match Ctrl+Shift+= / Ctrl+Shift+-
-  for (const k of ['Ctrl+Shift++', 'Ctrl++', 'Ctrl+Shift+*']) KEYMAP.set(canon(k), () => zoom(1))
-  KEYMAP.set(canon('Ctrl+Shift+_'), () => zoom(-1))
+  const unchanged = (id) => !(id in kb)
+  if (unchanged('View/Zoom In')) for (const k of ['Ctrl+Shift++', 'Ctrl++', 'Ctrl+Shift+*']) KEYMAP.has(canon(k)) || KEYMAP.set(canon(k), () => zoom(1))
+  if (unchanged('View/Zoom Out')) KEYMAP.has(canon('Ctrl+Shift+_')) || KEYMAP.set(canon('Ctrl+Shift+_'), () => zoom(-1))
+}
+
+/** The shortcut a key press stands for, for recording one; null for a lone modifier key. */
+function recordCombo(e) {
+  if (['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Dead', 'Unidentified', 'Process'].includes(e.key)) return null
+  const c = eventCombos(e)[0]
+  return c ? canon(c) : null
+}
+
+function bindKeys() {
+  applyKeybindings()
 
   window.addEventListener(
     'keydown',

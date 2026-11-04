@@ -1088,6 +1088,23 @@ button { font: inherit; color: inherit; }
   .prefs-nav { width: auto; flex-direction: row; overflow-x: auto; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--border); }
   .prefs-nav button { white-space: nowrap; }
 }
+/* Preferences → Keyboard */
+.kb-top { display: flex; gap: 8px; align-items: center; margin: 8px 0 4px; }
+.kb-filter { flex: 1; min-width: 0; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; outline: none; }
+.kb-filter:focus { border-color: var(--accent); }
+.kb-top .fsel { min-width: 0; padding-right: 10px; background-image: none; }
+.kb-top .fsel:disabled { opacity: 0.5; cursor: default; border-color: var(--border); }
+.kb-group { margin: 14px 0 2px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.kb-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.kb-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-row.custom .kb-label { font-weight: 600; color: var(--fg-strong); }
+.kb-keys { min-width: 120px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 5px; background: var(--chrome); color: var(--fg); font: 12px var(--font-mono); text-align: center; cursor: pointer; white-space: nowrap; }
+.kb-keys.none { color: var(--muted); font-family: var(--font-ui); font-style: italic; }
+.kb-keys:hover, .kb-keys:focus-visible { border-color: var(--accent); outline: none; }
+.kb-keys.recording { border-color: var(--accent); background: var(--accent-soft); color: var(--fg-strong); font-family: var(--font-ui); }
+.kb-reset { border: 0; background: none; color: var(--muted); font-size: 14px; padding: 2px 6px; border-radius: 5px; cursor: pointer; }
+.kb-reset:hover { color: var(--fg); background: var(--chrome-2); }
+.kb-reset[hidden] { display: none; }
 .pref-h { margin: 16px 0 6px; padding-top: 10px; border-top: 1px solid var(--border); font-weight: 600; color: var(--fg-strong); }
 .pref-sub { margin: 10px 0 6px; font-weight: 600; }
 .pref-sub small { display: block; font-weight: 400; color: var(--muted); }

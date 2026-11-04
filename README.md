@@ -145,7 +145,9 @@ bash scripts/build-linux.sh          # on native Linux
 
 ## Keyboard shortcuts
 
-`Shift+F1` lists every shortcut, `F1` opens the command palette. The most used:
+`Shift+F1` lists every shortcut, `F1` opens the command palette. Every menu command can get a
+different shortcut (or none) in **Preferences → Keyboard** (Help → Customize Shortcuts…). The
+defaults most used:
 
 | Action | Keys | Action | Keys |
 | --- | --- | --- | --- |
