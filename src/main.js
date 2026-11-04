@@ -33,6 +33,7 @@ import { version as APP_VERSION } from '../package.json'
 const UNDERLINE_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M5 21v-2h14v2H5Zm7-4q-2.525 0-3.925-1.575T6.675 11.2V3h2.55v8.35q0 1.4.775 2.275T12 14.5q1.225 0 1.988-.875t.762-2.275V3h2.55v8.2q0 2.65-1.4 4.225T12 17Z"/></svg>'
 import guideMd from './guide.md?raw'
+import welcomeMd from './welcome.md?raw'
 
 // ════════════════════════════════════════ state & settings
 const $ = (s) => document.querySelector(s)
@@ -87,6 +88,14 @@ const DEFAULTS = {
   updateSkip: '', // version the user chose to skip
   updatedFrom: '', // set right before installing an update; shows "updated" once on the next start
 }
+// No saved settings yet: Folio's very first start (shows the welcome page)
+const FIRST_RUN = (() => {
+  try {
+    return localStorage.getItem('folio.settings') === null
+  } catch {
+    return false
+  }
+})()
 const settings = { ...DEFAULTS, ...readJSON('folio.settings', {}) }
 let recent = readJSON('folio.recent', [])
 
@@ -2800,6 +2809,7 @@ const MENU = [
   {
     label: 'Help',
     items: [
+      k('Welcome Page', null, openWelcome),
       k('Markdown Guide', null, openGuide),
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
@@ -2810,15 +2820,22 @@ const MENU = [
   },
 ]
 
-async function openGuide() {
-  if (!(await confirmDiscard())) return
+/** Show one of Folio's own pages (Markdown Guide, Welcome) as an unsaved, unchanged document */
+async function openBuiltin(md, { ask = true } = {}) {
+  if (ask && !(await confirmDiscard())) return
   S.path = null
   S.mtime = 0
   S.readonly = false
-  await loadText(guideMd)
-  S.baseline = S.mode === 'source' ? guideMd : crepe.getMarkdown()
+  await loadText(md)
+  S.baseline = S.mode === 'source' ? md : crepe.getMarkdown()
   applyReadonly()
   renderTree()
+}
+function openGuide() {
+  return openBuiltin(guideMd)
+}
+function openWelcome() {
+  return openBuiltin(welcomeMd)
 }
 
 function recentMenu() {
@@ -3581,7 +3598,8 @@ async function boot() {
     else opened = await openFile(path, { force: true })
   }
   if (!opened) {
-    await loadText('')
+    if (FIRST_RUN) await openBuiltin(welcomeMd, { ask: false })
+    else await loadText('')
     if (settings.startInSource) await enterSource()
   }
   // Vim keys only work in source mode: if Folio was closed there, start there again

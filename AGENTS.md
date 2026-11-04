@@ -45,11 +45,14 @@ These decide most design questions:
 | `src/typingtest.js` | Typing test overlay (lazy) |
 | `src/companion.js` | WPM meter and typing cat |
 | `src/source.js` | Source mode + Vim (lazy) |
+| `src/codestyle.js` | Syntax colors shared by code blocks, source mode and exports (`--tok-*` per theme) |
 | `src/export.js` | HTML export and print-to-PDF (lazy) |
 | `src/updater.js` | In-app updates (lazy): check, signed download, install, restart |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
+| `src/welcome.md` | Welcome page, shown on the very first start and from Help → Welcome Page |
+| `src/linenumbers.js` | Every-fifth-line numbers in the rendered view, measured from the text layout |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
 | `packaging/rpm/folio-markdown.spec`, `scripts/rpm-repackage.sh` | The `.rpm`, rebuilt from Tauri's under its own name (`folio` clashes with a Fedora package) |
