@@ -188,11 +188,11 @@ async fn search_files(root: String, query: String) -> Vec<Hit> {
     hits
 }
 
-/// Append a diagnostic line to %TEMP%/folio.log (errors only; kept small).
+/// Append a diagnostic line to %TEMP%/caretflow.log (errors only; kept small).
 #[tauri::command]
 fn log_line(line: String) {
     use std::io::Write;
-    let p = std::env::temp_dir().join("folio.log");
+    let p = std::env::temp_dir().join("caretflow.log");
     if fs::metadata(&p).map(|m| m.len() > 512 * 1024).unwrap_or(false) {
         let _ = fs::remove_file(&p);
     }
@@ -271,7 +271,7 @@ fn restart(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
     Ok(())
 }
 
-/// Delete a temporary export file. Only Folio's own temp files can be removed.
+/// Delete a temporary export file. Only CaretFlow's own temp files can be removed.
 #[tauri::command]
 fn remove_temp(path: String) -> Result<(), String> {
     let p = Path::new(&path);
@@ -306,7 +306,7 @@ async fn export_pdf(app: tauri::AppHandle, url: String, out: String, options: pd
     pdf::export(app, url, out, options).await
 }
 
-/// How this copy of Folio was installed, so the updater knows whether it can replace it:
+/// How this copy of CaretFlow was installed, so the updater knows whether it can replace it:
 /// "nsis" (Windows installer), "appimage", "deb", "rpm", "rpm-dnf" (an rpm system that only installs
 /// GPG-signed packages), "pacman" (Arch package, updated by the package manager), or "portable"
 /// (a loose exe/binary, which the updater can't update in place).
@@ -316,7 +316,7 @@ fn install_kind() -> &'static str {
     use tauri::utils::{config::BundleType, platform::bundle_type};
     let exe = std::env::current_exe().ok();
     if cfg!(windows) {
-        // the NSIS installer puts uninstall.exe next to folio.exe; Folio-portable.exe has none
+        // the NSIS installer puts uninstall.exe next to caretflow.exe; CaretFlow-portable.exe has none
         let installed = exe
             .as_ref()
             .and_then(|e| e.parent())
@@ -327,12 +327,12 @@ fn install_kind() -> &'static str {
     if std::env::var_os("APPIMAGE").is_some() {
         return "appimage";
     }
-    // deb/rpm install to /usr/bin; the raw `folio` binary can live anywhere
+    // deb/rpm install to /usr/bin; the raw `caretflow` binary can live anywhere
     let packaged = exe.map(|e| e.starts_with("/usr")).unwrap_or(false);
     // the Arch package reuses the .deb's binary, so check pacman's database before trusting that
     let pacman = packaged
         && fs::read_dir("/var/lib/pacman/local")
-            .map(|d| d.flatten().any(|e| e.file_name().to_string_lossy().starts_with("folio-bin-")))
+            .map(|d| d.flatten().any(|e| e.file_name().to_string_lossy().starts_with("caretflow-bin-")))
             .unwrap_or(false);
     if pacman {
         return "pacman";
@@ -341,7 +341,7 @@ fn install_kind() -> &'static str {
         Some(BundleType::Deb) if packaged => "deb",
         Some(BundleType::Rpm) if packaged => {
             // The updater installs with `rpm -U`. RPM 6 (Fedora 43 and later) refuses packages
-            // without a GPG signature that way, and Folio's aren't GPG-signed; dnf installs them.
+            // without a GPG signature that way, and CaretFlow's aren't GPG-signed; dnf installs them.
             let level = std::process::Command::new("rpm")
                 .args(["--eval", "%{_pkgverify_level}"])
                 .output()
@@ -377,7 +377,7 @@ pub fn run() {
         .setup(|app| {
             let native = read_ui_config(app.handle()).native_titlebar.unwrap_or(false);
             let win = tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
-                .title("Folio")
+                .title("CaretFlow")
                 .inner_size(1120.0, 780.0)
                 .min_inner_size(420.0, 320.0)
                 .center()
@@ -421,5 +421,5 @@ pub fn run() {
             install_kind
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Folio");
+        .expect("error while running CaretFlow");
 }

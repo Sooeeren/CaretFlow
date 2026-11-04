@@ -168,7 +168,7 @@ async fn print_to_pdf(win: &tauri::WebviewWindow, path: &Path, o: &PdfOptions) -
         settings.set("output-file-format", Some("pdf"));
         settings.set("output-uri", Some(&uri));
         let setup = gtk::PageSetup::new();
-        let paper = gtk::PaperSize::new_custom("folio", "Folio", o.page_width_mm, o.page_height_mm, gtk::Unit::Mm);
+        let paper = gtk::PaperSize::new_custom("caretflow", "CaretFlow", o.page_width_mm, o.page_height_mm, gtk::Unit::Mm);
         setup.set_paper_size(&paper);
         setup.set_orientation(if o.landscape { gtk::PageOrientation::Landscape } else { gtk::PageOrientation::Portrait });
         for (f, m) in [
@@ -368,7 +368,7 @@ fn postprocess(raw: &Path, out: &Path, o: &PdfOptions) -> Result<(), String> {
             info.set(k, pdf_string(v.trim()));
         }
     }
-    info.set("Creator", pdf_string("Folio"));
+    info.set("Creator", pdf_string("CaretFlow"));
     let info_id = doc.add_object(info);
     doc.trailer.set("Info", Object::Reference(info_id));
     // Make PDF viewers show the title instead of the file name

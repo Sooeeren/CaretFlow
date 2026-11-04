@@ -1,10 +1,15 @@
-# Folio
+# CaretFlow
 
-**A fast, quiet Markdown editor for Windows and Linux.** You write, Folio renders it in place:
+<img src="src-tauri/icons/128x128@2x.png" width="96" align="right" alt="">
+
+**A fast, quiet Markdown editor for Windows and Linux.** You write, CaretFlow renders it in place:
 no split preview, no clutter. Raw Markdown and Vim are one shortcut away, and a built-in spelling
 and grammar checker catches mistakes like a word processor would.
 
-![Folio editing a Markdown file with the file sidebar open](docs/screenshots/editor.png)
+CaretFlow was called **Folio** until 0.5.0. Updating keeps your settings; the Windows installer removes
+the old Folio install.
+
+![CaretFlow editing a Markdown file with the file sidebar open](docs/screenshots/editor.png)
 
 <p align="center">
   <a href="https://github.com/Sooeeren/folio/releases/latest"><b>Download the latest release</b></a> ·
@@ -31,7 +36,7 @@ editing and CodeMirror 6 for source mode.
 
 ## Writing check
 
-Folio checks spelling and grammar as you type. Red wavy lines mark spelling, blue double lines
+CaretFlow checks spelling and grammar as you type. Red wavy lines mark spelling, blue double lines
 grammar (*their/they're*, *could of*, *a apple*, *I has*, repeated words), and amber dotted lines
 optional style hints. Right-click a marked word to fix it, ignore it or add it to your dictionary.
 
@@ -96,24 +101,25 @@ Outputs:
 
 | Platform | File | Notes |
 | --- | --- | --- |
-| Windows | `release/windows/Folio_*_x64-setup.exe` | installer, registers `.md` files |
-| Windows | `release/windows/Folio-portable.exe` | runs without installing (needs WebView2, preinstalled on Win 10/11) |
-| Linux | `release/linux/Folio_*_amd64.AppImage` | portable: `chmod +x` and run |
-| Linux | `release/linux/Folio_*_amd64.deb` | `sudo apt install ./Folio_*.deb` |
-| Linux | `release/linux/folio-markdown-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./folio-markdown-*.rpm` |
-| Linux | `folio-bin-*-x86_64.pkg.tar.zst` (releases only) | Arch/Manjaro: `sudo pacman -U ./folio-bin-*.pkg.tar.zst` |
-| Linux | `release/linux/folio` | raw binary, needs `libwebkit2gtk-4.1` installed |
+| Windows | `release/windows/CaretFlow_*_x64-setup.exe` | installer, registers `.md` files |
+| Windows | `release/windows/CaretFlow-portable.exe` | runs without installing (needs WebView2, preinstalled on Win 10/11) |
+| Linux | `release/linux/CaretFlow_*_amd64.AppImage` | portable: `chmod +x` and run |
+| Linux | `release/linux/CaretFlow_*_amd64.deb` | `sudo apt install ./CaretFlow_*.deb` |
+| Linux | `release/linux/caretflow-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./caretflow-*.rpm` |
+| Linux | `caretflow-bin-*-x86_64.pkg.tar.zst` (releases only) | Arch/Manjaro: `sudo pacman -U ./caretflow-bin-*.pkg.tar.zst` |
+| Linux | `release/linux/caretflow` | raw binary, needs `libwebkit2gtk-4.1` installed |
 
 Releases are built by GitHub Actions: pushing a tag like `v0.4.0` runs
 `.github/workflows/release.yml`, which builds all of the files above and attaches them to a draft release.
 The Arch package is made from the `.deb` by `packaging/arch/PKGBUILD` (in an Arch container); the same
-`PKGBUILD` can be published to the AUR as `folio-bin`. The `.rpm` is rebuilt by `scripts/rpm-repackage.sh`
-as `folio-markdown`: Tauri would call it `folio`, like an unrelated app in Fedora's repos that `dnf upgrade`
-then installed in its place. It replaces Folio's own `folio` packages up to 0.4.1.
+`PKGBUILD` can be published to the AUR as `caretflow-bin`. The `.deb` and `.rpm` are rebuilt by
+`scripts/deb-repackage.sh` and `scripts/rpm-repackage.sh` as `caretflow` (Tauri would call them `caret-flow`);
+they replace the packages of the Folio days (`folio`, and `folio-markdown` for the `.rpm`). The Windows
+installer removes an old Folio install first (`src-tauri/windows/installer-hooks.nsh`).
 
 ### Signed updates
 
-The in-app updater only installs files signed with Folio's private key (the public key is in
+The in-app updater only installs files signed with CaretFlow's private key (the public key is in
 `src-tauri/tauri.conf.json`). The key lives outside the repository in `~/.tauri/folio.key`; keep a
 backup, since updates for existing installs can't be signed without it.
 
@@ -157,7 +163,7 @@ bash scripts/build-linux.sh          # on native Linux
   `:e` and `:pre` (back to the rendered view). `Ctrl+A` / `Ctrl+X` and `g Ctrl+A` work on selections.
   Turn on **Open Files in Source Mode** to always edit that way. Vim mode shows line numbers (optionally
   relative, like `:set relativenumber`; without Vim, every fifth line can be numbered: Settings → Line
-  Numbers), and Folio starts in source mode again when you quit there.
+  Numbers), and CaretFlow starts in source mode again when you quit there.
 - **PDF export** (`Ctrl+Alt+E`) writes the file directly, no print dialog: paper size, orientation,
   margins, page numbers, header and footer (`{title}` `{file}` `{date}` `{author}`) and document
   properties. **File → Print…** still opens the system dialog.
@@ -166,22 +172,22 @@ bash scripts/build-linux.sh          # on native Linux
   Markdown tools understand too.
 - **Callouts** are GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) shown as
   colored boxes in the editor and in exports (Paragraph → Callout).
-- **Updates**: Folio can check GitHub for a new version when it starts (it asks once; Preferences →
+- **Updates**: CaretFlow can check GitHub for a new version when it starts (it asks once; Preferences →
   Check for updates automatically, or Help → Check for Updates…). **Update & Restart** downloads the
-  new version, verifies its signature, installs it and opens Folio again. This works for the Windows
-  installer, the AppImage, `.deb` and `.rpm`; `Folio-portable.exe`, the raw binary, the Arch package
+  new version, verifies its signature, installs it and opens CaretFlow again. This works for the Windows
+  installer, the AppImage, `.deb` and `.rpm`; `CaretFlow-portable.exe`, the raw binary, the Arch package
   (updated by pacman) and the `.rpm` on systems whose `rpm` only installs GPG-signed packages (Fedora 43
   and later; update with `dnf`) get a download link.
 - **Command line export**, no window shown:
-  `folio --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`, `--footer`,
-  `--author`, `--page-numbers`) and `folio --export-html notes.md notes.html`.
+  `caretflow --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`, `--footer`,
+  `--author`, `--page-numbers`) and `caretflow --export-html notes.md notes.html`.
 
 ## Notes
 
 - **Underline** (`Ctrl+U`, or the selection toolbar) is saved as `<u>text</u>`, since Markdown has no underline syntax.
 - **Tables**: inserting asks for the size; press `Enter` in the last row or use the **+** buttons to grow it.
 - **Mermaid**: Paragraph → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
-- **Title bar**: Folio draws its own (menus and window buttons in one row) on Windows and Linux.
+- **Title bar**: CaretFlow draws its own (menus and window buttons in one row) on Windows and Linux.
   Settings → Use System Title Bar switches back (on Linux this applies after a restart).
 - **Linux**: uses the desktop's native (xdg-portal) file dialogs, and sets
   `WEBKIT_DISABLE_DMABUF_RENDERER=1` (unless you set it yourself) to avoid WebKitGTK freezes on Wayland.
@@ -204,12 +210,12 @@ bash scripts/build-linux.sh          # on native Linux
 - `src-tauri/src/lib.rs` – file I/O commands (atomic save, folder listing, folder search); `pdf.rs` – PDF stamping
 - `scripts/` – build scripts, AI line statistics, README screenshots
 
-Errors are logged to `%TEMP%\folio.log` (`/tmp/folio.log` on Linux).
+Errors are logged to `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux).
 
 ## Made with AI
 
-Folio is written almost entirely by AI coding assistants, steered and tested by its maintainer.
-**Help → About Folio** shows how many lines each model wrote, counted from the git history.
+CaretFlow is written almost entirely by AI coding assistants, steered and tested by its maintainer.
+**Help → About CaretFlow** shows how many lines each model wrote, counted from the git history.
 
-Working on Folio with an AI assistant? Start with [AGENTS.md](AGENTS.md): it explains the project,
+Working on CaretFlow with an AI assistant? Start with [AGENTS.md](AGENTS.md): it explains the project,
 its goals and conventions, and how to credit the model in commits.

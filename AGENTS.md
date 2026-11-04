@@ -1,12 +1,17 @@
-# Working on Folio (for AI assistants)
+# Working on CaretFlow (for AI assistants)
 
 This file is for any AI coding assistant working in this repository (Claude, Codex, Gemini,
 Copilot, Cursor, …). Read it before you start, follow it while you work, and **add yourself to
 the [contributor list](#ai-contributors) when you are done**.
 
-## What Folio is
+## What CaretFlow is
 
-Folio is a desktop Markdown reader and editor for Windows and Linux, in the spirit of Typora:
+CaretFlow was called Folio until 0.5.0. Internal names keep the old one on purpose: the app
+identifier `app.folio.markdown` (settings, recent files and window state live under it), the
+`folio.*` localStorage keys and temp file names, and the GitHub repository `Sooeeren/folio`.
+
+
+CaretFlow is a desktop Markdown reader and editor for Windows and Linux, in the spirit of Typora:
 documents are edited in their rendered form (WYSIWYG), with the raw Markdown one shortcut away.
 It is a Tauri 2 app: a Rust backend for file access and PDF stamping, and a plain JavaScript
 frontend (no framework) built with Vite.
@@ -23,7 +28,7 @@ These decide most design questions:
    work goes to workers, is debounced, cached, or lazy-loaded (`import()` on first use).
 2. **Private by default.** No network access unless the user turns it on (LanguageTool is opt-in
    and says where text goes). No telemetry.
-3. **Plain Markdown files.** Whatever Folio writes must stay readable in other tools. Extensions use
+3. **Plain Markdown files.** Whatever CaretFlow writes must stay readable in other tools. Extensions use
    existing conventions (`<u>`, `> [!NOTE]`, `<div style="page-break-after: always;">`).
 4. **Keyboard first.** Every feature is a menu item with a shortcut and shows up in the command
    palette (`F1`).
@@ -53,10 +58,11 @@ These decide most design questions:
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
 | `src/welcome.md` | Welcome page, shown on the very first start and from Help → Welcome Page |
 | `src/linenumbers.js` | Every-fifth-line numbers in the rendered view, measured from the text layout |
+| `src-tauri/windows/installer-hooks.nsh` | Windows installer hooks: remove an old Folio install, recreate its shortcuts |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
-| `packaging/rpm/folio-markdown.spec`, `scripts/rpm-repackage.sh` | The `.rpm`, rebuilt from Tauri's under its own name (`folio` clashes with a Fedora package) |
-| `packaging/arch/PKGBUILD` | Arch package (`folio-bin`) made from the release `.deb`; built by release.yml |
+| `packaging/rpm/caretflow.spec`, `scripts/rpm-repackage.sh`, `scripts/deb-repackage.sh` | The `.rpm` and `.deb`, rebuilt from Tauri's as `caretflow`, replacing the old Folio packages |
+| `packaging/arch/PKGBUILD` | Arch package (`caretflow-bin`) made from the release `.deb`; built by release.yml |
 | `scripts/update-manifest.mjs` | Writes `latest.json` (the updater manifest) from signed release files |
 | `scripts/screenshots.mjs` | Runs the frontend in Chrome/Edge with a fake Tauri backend; README screenshots and UI checks |
 
@@ -103,3 +109,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-03 | Spelling & grammar check (Harper/LanguageTool, F7 panel, AutoCorrect), typing test, WPM meter, typing cat, per-model About stats, README screenshots, this file |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | In-app updater: update popup, signed download and install, restart; signed release builds and `latest.json` |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Arch package, folio-markdown rpm, issue #4 (code colors in exports, line numbers, Vim command line, heading spacing, sliders/zoom, Close Folder), Preferences categories |
+| Claude Opus 5.5 | Claude Code | 2026-11-04 | Rename to CaretFlow with the new icon (Windows installer migration, caretflow packages), JetBrains code colors, Word-style line numbers, Close File, welcome page |

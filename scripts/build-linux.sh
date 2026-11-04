@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Folio for Linux (x86_64): a portable AppImage, .deb, .rpm, and the raw binary.
+# Build CaretFlow for Linux (x86_64): a portable AppImage, .deb, .rpm, and the raw binary.
 # Works on native Linux and inside WSL. One-time prerequisites: scripts/linux-setup.sh (as root).
 #
 # Usage: bash scripts/build-linux.sh [project-dir]
@@ -13,7 +13,7 @@ export APPIMAGE_EXTRACT_AND_RUN=1 NO_STRIP=true
 # Building on a Windows-mounted drive (/mnt/c) is extremely slow and npm's native
 # binaries differ per OS, so build in a Linux-side copy of the sources.
 case "$SRC" in
-  /mnt/*) WORK="$HOME/.cache/folio-build" ;;
+  /mnt/*) WORK="$HOME/.cache/caretflow-build" ;;
   *) WORK="$SRC" ;;
 esac
 if [ "$WORK" != "$SRC" ]; then
@@ -43,15 +43,16 @@ OUT="$SRC/release/linux"
 mkdir -p "$OUT"
 B="$WORK/src-tauri/target/release"
 cp -f "$B"/bundle/appimage/*.AppImage "$OUT/"
-cp -f "$B"/bundle/deb/*.deb "$OUT/"
-cp -f "$B/folio" "$OUT/folio"
-cp -f "$B"/bundle/appimage/*.sig "$B"/bundle/deb/*.sig "$OUT/" 2>/dev/null || true
-# Tauri names the .rpm "folio", like an unrelated app in Fedora's repos: rebuild it as folio-markdown
+cp -f "$B/caretflow" "$OUT/caretflow"
+cp -f "$B"/bundle/appimage/*.sig "$OUT/" 2>/dev/null || true
+# Tauri names the packages "caret-flow"; rebuild them as "caretflow", replacing the old "folio" ones
+bash scripts/deb-repackage.sh "$B"/bundle/deb/*.deb "$OUT"
 bash scripts/rpm-repackage.sh "$B"/bundle/rpm/*.rpm "$OUT"
 if [ ${#SIGN[@]} -gt 0 ]; then
-  npx tauri signer sign --app-version "$(node -p "require('./package.json').version")" "$OUT"/folio-markdown-*.rpm
+  npx tauri signer sign --app-version "$(node -p "require('./package.json').version")" "$OUT"/caretflow-*.rpm
+  npx tauri signer sign --app-version "$(node -p "require('./package.json').version")" "$OUT"/CaretFlow_*.deb
 fi
-chmod +x "$OUT"/*.AppImage "$OUT/folio"
+chmod +x "$OUT"/*.AppImage "$OUT/caretflow"
 echo
 echo "Linux build ready in $OUT:"
 ls -lh "$OUT"

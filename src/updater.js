@@ -29,11 +29,11 @@ export async function checkForUpdates(ctx, { manual = false } = {}) {
       update = await check({ timeout: 15000, ...(portable ? { target: PORTABLE_TARGET } : {}) })
     } catch (e) {
       console.warn('update check failed:', e)
-      if (manual) await failed(ctx, 'Folio could not reach the update server.', e)
+      if (manual) await failed(ctx, 'CaretFlow could not reach the update server.', e)
       return
     }
     if (!update) {
-      if (manual) await ctx.dialog({ title: 'You’re up to date', body: `Folio ${ctx.version} is the latest version.` })
+      if (manual) await ctx.dialog({ title: 'You’re up to date', body: `CaretFlow ${ctx.version} is the latest version.` })
       return
     }
     // automatic checks never interrupt another dialog; they offer it again next time
@@ -50,7 +50,7 @@ async function offer(ctx, update, portable) {
   const body = el(
     'div',
     { class: 'update' },
-    el('p', {}, `Folio ${update.version} is available. You have ${update.currentVersion}.`),
+    el('p', {}, `CaretFlow ${update.version} is available. You have ${update.currentVersion}.`),
   )
   const notes = cleanNotes(update.body)
   if (notes) body.append(el('div', { class: 'update-notes' }, notes))
@@ -62,13 +62,13 @@ async function offer(ctx, update, portable) {
       el(
         'p',
         { class: 'about-note' },
-        `Your system only lets rpm install GPG-signed packages, so Folio can’t update itself here. Download folio-markdown-${update.version}-1.x86_64.rpm and run: sudo dnf install ./folio-markdown-${update.version}-1.x86_64.rpm`,
+        `Your system only lets rpm install GPG-signed packages, so CaretFlow can’t update itself here. Download caretflow-${update.version}-1.x86_64.rpm and run: sudo dnf install ./caretflow-${update.version}-1.x86_64.rpm`,
       ),
     )
   else if (portable === 'pacman')
-    body.append(el('p', { class: 'about-note' }, 'Folio was installed with pacman, so your package manager updates it (or download the new package and run sudo pacman -U on it).'))
+    body.append(el('p', { class: 'about-note' }, 'CaretFlow was installed with pacman, so your package manager updates it (or download the new package and run sudo pacman -U on it).'))
   else if (portable)
-    body.append(el('p', { class: 'about-note' }, 'This copy of Folio runs without an installer, so it can’t update itself. Download the new version, or use the installer to get automatic updates.'))
+    body.append(el('p', { class: 'about-note' }, 'This copy of CaretFlow runs without an installer, so it can’t update itself. Download the new version, or use the installer to get automatic updates.'))
 
   const r = await ctx.dialog({
     title: 'Update available',
@@ -92,7 +92,7 @@ async function offer(ctx, update, portable) {
 }
 
 async function install(ctx, update, page) {
-  const p = progress(ctx, `Updating to Folio ${update.version}`)
+  const p = progress(ctx, `Updating to CaretFlow ${update.version}`)
   let total = 0
   let got = 0
   // saved first: on Windows the installer ends this process before downloadAndInstall returns
@@ -106,7 +106,7 @@ async function install(ctx, update, page) {
         p.set(total ? got / total : null, total ? `Downloading… ${mb(got)} of ${mb(total)}` : `Downloading… ${mb(got)}`)
       } else if (ev.event === 'Finished') p.set(1, 'Installing…')
     })
-    // Windows: the installer has already closed Folio and opens it again when done.
+    // Windows: the installer has already closed CaretFlow and opens it again when done.
     // Linux: the new files are in place; start them.
     p.set(1, 'Restarting…')
     await relaunch()

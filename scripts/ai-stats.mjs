@@ -1,4 +1,4 @@
-// Counts how many lines of Folio each model (and each person) wrote, using `git blame`.
+// Counts how many lines of CaretFlow each model (and each person) wrote, using `git blame`.
 // Every non-blank line is credited to the commit that last touched it. That commit's author is:
 //   1. the model named in scripts/ai-attribution.json for that commit, if listed, else
 //   2. the first AI co-author trailer, e.g. "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>", else

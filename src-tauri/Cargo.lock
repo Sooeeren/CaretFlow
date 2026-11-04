@@ -432,6 +432,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "caretflow"
+version = "0.5.0"
+dependencies = [
+ "gtk",
+ "lopdf",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-updater",
+ "tauri-plugin-window-state",
+ "tokio",
+ "webkit2gtk",
+ "webview2-com",
+ "windows-core",
+]
+
+[[package]]
 name = "cargo-platform"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1208,27 +1229,6 @@ name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
-
-[[package]]
-name = "folio"
-version = "0.5.0"
-dependencies = [
- "gtk",
- "lopdf",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-updater",
- "tauri-plugin-window-state",
- "tokio",
- "webkit2gtk",
- "webview2-com",
- "windows-core",
-]
 
 [[package]]
 name = "foreign-types"

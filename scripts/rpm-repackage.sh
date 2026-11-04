@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild the .rpm that `tauri build` makes as "folio-markdown" (see packaging/rpm/folio-markdown.spec).
+# Rebuild the .rpm that `tauri build` makes as "caretflow" (see packaging/rpm/caretflow.spec).
 # Needs rpmbuild, rpm2cpio and cpio (Debian/Ubuntu: apt install rpm cpio).
 #
 # Usage: bash scripts/rpm-repackage.sh <tauri .rpm> <output dir>
@@ -17,13 +17,13 @@ mkdir -p "$WORK/payload" "$OUT"
 # so check the result instead of its exit code
 rpm2cpio "$SRC_RPM" > "$WORK/payload.cpio" || true
 (cd "$WORK/payload" && cpio -idm --quiet < "$WORK/payload.cpio")
-[ -x "$WORK/payload/usr/bin/folio" ] || { echo "no usr/bin/folio in $SRC_RPM" >&2; exit 1; }
+[ -x "$WORK/payload/usr/bin/caretflow" ] || { echo "no usr/bin/caretflow in $SRC_RPM" >&2; exit 1; }
 
-rpmbuild -bb "$ROOT/packaging/rpm/folio-markdown.spec" --quiet \
+rpmbuild -bb "$ROOT/packaging/rpm/caretflow.spec" --quiet \
   --define "_topdir $WORK/build" \
   --define "_rpmdir $OUT" \
   --define "_build_name_fmt %%{NAME}-%%{VERSION}-%%{RELEASE}.%%{ARCH}.rpm" \
   --define "_ver $VER" \
   --define "payload $WORK/payload"
 
-ls "$OUT"/folio-markdown-"$VER"-*.rpm
+ls "$OUT"/caretflow-"$VER"-*.rpm

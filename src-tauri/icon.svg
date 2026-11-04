@@ -1,13 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3b4a63"/>
-      <stop offset="1" stop-color="#1f2737"/>
+    <linearGradient id="plumBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#735296" />
+      <stop offset="100%" stop-color="#4B2F6E" />
+    </linearGradient>
+
+    <linearGradient id="plumRim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.2" />
+    </linearGradient>
+
+    <linearGradient id="softPeach" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFA894" />
+      <stop offset="100%" stop-color="#FF705A" />
     </linearGradient>
   </defs>
-  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#g)"/>
-  <path d="M330 250h300l120 120v404a50 50 0 0 1-50 50H330a50 50 0 0 1-50-50V300a50 50 0 0 1 50-50z" fill="#f6f3ec"/>
-  <path d="M630 250v90a30 30 0 0 0 30 30h90z" fill="#d9d2c3"/>
-  <path d="M365 650V450l75 95 75-95v200" fill="none" stroke="#2b3547" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M615 460v190m-55-60 55 60 55-60" fill="none" stroke="#c0624a" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="36" y="36" width="440" height="440" rx="104" fill="url(#plumBg)" />
+  <rect x="36" y="36" width="440" height="440" rx="104" fill="none" stroke="url(#plumRim)" stroke-width="2.5" />
+
+  <g fill="none" stroke="#FAF7FF" stroke-width="24" stroke-linecap="round">
+    <ellipse cx="256" cy="256" rx="146" ry="64" transform="rotate(-32 256 256)" opacity="0.95" />
+    <ellipse cx="256" cy="256" rx="146" ry="64" transform="rotate(32 256 256)" opacity="0.35" />
+  </g>
+
+  <circle cx="256" cy="256" r="38" fill="#FAF7FF" />
+  <circle cx="370" cy="182" r="15" fill="url(#softPeach)" />
 </svg>

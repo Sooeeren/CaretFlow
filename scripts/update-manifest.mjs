@@ -4,7 +4,7 @@
 // Usage: node scripts/update-manifest.mjs <dir with release files and .sig files> [--out latest.json]
 //        [--notes notes.md] [--repo Sooeeren/folio] [--version 1.2.3]
 // Only files that have a .sig next to them (signed by `tauri build` with createUpdaterArtifacts)
-// end up in the manifest. Folio-portable.exe and the raw Linux binary are left out on purpose:
+// end up in the manifest. CaretFlow-portable.exe and the raw Linux binary are left out on purpose:
 // they can't be updated in place, so the app only shows them a download link.
 import fs from 'node:fs'
 import path from 'node:path'

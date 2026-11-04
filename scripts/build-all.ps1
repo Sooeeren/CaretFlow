@@ -1,4 +1,4 @@
-# Build Folio for Windows (installer + exe) and Linux (AppImage + .deb + binary, via WSL).
+# Build CaretFlow for Windows (installer + exe) and Linux (AppImage + .deb + binary, via WSL).
 # Output: release\windows and release\linux
 # Usage:  npm run app:build:all        (add -SkipLinux / -SkipWindows to build just one)
 param([switch]$SkipWindows, [switch]$SkipLinux, [string]$Distro = 'Ubuntu')
@@ -30,7 +30,7 @@ if (-not $SkipWindows) {
   New-Item -ItemType Directory -Force $out | Out-Null
   Copy-Item "$root\src-tauri\target\release\bundle\nsis\*.exe" $out -Force
   Copy-Item "$root\src-tauri\target\release\bundle\nsis\*.exe.sig" $out -Force -ErrorAction SilentlyContinue
-  Copy-Item "$root\src-tauri\target\release\folio.exe" (Join-Path $out 'Folio-portable.exe') -Force
+  Copy-Item "$root\src-tauri\target\release\caretflow.exe" (Join-Path $out 'CaretFlow-portable.exe') -Force
 }
 
 if (-not $SkipLinux) {

@@ -51,7 +51,7 @@ const DEFAULTS = {
   width: 860,
   wide: false,
   autoSave: false,
-  spellcheck: true, // Folio's own spelling & grammar check (writing.js)
+  spellcheck: true, // CaretFlow's own spelling & grammar check (writing.js)
   wcGrammar: true,
   wcStyle: false,
   wcEngine: 'harper', // 'harper' (offline, English) | 'languagetool' (HTTP, 30+ languages)
@@ -88,7 +88,7 @@ const DEFAULTS = {
   updateSkip: '', // version the user chose to skip
   updatedFrom: '', // set right before installing an update; shows "updated" once on the next start
 }
-// No saved settings yet: Folio's very first start (shows the welcome page)
+// No saved settings yet: CaretFlow's very first start (shows the welcome page)
 const FIRST_RUN = (() => {
   try {
     return localStorage.getItem('folio.settings') === null
@@ -491,7 +491,7 @@ async function enterSource() {
   })
   S.mode = 'source'
   S.baseline = clean ? text : null
-  source.view.contentDOM.spellcheck = false // Folio checks spelling itself (writing.js)
+  source.view.contentDOM.spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (S.readonly) source.view.contentDOM.contentEditable = 'false'
   requestAnimationFrame(() => setScrollRatio(ratio))
   source.focus()
@@ -1391,9 +1391,9 @@ const MERMAID_TEMPLATES = [
   ['Entity relationship', 'Database tables', 'erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains\n  PRODUCT ||--o{ LINE_ITEM : "ordered in"'],
   ['Gantt', 'Project schedule', 'gantt\n  title Project plan\n  dateFormat YYYY-MM-DD\n  section Design\n    Research      :a1, 2026-01-05, 7d\n    Mockups       :after a1, 5d\n  section Build\n    Implementation:2026-01-19, 14d\n    Testing       :7d'],
   ['Pie chart', 'Parts of a whole', 'pie title Time spent\n  "Writing" : 45\n  "Editing" : 30\n  "Research" : 25'],
-  ['Mindmap', 'Ideas around a topic', 'mindmap\n  root((Folio))\n    Editing\n      WYSIWYG\n      Source mode\n    Export\n      PDF\n      HTML\n    Themes'],
+  ['Mindmap', 'Ideas around a topic', 'mindmap\n  root((CaretFlow))\n    Editing\n      WYSIWYG\n      Source mode\n    Export\n      PDF\n      HTML\n    Themes'],
   ['Timeline', 'Events in order', 'timeline\n  title Release history\n  2026-10 : 0.1.0 first release\n  2026-11 : 0.1.1 Vim fixes\n          : RPM package'],
-  ['User journey', 'Steps and satisfaction', 'journey\n  title Writing a document\n  section Draft\n    Open Folio: 5: Me\n    Write outline: 3: Me\n  section Finish\n    Export PDF: 4: Me'],
+  ['User journey', 'Steps and satisfaction', 'journey\n  title Writing a document\n  section Draft\n    Open CaretFlow: 5: Me\n    Write outline: 3: Me\n  section Finish\n    Export PDF: 4: Me'],
   ['Git graph', 'Branches and merges', 'gitGraph\n  commit\n  branch feature\n  checkout feature\n  commit\n  commit\n  checkout main\n  merge feature\n  commit'],
   ['Quadrant', 'Two-axis comparison', 'quadrantChart\n  title Effort vs impact\n  x-axis Low effort --> High effort\n  y-axis Low impact --> High impact\n  quadrant-1 Plan\n  quadrant-2 Do now\n  quadrant-3 Skip\n  quadrant-4 Delegate\n  Feature A: [0.3, 0.8]\n  Feature B: [0.7, 0.6]\n  Feature C: [0.2, 0.2]'],
 ]
@@ -2085,7 +2085,7 @@ function showAbout() {
       )
     }
     body.append(
-      el('h4', {}, 'Who wrote Folio'),
+      el('h4', {}, 'Who wrote CaretFlow'),
       el('div', { class: 'ai-hero' }, el('b', {}, s.total.toLocaleString()), el('span', {}, `lines of code and docs, ${fmtPct(pct)} of them written by AI models`)),
       tbl,
       el(
@@ -2095,7 +2095,7 @@ function showAbout() {
       ),
     )
   } else body.append(el('p', { class: 'about-note' }, 'AI statistics are not available in this build.'))
-  dialog({ title: `Folio ${APP_VERSION}`, body, wide: true, buttons: [{ label: 'Close', value: true, primary: true, cancel: true }] })
+  dialog({ title: `CaretFlow ${APP_VERSION}`, body, wide: true, buttons: [{ label: 'Close', value: true, primary: true, cancel: true }] })
 }
 
 // ── updates (lazy, see updater.js). Automatic checks only after the user agreed once.
@@ -2107,7 +2107,9 @@ async function checkUpdates(manual) {
 
 function noteUpdated() {
   if (!settings.updatedFrom) return
-  if (settings.updatedFrom !== APP_VERSION) toast(`Folio was updated to ${APP_VERSION}`, 3500)
+  // Folio was renamed to CaretFlow in 0.6.0
+  const renamed = /^0\.[0-5]\./.test(settings.updatedFrom)
+  if (settings.updatedFrom !== APP_VERSION) toast(renamed ? `Folio is now CaretFlow ${APP_VERSION}: same app, new name` : `CaretFlow was updated to ${APP_VERSION}`, renamed ? 6000 : 3500)
   settings.updatedFrom = ''
   saveSettings()
 }
@@ -2118,7 +2120,7 @@ async function startupUpdateCheck() {
   if (settings.updateCheck === null) {
     const r = await dialog({
       title: 'Check for updates automatically?',
-      body: 'Folio can look on GitHub for a new version when it starts and offer to install it. Only the version file is downloaded; nothing about you or your documents is sent. You can change this in Preferences.',
+      body: 'CaretFlow can look on GitHub for a new version when it starts and offer to install it. Only the version file is downloaded; nothing about you or your documents is sent. You can change this in Preferences.',
       buttons: [
         { label: 'No Thanks', value: false, cancel: true },
         { label: 'Check Automatically', value: true, primary: true },
@@ -2129,7 +2131,7 @@ async function startupUpdateCheck() {
   }
   if (!settings.updateCheck) return
   autoCheck()
-  // Folio often stays open for days
+  // CaretFlow often stays open for days
   setInterval(autoCheck, 12 * 3600e3)
 }
 
@@ -2187,7 +2189,7 @@ function applySettings() {
   document.body.classList.toggle('wide', settings.wide)
   document.body.classList.toggle('focus-mode', settings.focus)
   document.body.classList.toggle('no-sidebar', !settings.sidebar)
-  $('#wysiwyg').spellcheck = false // Folio checks spelling itself (writing.js)
+  $('#wysiwyg').spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (source) {
     source.setVim(settings.vim)
     source.setNumbers(lineNumberOpts())
@@ -2362,7 +2364,7 @@ async function toggleNativeTitlebar() {
   // window with no buttons at all), so the new title bar applies on restart.
   const r = await dialog({
     title: 'Restart to apply',
-    body: `Folio will use the ${native ? 'system' : 'Folio'} title bar after a restart.`,
+    body: `CaretFlow will use the ${native ? 'system' : 'CaretFlow'} title bar after a restart.`,
     buttons: [
       { label: 'Later', value: false, cancel: true },
       { label: 'Restart now', value: true, primary: true },
@@ -2376,8 +2378,8 @@ async function toggleNativeTitlebar() {
 
 function updateTitle() {
   const name = S.path ? P.basename(S.path) : 'Untitled'
-  $('#tb-title').textContent = `${name}${S.dirty ? ' •' : ''} — Folio`
-  win.setTitle(`${name}${S.dirty ? ' •' : ''} — Folio`).catch(() => {})
+  $('#tb-title').textContent = `${name}${S.dirty ? ' •' : ''} — CaretFlow`
+  win.setTitle(`${name}${S.dirty ? ' •' : ''} — CaretFlow`).catch(() => {})
   const sp = $('#st-path')
   sp.textContent = (S.dirty ? '● ' : '') + (S.path || 'Untitled — not saved yet')
   sp.title = S.path ? 'Click to reveal in Explorer' : ''
@@ -2458,7 +2460,7 @@ function openPrefs(section) {
     ['general', 'General', [
       row('Reopen last file on startup', null, chk('reopenLast')),
       row('Check for updates automatically', 'On startup, ask GitHub whether a new version is out. Only the version file is downloaded; nothing is sent', chk('updateCheck')),
-      row('Use system title bar', 'Off = Folio draws its own title bar matching the theme', titlebar),
+      row('Use system title bar', 'Off = CaretFlow draws its own title bar matching the theme', titlebar),
     ]],
     ['appearance', 'Appearance', [
       row('Theme', null, sel('theme', [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ['system', 'Follow system']], setTheme)),
@@ -2477,7 +2479,7 @@ function openPrefs(section) {
     ]],
     ['source', 'Source & Vim', [
       row('Open files in source mode', 'Show raw Markdown instead of the rendered view when opening (Ctrl+/ switches)', chk('startInSource')),
-      row('Vim keybindings', 'Normal/insert/visual modes and :w :q :wq in source mode. Folio starts in source mode again if you quit there', chk('vim')),
+      row('Vim keybindings', 'Normal/insert/visual modes and :w :q :wq in source mode. CaretFlow starts in source mode again if you quit there', chk('vim')),
       row('Line numbers in Vim mode', null, chk('vimLineNumbers')),
       row('Relative line numbers', 'In Vim mode: count from the cursor’s line, like :set relativenumber', chk('relativeLineNumbers')),
       row('Number every fifth line', 'Like Word: in the rendered view, and in source mode without Vim', chk('fifthLineNumbers')),
@@ -2815,12 +2817,12 @@ const MENU = [
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       '-',
       k('Check for Updates…', null, () => checkUpdates(true)),
-      k('About Folio', null, showAbout),
+      k('About CaretFlow', null, showAbout),
     ],
   },
 ]
 
-/** Show one of Folio's own pages (Markdown Guide, Welcome) as an unsaved, unchanged document */
+/** Show one of CaretFlow's own pages (Markdown Guide, Welcome) as an unsaved, unchanged document */
 async function openBuiltin(md, { ask = true } = {}) {
   if (ask && !(await confirmDiscard())) return
   S.path = null
@@ -2928,7 +2930,7 @@ function closeMenus() {
 
 /**
  * Self-drawn dropdown. Native <select> popups are GTK popovers on Linux (a known source
- * of WebKitGTK hangs on Wayland) and look out of place, so Folio draws its own.
+ * of WebKitGTK hangs on Wayland) and look out of place, so CaretFlow draws its own.
  * @param opts [[value, label], …]
  */
 function customSelect(opts, value, onChange) {
@@ -3602,7 +3604,7 @@ async function boot() {
     else await loadText('')
     if (settings.startInSource) await enterSource()
   }
-  // Vim keys only work in source mode: if Folio was closed there, start there again
+  // Vim keys only work in source mode: if CaretFlow was closed there, start there again
   if (settings.vim && settings.lastMode === 'source' && S.mode !== 'source') await enterSource()
   renderTree()
   updateTitle()

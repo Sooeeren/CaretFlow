@@ -1,4 +1,4 @@
-// Takes the README screenshots: runs the Vite dev server, opens Folio in a local Chrome / Edge
+// Takes the README screenshots: runs the Vite dev server, opens CaretFlow in a local Chrome / Edge
 // (driven by playwright-core) with a stand-in for the Tauri backend, and captures each scene.
 //
 //   node scripts/screenshots.mjs                 all scenes → docs/screenshots/*.png
@@ -42,7 +42,7 @@ function findBrowser() {
   return exe
 }
 
-/** Runs in the page before Folio: a minimal fake of the Tauri IPC layer over an in-memory folder. */
+/** Runs in the page before CaretFlow: a minimal fake of the Tauri IPC layer over an in-memory folder. */
 function tauriStub({ files, dir, open }) {
   const fs = { ...files }
   let cb = 0
@@ -162,7 +162,7 @@ const SCENES = {
     settings: { theme: 'paper', sidebar: false },
     run: async (page) => {
       await page.click('#menus .menu-root:last-child > button')
-      await page.click('.menu-pop .menu-item:has-text("About Folio")')
+      await page.click('.menu-pop .menu-item:has-text("About CaretFlow")')
       await settle(page)
     },
   },

@@ -1,6 +1,6 @@
-# Welcome to Folio
+# Welcome to CaretFlow
 
-Folio is a **seamless** Markdown reader and editor: what you type is rendered *in place*, with no split preview. Press `Ctrl+/` at any time to see and edit the raw Markdown.
+CaretFlow is a **seamless** Markdown reader and editor: what you type is rendered *in place*, with no split preview. Press `Ctrl+/` at any time to see and edit the raw Markdown.
 
 ## Quick start
 
@@ -12,11 +12,11 @@ Folio is a **seamless** Markdown reader and editor: what you type is rendered *i
 - Type `/` on an empty line for the block menu
 - Prefer Vim? **Settings → Vim Keybindings** (`Ctrl+Alt+V`) — works in source mode, with `:w`, `:q`, `:wq`; line numbers (also relative) under **Settings → Line Numbers**
 - **File → Close File** (`Ctrl+F4`) and **File → Close Folder** start over with an empty document or file tree; **Preferences** (`Ctrl+,`) has fonts, heading spacing, line numbers and more, sorted by topic
-- **Help → Check for Updates…** finds a new version; **Update & Restart** installs it and opens Folio again
+- **Help → Check for Updates…** finds a new version; **Update & Restart** installs it and opens CaretFlow again
 
 ## Spelling & grammar
 
-Folio checks your writing as you type, like a word processor: red wavy lines are spelling, blue double lines are grammar (*their/they're*, *could of*, *a apple*, repeated words). Right-click a marked word for suggestions, or press `F7` to go through every issue (`Alt+F7` jumps to the next one). Common typos such as *teh* are fixed while you type; press `Backspace` right after to undo a fix.
+CaretFlow checks your writing as you type, like a word processor: red wavy lines are spelling, blue double lines are grammar (*their/they're*, *could of*, *a apple*, repeated words). Right-click a marked word for suggestions, or press `F7` to go through every issue (`Alt+F7` jumps to the next one). Common typos such as *teh* are fixed while you type; press `Backspace` right after to undo a fix.
 
 The default checker (Harper) runs entirely on your computer. For German, French, Spanish and other languages, switch to LanguageTool in **Preferences → Writing**.
 
@@ -82,7 +82,7 @@ graph LR
 
 ## Images
 
-Paste an image from the clipboard or drag one in from Explorer. Folio copies it into an `assets` folder next to your document and links it relatively (configurable in Preferences).
+Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies it into an `assets` folder next to your document and links it relatively (configurable in Preferences).
 
 ---
 

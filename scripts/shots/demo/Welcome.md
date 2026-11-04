@@ -1,6 +1,6 @@
 # A quiet place to write
 
-Folio opens Markdown files the way they will look when you share them: headings, lists, tables and code render as you type, and the raw text is one shortcut away (`Ctrl+/`).
+CaretFlow opens Markdown files the way they will look when you share them: headings, lists, tables and code render as you type, and the raw text is one shortcut away (`Ctrl+/`).
 
 > [!TIP]
 > Press `F1` for the command palette, or `F7` to review spelling and grammar.

@@ -1,6 +1,6 @@
-# Welcome to Folio
+# Welcome to CaretFlow
 
-Hi, and thanks for trying Folio! It's a quiet place to write Markdown: what you see here *is* the document. Type, and the formatting appears as you go.
+Hi, and thanks for trying CaretFlow! It's a quiet place to write Markdown: what you see here *is* the document. Type, and the formatting appears as you go.
 
 > [!TIP]
 > This page isn't saved anywhere. Write over it to try things out, or press `Ctrl+N` for a blank page.
@@ -9,7 +9,7 @@ Hi, and thanks for trying Folio! It's a quiet place to write Markdown: what you 
 
 - **Open** a file with `Ctrl+O`, or a whole folder with `Ctrl+Shift+O` to browse it in the sidebar (`Ctrl+Shift+L` shows or hides it).
 - **Save** with `Ctrl+S`. Your files stay plain Markdown, so any other app can read them too.
-- **Find any command** with `F1`. Every feature in Folio is in there.
+- **Find any command** with `F1`. Every feature in CaretFlow is in there.
 
 ## Writing
 
@@ -23,6 +23,6 @@ Hi, and thanks for trying Folio! It's a quiet place to write Markdown: what you 
 
 ## Make it yours
 
-**Preferences** (`Ctrl+,`) has themes, fonts, spacing, line numbers and more. **Help → Markdown Guide** shows everything Folio can format, and **Help → Welcome Page** brings this page back.
+**Preferences** (`Ctrl+,`) has themes, fonts, spacing, line numbers and more. **Help → Markdown Guide** shows everything CaretFlow can format, and **Help → Welcome Page** brings this page back.
 
 Happy writing!

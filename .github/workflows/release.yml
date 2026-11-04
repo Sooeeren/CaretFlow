@@ -1,4 +1,4 @@
-# Builds Folio for Windows and Linux and attaches the files to a GitHub release.
+# Builds CaretFlow for Windows and Linux and attaches the files to a GitHub release.
 # Runs when a version tag (v1.2.3) is pushed, or by hand from the Actions tab.
 # The release is created as a draft if it doesn't exist yet; publish it after checking the files.
 name: Release
@@ -50,7 +50,7 @@ jobs:
           New-Item -ItemType Directory -Force out | Out-Null
           Copy-Item src-tauri/target/release/bundle/nsis/*.exe out/
           Copy-Item src-tauri/target/release/bundle/nsis/*.exe.sig out/ -ErrorAction SilentlyContinue
-          Copy-Item src-tauri/target/release/folio.exe out/Folio-portable.exe
+          Copy-Item src-tauri/target/release/caretflow.exe out/CaretFlow-portable.exe
           Get-ChildItem out
       - uses: actions/upload-artifact@v4
         with:
@@ -90,13 +90,17 @@ jobs:
         run: |
           mkdir -p out
           B=src-tauri/target/release
-          cp "$B"/bundle/appimage/*.AppImage "$B"/bundle/deb/*.deb out/
-          cp "$B"/bundle/appimage/*.sig "$B"/bundle/deb/*.sig out/ 2>/dev/null || true
-          # Tauri names the .rpm "folio", like an unrelated app in Fedora's repos: rebuild it as folio-markdown
+          cp "$B"/bundle/appimage/*.AppImage out/
+          cp "$B"/bundle/appimage/*.sig out/ 2>/dev/null || true
+          # Tauri names the packages "caret-flow" (and older releases were "folio"): rebuild them as
+          # "caretflow", replacing the old ones, and sign the rebuilt files for the updater
+          bash scripts/deb-repackage.sh "$B"/bundle/deb/*.deb out
           bash scripts/rpm-repackage.sh "$B"/bundle/rpm/*.rpm out
-          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then npx tauri signer sign --app-version "${TAG#v}" out/folio-markdown-*.rpm; fi
-          cp "$B/folio" out/folio
-          chmod +x out/*.AppImage out/folio
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            for f in out/CaretFlow_*.deb out/caretflow-*.rpm; do npx tauri signer sign --app-version "${TAG#v}" "$f"; done
+          fi
+          cp "$B/caretflow" out/caretflow
+          chmod +x out/*.AppImage out/caretflow
           ls -lh out
       - uses: actions/upload-artifact@v4
         with:
@@ -121,9 +125,9 @@ jobs:
           pacman -Syu --noconfirm --needed base-devel
           V="${TAG#v}"
           mkdir -p /tmp/pkg out
-          cp packaging/arch/PKGBUILD "linux/Folio_${V}_amd64.deb" /tmp/pkg/
+          cp packaging/arch/PKGBUILD "linux/CaretFlow_${V}_amd64.deb" /tmp/pkg/
           cd /tmp/pkg
-          sed -i "s/^_ver=[^ ]*/_ver=$V/; s/^sha256sums=.*/sha256sums=('$(sha256sum "Folio_${V}_amd64.deb" | cut -d' ' -f1)')/" PKGBUILD
+          sed -i "s/^_ver=[^ ]*/_ver=$V/; s/^sha256sums=.*/sha256sums=('$(sha256sum "CaretFlow_${V}_amd64.deb" | cut -d' ' -f1)')/" PKGBUILD
           useradd -m builder && chown -R builder .   # makepkg refuses to run as root
           su builder -c "makepkg --nodeps --noconfirm"
           cp *.pkg.tar.zst "$GITHUB_WORKSPACE/out/"
@@ -150,7 +154,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           ls -lh files
-          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "Folio ${TAG#v}" --notes "Release notes to follow."
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --draft --title "CaretFlow ${TAG#v}" --notes "Release notes to follow."
           # update manifest for the in-app updater; notes come from the release text if it's written already
           if ls files/*.sig >/dev/null 2>&1; then
             gh release view "$TAG" --json body -q .body > notes.md

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time setup of a Linux (Ubuntu/Debian, incl. WSL) machine for building Folio.
+# One-time setup of a Linux (Ubuntu/Debian, incl. WSL) machine for building CaretFlow.
 # Run as root (or with sudo). Installs Tauri's system deps, then Rust + Node for the target user.
 set -euo pipefail
 TARGET_USER="${1:-${SUDO_USER:-$(id -un 1000)}}"
