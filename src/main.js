@@ -190,7 +190,11 @@ function dialog({ title, body = '', buttons = [{ label: 'OK', value: true, prima
     document.addEventListener('keydown', onKey, true)
     m.append(box)
     m.hidden = false
-    m.onmousedown = (e) => e.target === m && done(buttons.find((b) => b.cancel)?.value ?? null)
+    // a block body: an on-handler that returns false cancels the event, which broke dragging
+    // sliders and selecting text anywhere inside dialogs
+    m.onmousedown = (e) => {
+      if (e.target === m) done(buttons.find((b) => b.cancel)?.value ?? null)
+    }
     onMount?.(box, done)
     ;(inp || row.querySelector('.primary') || row.lastChild)?.focus()
     if (inp) {
@@ -2915,6 +2919,10 @@ function bindKeys() {
   for (const a of ACTIONS) if (a.keys && !a.native) KEYMAP.set(canon(a.keys), a.fn)
   KEYMAP.set('Ctrl+Shift+Q', blockquote)
   KEYMAP.set('F1', () => commandPalette())
+  // Zoom on every layout: Shift+= gives '+' on US keyboards; German ones have their own + key
+  // (Shift gives '*') and - key (Shift gives '_'), which never match Ctrl+Shift+= / Ctrl+Shift+-
+  for (const k of ['Ctrl+Shift++', 'Ctrl++', 'Ctrl+Shift+*']) KEYMAP.set(canon(k), () => zoom(1))
+  KEYMAP.set(canon('Ctrl+Shift+_'), () => zoom(-1))
 
   window.addEventListener(
     'keydown',
