@@ -214,6 +214,15 @@ defaults most used:
 
 Errors are logged to `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux).
 
+## Roadmap & Planned Features
+
+* **Model Context Protocol (MCP) Support (Optional)**  
+  Enable modular connections to custom tools, local resources, and specialized agent workflows.
+* **Self-Hosted Cloud Sync (Optional)**  
+  End-to-end synchronized state across devices using user-controlled storage (e.g., custom WebDAV, S3-compatible backend, or lightweight self-hosted server). No third-party lock-in.
+* **Native Android Client**  
+  A dedicated mobile app offering offline access, quick capture, and platform-native UI/UX.
+
 ## Made with AI
 
 CaretFlow is written almost entirely by AI coding assistants, steered and tested by its maintainer.
