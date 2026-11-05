@@ -8,15 +8,15 @@ pkgver=${_ver//-/_}
 pkgrel=1
 pkgdesc='A fast, seamless Markdown reader & editor (formerly Folio)'
 arch=('x86_64')
-url='https://github.com/Sooeeren/folio'
-license=('LicenseRef-unknown')
+url='https://github.com/Sooeeren/CaretFlow'
+license=('MIT')
 depends=('webkit2gtk-4.1' 'gtk3' 'hicolor-icon-theme')
 optdepends=('xdg-desktop-portal: native file dialogs')
 provides=('caretflow')
 conflicts=('caretflow' 'folio-bin')
 replaces=('folio-bin')
 options=('!strip' '!debug')
-source=("https://github.com/Sooeeren/folio/releases/download/v${_ver}/CaretFlow_${_ver}_amd64.deb")
+source=("https://github.com/Sooeeren/CaretFlow/releases/download/v${_ver}/CaretFlow_${_ver}_amd64.deb")
 sha256sums=('38c0e653062525136ba459eccce43a1a592a45f38ab563393278db55074d3cd1')
 
 package() {

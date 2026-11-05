@@ -13,12 +13,48 @@ the old Folio install.
 
 <p align="center">
   <a href="https://github.com/Sooeeren/CaretFlow/releases/latest"><b>Download the latest release</b></a> ·
-  <a href="#build">Build from source</a> ·
-  <a href="#keyboard-shortcuts">Shortcuts</a>
+  <a href="#install">Install</a> ·
+  <a href="#keyboard-shortcuts">Shortcuts</a> ·
+  <a href="docs/BUILDING.md">Build from source</a>
 </p>
 
 Built with Tauri 2 (Rust + the system webview), Milkdown/ProseMirror for live
 editing and CodeMirror 6 for source mode.
+
+## Install
+
+Pick a file from the [latest release](https://github.com/Sooeeren/CaretFlow/releases/latest):
+
+| Platform | File | How |
+| --- | --- | --- |
+| Windows | `CaretFlow_*_x64-setup.exe` | Installer; registers `.md` files |
+| Windows | `CaretFlow-portable.exe` | Runs without installing (needs WebView2, preinstalled on Windows 10/11) |
+| Linux (any) | `CaretFlow_*_amd64.AppImage` | `chmod +x` and run |
+| Debian / Ubuntu | `CaretFlow_*_amd64.deb` | `sudo apt install ./CaretFlow_*.deb` |
+| Fedora / RHEL / openSUSE | `caretflow-*.x86_64.rpm` | `sudo dnf install ./caretflow-*.rpm` |
+| Arch / Manjaro | `caretflow-bin-*-x86_64.pkg.tar.zst` | `sudo pacman -U ./caretflow-bin-*.pkg.tar.zst` |
+
+The Windows installer, AppImage, `.deb` and `.rpm` update themselves from inside the app. To build
+CaretFlow yourself, see [docs/BUILDING.md](docs/BUILDING.md).
+
+## How is CaretFlow different?
+
+CaretFlow sits closest to [Typora](https://typora.io): you write in the rendered document, and the raw
+Markdown is one shortcut away. The differences are in what it is built around.
+
+- **Compared with Typora**, CaretFlow is open source (MIT), and spelling and grammar checking, Vim
+  mode and PDF export with page preview are built in.
+- **Compared with Obsidian**, it is a file editor, not a knowledge base: you open a file or a folder
+  and write, with no vault, plugins or linking features to set up.
+- **Compared with MarkText and Zettlr**, which are Electron apps, CaretFlow uses Tauri and the system
+  webview, so it is a small download that starts quickly. Zettlr aims at academic writing with
+  citations; CaretFlow aims at general writing with a Word-style writing check.
+- **Private by default**: no telemetry, and no network access unless you turn on LanguageTool.
+
+Other apps change over time, so check their sites for their current features.
+
+**Platforms:** Windows and Linux. There is no macOS build and none is planned right now, but it is
+not ruled out. Tauri supports macOS, so it depends on someone being able to build and test it.
 
 ## Highlights
 
@@ -86,63 +122,6 @@ While writing, **View → Typing Speed (WPM)** shows your speed in the status ba
 
 ![The typing cat in the corner and the WPM meter in the status bar](docs/screenshots/bongo.png)
 
-## Build
-
-```sh
-npm install
-npm run app:build:all     # Windows + Linux → release/windows, release/linux
-npm run app:build         # Windows only (src-tauri/target/release/…)
-npm run app:build:linux   # Linux only (via WSL from Windows)
-npm run app:dev           # hot-reload dev mode
-npm run screenshots       # regenerate docs/screenshots (needs Chrome or Edge)
-```
-
-Outputs:
-
-| Platform | File | Notes |
-| --- | --- | --- |
-| Windows | `release/windows/CaretFlow_*_x64-setup.exe` | installer, registers `.md` files |
-| Windows | `release/windows/CaretFlow-portable.exe` | runs without installing (needs WebView2, preinstalled on Win 10/11) |
-| Linux | `release/linux/CaretFlow_*_amd64.AppImage` | portable: `chmod +x` and run |
-| Linux | `release/linux/CaretFlow_*_amd64.deb` | `sudo apt install ./CaretFlow_*.deb` |
-| Linux | `release/linux/caretflow-*.x86_64.rpm` | RHEL/Fedora/openSUSE: `sudo dnf install ./caretflow-*.rpm` |
-| Linux | `caretflow-bin-*-x86_64.pkg.tar.zst` (releases only) | Arch/Manjaro: `sudo pacman -U ./caretflow-bin-*.pkg.tar.zst` |
-| Linux | `release/linux/caretflow` | raw binary, needs `libwebkit2gtk-4.1` installed |
-
-Releases are built by GitHub Actions: pushing a tag like `v0.4.0` runs
-`.github/workflows/release.yml`, which builds all of the files above and attaches them to a draft release.
-The Arch package is made from the `.deb` by `packaging/arch/PKGBUILD` (in an Arch container); the same
-`PKGBUILD` can be published to the AUR as `caretflow-bin`. The `.deb` and `.rpm` are rebuilt by
-`scripts/deb-repackage.sh` and `scripts/rpm-repackage.sh` as `caretflow` (Tauri would call them `caret-flow`);
-they replace the packages of the Folio days (`folio`, and `folio-markdown` for the `.rpm`). The Windows
-installer removes an old Folio install first (`src-tauri/windows/installer-hooks.nsh`).
-
-### Signed updates
-
-The in-app updater only installs files signed with CaretFlow's private key (the public key is in
-`src-tauri/tauri.conf.json`). The key lives outside the repository in `~/.tauri/folio.key`; keep a
-backup, since updates for existing installs can't be signed without it.
-
-- **Local builds** (`npm run app:build:all`) sign automatically when that file exists and write
-  `release/latest.json`, the manifest the app reads.
-- **GitHub Actions** reads the key from the repository secret `TAURI_SIGNING_PRIVATE_KEY` (contents
-  of the key file; set with `gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/folio.key`). A key
-  with a password also needs `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`; the current key has none. The
-  workflow then adds `latest.json` (which contains the signatures) to the release.
-- Installed copies see a release once it is **published** (drafts and pre-releases are ignored, since
-  the app reads `releases/latest/download/latest.json`). Write the release notes before tagging, or
-  run the workflow again from the Actions tab afterwards, so the update popup can show them.
-
-### Linux prerequisites (one time)
-
-From Windows, the Linux build runs inside WSL (default distro `Ubuntu`; pass `-Distro <name>` to
-`scripts/build-all.ps1` for another). On a fresh distro / Linux machine:
-
-```sh
-sudo bash scripts/linux-setup.sh     # apt deps (webkit2gtk 4.1 etc.) + Rust + Node 22 for your user
-bash scripts/build-linux.sh          # on native Linux
-```
-
 ## Keyboard shortcuts
 
 `Shift+F1` lists every shortcut, `F1` opens the command palette. Every menu command can get a
@@ -196,23 +175,7 @@ defaults most used:
 - **Update checks** download only `latest.json` from GitHub, and only after you agree. No data is sent.
 - **LanguageTool** sends the text being checked to the server you configure; the free public server
   allows about 20 checks a minute. Harper (the default) never sends anything.
-
-## Layout
-
-- `src/main.js` – app: editor, files, find/replace, outline, palette, menus, shortcuts, settings
-- `src/writing.js` – spelling & grammar UI for both editors (underlines, menu, F7 panel, dictionary)
-- `src/writing-engine.js` – checker engines: Harper (WebAssembly worker) and LanguageTool (lazy-loaded)
-- `src/autocorrect.js` – AutoCorrect while typing
-- `src/typingtest.js` – typing test (lazy-loaded); `src/companion.js` – WPM meter and typing cat
-- `src/source.js` – source-code mode + Vim (lazy-loaded)
-- `src/export.js` – HTML export / print-to-PDF (lazy-loaded)
-- `src/updater.js` – update check, download, install and restart (lazy-loaded)
-- `src/blocks.js`, `src/underline.js` – page breaks, callouts, underline
-- `src/style.css` – themes (Paper, Sepia, Ink, Slate) and typography
-- `src-tauri/src/lib.rs` – file I/O commands (atomic save, folder listing, folder search); `pdf.rs` – PDF stamping
-- `scripts/` – build scripts, AI line statistics, README screenshots
-
-Errors are logged to `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux).
+- **Logs**: errors are written to `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux).
 
 ## Roadmap & Planned Features
 
