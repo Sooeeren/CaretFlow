@@ -84,7 +84,7 @@ These decide most design questions:
 - Bump the version in `package.json` (+ `package-lock.json`), `src-tauri/tauri.conf.json` and
   `src-tauri/Cargo.toml` (+ `Cargo.lock`) only for a release. Pushing a `vX.Y.Z` tag runs
   `.github/workflows/release.yml`, which builds Windows and Linux files into a draft release.
-  Builds are signed for the in-app updater (see README → Signed updates); never commit the private key.
+  Builds are signed for the in-app updater (see docs/RELEASING.md → Signed updates); never commit the private key.
 - Releasing, step by step:
   1. Commit the version bump (`Release X.Y.Z` plus a short list of changes); in
      `packaging/arch/PKGBUILD` set `_ver` and `sha256sums=('SKIP')`.
@@ -123,3 +123,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Rename to CaretFlow with the new icon (Windows installer migration, caretflow packages), JetBrains code colors, Word-style line numbers, Close File, welcome page |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Issues #8/#9: drawn caret on Linux, no giant caret beside tables, Vim command line without scroll jumps, custom shortcuts (Preferences → Keyboard) |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | GitHub issue forms (bug report, feature request), README download link to the CaretFlow repo |
+| Claude Sonnet 5.5 | Claude Code | 2026-11-05 | README split (docs/BUILDING.md, docs/RELEASING.md), Install and comparison sections, Dependabot, cargo/npm audit workflow, PKGBUILD url and license |

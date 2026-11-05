@@ -1,0 +1,29 @@
+# Weekly update pull requests. CaretFlow ships an auto-updater, so dependencies are kept current.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      codemirror:
+        patterns: ['@codemirror/*', 'codemirror', '@replit/codemirror-vim']
+      milkdown:
+        patterns: ['@milkdown/*']
+      tauri-js:
+        patterns: ['@tauri-apps/*']
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      tauri:
+        patterns: ['tauri', 'tauri-*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
