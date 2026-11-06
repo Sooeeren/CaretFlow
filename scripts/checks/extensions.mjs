@@ -182,4 +182,22 @@ export const scenes = {
       summary()
     },
   },
+  // a rebuilt Preferences window must replace the old one, not open beside it
+  'ext-twice': {
+    open: 'Welcome.md',
+    settings: { extensions: [] },
+    async run(page) {
+      await page.keyboard.press('Control+,')
+      await wait(300)
+      await page.click('.prefs-nav button:has-text("Extensions")')
+      for (let i = 0; i < 4; i++) {
+        await wait(300)
+        await page.click('.ext-card:nth-child(2) button.ext-act')
+      }
+      await wait(400)
+      const boxes = await page.$$eval('#modal .modal-box', (b) => b.length)
+      check('install/remove several times: still one Preferences window', boxes === 1, `${boxes} windows`)
+      summary()
+    },
+  },
 }

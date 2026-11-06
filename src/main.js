@@ -2765,6 +2765,7 @@ function openPrefs(section) {
   } catch {}
   show(section || last)
 
+  let mine = null
   dialog({
     title: 'Preferences',
     body: el('div', { class: 'prefs' }, nav, pages),
@@ -2772,9 +2773,11 @@ function openPrefs(section) {
     buttons: [{ label: 'Done', value: true, primary: true, cancel: true }],
     onMount: (box, done) => {
       box.classList.add('prefs-dialog')
-      closePrefs = done
+      closePrefs = mine = done
     },
-  }).then(() => (closePrefs = null))
+    // only forget the window if it is still this one: after Install/Remove a new one has taken its
+    // place by the time this runs, and forgetting that one opened a second window beside it
+  }).then(() => closePrefs === mine && (closePrefs = null))
 }
 let closePrefs = null
 /** Rebuild Preferences on the same page (an extension added or removed a page). */
