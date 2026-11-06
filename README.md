@@ -6,16 +6,13 @@
 no split preview, no clutter. Raw Markdown and Vim are one shortcut away, and a built-in spelling
 and grammar checker catches mistakes as you type.
 
-CaretFlow was called **Folio** until 0.5.0. Updating keeps your settings; the Windows installer removes
-the old Folio install.
-
 ![CaretFlow editing a Markdown file with the file sidebar open](docs/screenshots/hero.png)
 
 <p align="center">
   <a href="https://github.com/Sooeeren/CaretFlow/releases/latest"><b>Download the latest release</b></a> ·
   <a href="#install">Install</a> ·
-  <a href="#keyboard-shortcuts">Shortcuts</a> ·
-  <a href="docs/BUILDING.md">Build from source</a>
+  <a href="docs/SHORTCUTS.md">Shortcuts</a> ·
+  <a href="#documentation">Documentation</a>
 </p>
 
 Built with Tauri 2 (Rust + the system webview), Milkdown/ProseMirror for live
@@ -49,7 +46,8 @@ Markdown is one shortcut away. The differences are in what it is built around.
 - **Compared with MarkText and Zettlr**, which are Electron apps, CaretFlow uses Tauri and the system
   webview, so it is a small download that starts quickly. Zettlr aims at academic writing with
   citations; CaretFlow aims at general writing with a Word-style writing check.
-- **Private by default**: no telemetry, and no network access unless you turn on LanguageTool.
+- **Private by default**: no telemetry, and no network access unless you turn on LanguageTool, update
+  checks or Cloud Sync.
 
 Other apps change over time, so check their sites for their current features.
 
@@ -67,6 +65,8 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
   command line.
 - **Files and folders**: sidebar with outline, file tree and folder search; quick open (`Ctrl+P`);
   command palette (`F1`).
+- **Cloud Sync (optional)** with your own server or storage: WebDAV (Nextcloud, NAS…), S3, or Google
+  Drive and Proton Drive through rclone.
 - **Four themes** (Paper, Sepia, Ink, Slate) plus custom CSS, focus, typewriter and zen modes.
 - **Typing test** (`Ctrl+Alt+T`) and optional extras: a live WPM meter and a typing cat.
 
@@ -83,13 +83,9 @@ suggestion, `Enter` applies the first one, and a clean document shows readabilit
 
 ![The Spelling & Grammar review panel in the Sepia theme](docs/screenshots/review.png)
 
-| | |
-| --- | --- |
-| **Checker** | [Harper](https://writewithharper.com) by default: runs locally (WebAssembly), English in American, British, Canadian, Australian or Indian spelling. [LanguageTool](https://languagetool.org) optionally, for German, French, Spanish and 30+ more languages (public server or your own). |
-| **Shortcuts** | `F7` review panel · `Alt+F7` next issue · right-click for suggestions |
-| **AutoCorrect** | Fixes common typos while you type (*teh* → *the*, *dont* → *don't*, *i* → *I*). `Backspace` right after a fix undoes it. |
-| **Markdown-aware** | Code, inline code, math, links and file names are skipped, in both the rendered and the source view. |
-| **Settings** | Preferences → Writing: engine, language, style hints, custom dictionary, rules you turned off. |
+The checker is [Harper](https://writewithharper.com), which runs on your computer (English), or
+optionally [LanguageTool](https://languagetool.org) for 30+ more languages. More in
+[docs/FEATURES.md](docs/FEATURES.md#writing-check).
 
 ## Looks
 
@@ -106,9 +102,8 @@ suggestion, `Enter` applies the first one, and a clean document shows readabilit
 
 ## Typing test
 
-`Ctrl+Alt+T` opens a minimal speed test: 15 to 120 seconds or 10 to 100 words, with optional
-punctuation and numbers, or practice on the text of the document you have open. Results show
-WPM, accuracy, raw speed, consistency and a per-second chart, and personal bests are kept.
+`Ctrl+Alt+T` opens a minimal speed test, by time or by word count, or on the text of the document
+you have open. Results show WPM, accuracy, consistency and a per-second chart.
 
 <table>
   <tr>
@@ -122,67 +117,38 @@ While writing, **View → Typing Speed (WPM)** shows your speed in the status ba
 
 ![The typing cat in the corner and the WPM meter in the status bar](docs/screenshots/bongo.png)
 
-## Keyboard shortcuts
+## Cloud Sync
 
-`Shift+F1` lists every shortcut, `F1` opens the command palette. Every menu command can get a
-different shortcut (or none) in **Preferences → Keyboard** (Help → Customize Shortcuts…). The
-defaults most used:
+Keep a folder in sync between computers with storage **you** choose. CaretFlow has no servers or
+accounts of its own, and Cloud Sync stays off until you turn it on in Preferences → Cloud Sync.
 
-| Action | Keys | Action | Keys |
-| --- | --- | --- | --- |
-| Source mode | `Ctrl+/` | Spelling & grammar | `F7` / `Alt+F7` |
-| Quick open | `Ctrl+P` | Find / replace | `Ctrl+F` / `Ctrl+H` |
-| Command palette | `F1` | Page preview | `Ctrl+Alt+L` |
-| Sidebar | `Ctrl+Shift+L` | Export PDF | `Ctrl+Alt+E` |
-| Focus / typewriter | `F8` / `F9` | Typing test | `Ctrl+Alt+T` |
-| Vim keybindings | `Ctrl+Alt+V` | Page break | `Ctrl+Enter` |
+- **WebDAV**: Nextcloud, ownCloud, Synology/QNAP, pCloud, Koofr and any WebDAV server
+- **S3-compatible**: AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO
+- **Google Drive, Proton Drive, OneDrive, Dropbox** and more through your own [rclone](https://rclone.org) remotes
 
-## More features
+Changes go both ways; conflicts keep both versions, files a sync removes land in a sync trash, and
+CaretFlow asks before deleting many files at once. The **Cloud** tab in the sidebar (`Ctrl+Shift+4`)
+lists every file in the cloud by folder, with its sync state. Setup for each service:
+[docs/CLOUD-SYNC.md](docs/CLOUD-SYNC.md).
 
-- **Vim mode** (`Ctrl+Alt+V`) works in source mode (`Ctrl+/`): normal, insert, visual and visual-block
-  modes, motions, operators, registers, marks, macros, `/` search, `:s`, and commands like `:w`, `:q`,
-  `:e` and `:pre` (back to the rendered view). `Ctrl+A` / `Ctrl+X` and `g Ctrl+A` work on selections.
-  Turn on **Open Files in Source Mode** to always edit that way. Vim mode shows line numbers (optionally
-  relative, like `:set relativenumber`; without Vim, every fifth line can be numbered: Settings → Line
-  Numbers), and CaretFlow starts in source mode again when you quit there.
-- **PDF export** (`Ctrl+Alt+E`) writes the file directly, no print dialog: paper size, orientation,
-  margins, page numbers, header and footer (`{title}` `{file}` `{date}` `{author}`) and document
-  properties. **File → Print…** still opens the system dialog.
-- **Page preview** (`Ctrl+Alt+L`) shows the real PDF next to the editor, refreshed as you type. Page
-  breaks (`Ctrl+Enter`) are stored as `<div style="page-break-after: always;"></div>`, which other
-  Markdown tools understand too.
-- **Callouts** are GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) shown as
-  colored boxes in the editor and in exports (Paragraph → Callout).
-- **Updates**: CaretFlow can check GitHub for a new version when it starts (it asks once; Preferences →
-  Check for updates automatically, or Help → Check for Updates…). **Update & Restart** downloads the
-  new version, verifies its signature, installs it and opens CaretFlow again. This works for the Windows
-  installer, the AppImage, `.deb` and `.rpm`; `CaretFlow-portable.exe`, the raw binary, the Arch package
-  (updated by pacman) and the `.rpm` on systems whose `rpm` only installs GPG-signed packages (Fedora 43
-  and later; update with `dnf`) get a download link.
-- **Command line export**, no window shown:
-  `caretflow --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`, `--footer`,
-  `--author`, `--page-numbers`) and `caretflow --export-html notes.md notes.html`.
+![The Cloud tab: files in the cloud by folder, with their sync state](docs/screenshots/cloud.png)
 
-## Notes
+## Documentation
 
-- **Underline** (`Ctrl+U`, or the selection toolbar) is saved as `<u>text</u>`, since Markdown has no underline syntax.
-- **Tables**: inserting asks for the size; press `Enter` in the last row or use the **+** buttons to grow it.
-- **Mermaid**: Paragraph → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
-- **Title bar**: CaretFlow draws its own (menus and window buttons in one row) on Windows and Linux.
-  Settings → Use System Title Bar switches back (on Linux this applies after a restart).
-- **Linux**: uses the desktop's native (xdg-portal) file dialogs, and sets
-  `WEBKIT_DISABLE_DMABUF_RENDERER=1` (unless you set it yourself) to avoid WebKitGTK freezes on Wayland.
-- **Update checks** download only `latest.json` from GitHub, and only after you agree. No data is sent.
-- **LanguageTool** sends the text being checked to the server you configure; the free public server
-  allows about 20 checks a minute. Harper (the default) never sends anything.
-- **Logs**: errors are written to `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux).
+| | |
+| --- | --- |
+| [Keyboard shortcuts](docs/SHORTCUTS.md) | Every default shortcut, by menu |
+| [Features in detail](docs/FEATURES.md) | Writing check, Vim, PDF export and preview, callouts, updates, command line |
+| [Cloud Sync](docs/CLOUD-SYNC.md) | Setting up WebDAV, S3 and rclone; how syncing works |
+| [Notes](docs/NOTES.md) | Privacy and network access, platform notes, where files are stored |
+| [Building](docs/BUILDING.md) · [Releasing](docs/RELEASING.md) | For developers |
+
+In the app, **Help → Markdown Guide** shows the Markdown syntax and **Shift+F1** all shortcuts.
 
 ## Roadmap & Planned Features
 
 * **Model Context Protocol (MCP) Support (Optional)**  
   Enable modular connections to custom tools, local resources, and specialized agent workflows.
-* **Self-Hosted Cloud Sync (Optional)**  
-  End-to-end synchronized state across devices using user-controlled storage (e.g., custom WebDAV, S3-compatible backend, or lightweight self-hosted server). No third-party lock-in.
 * **Native Android Client**  
   A dedicated mobile app offering offline access, quick capture, and platform-native UI/UX.
 

@@ -6,7 +6,7 @@ CaretFlow is a **seamless** Markdown reader and editor: what you type is rendere
 
 - `Ctrl+O` open a file, `Ctrl+Shift+O` open a folder, `Ctrl+P` jump to any file in the folder
 - `Ctrl+Shift+P` command palette — every feature is in there
-- `Ctrl+Shift+L` toggle the sidebar (outline, files, folder search)
+- `Ctrl+Shift+L` toggle the sidebar (outline, files, folder search, cloud files)
 - `F8` focus mode, `F9` typewriter mode, `Ctrl+Shift+J` zen mode
 - `Ctrl+Shift+R` read-only mode — `Ctrl+Click` (or just click, when read-only) opens links
 - Type `/` on an empty line for the block menu
@@ -24,6 +24,10 @@ The default checker (Harper) runs entirely on your computer. For German, French,
 ## Typing test
 
 `Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **View → Typing Speed (WPM)** shows your speed while you write, and **View → Typing Cat** adds a small companion.
+
+## Cloud Sync
+
+Keep a folder in sync between your computers with your own server or storage: WebDAV (Nextcloud, ownCloud, a NAS), S3-compatible storage (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through rclone. It is off until you turn it on in **Preferences → Cloud Sync**; CaretFlow has no servers of its own. `Ctrl+Alt+S` syncs now, and the **Cloud** tab in the sidebar (`Ctrl+Shift+4`) shows every file in the cloud with its sync state. When a file changed on both sides, both versions are kept.
 
 ## Inline formatting
 
