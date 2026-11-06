@@ -1,6 +1,6 @@
 # Extensions page: design
 
-Status: draft for approval · 2026-11-06 · ships in the same release as
+Status: approved 2026-11-06 · ships in the same release as
 [AI writing help](2026-11-06-ai-assist-design.md), which becomes the third extension.
 
 ## Intent
@@ -34,10 +34,10 @@ installer. So the extensions ship inside the app, and an extension that isn't in
 
 ### Opening the page
 
-- **Settings → Extensions…**, the command palette ("Extensions"), and a line at the top of
-  Preferences ("More features: Extensions…"). Default shortcut: none.
-- A large overlay page in the app window (like Preferences, wider), closable with Esc. Works in all
-  four themes and at small window sizes (cards wrap to one column).
+- A tab in **Preferences** called **Extensions** (decided by the user). **Settings → Extensions…**
+  and the command palette ("Extensions") open Preferences on that tab. Default shortcut: none.
+- The card grid and the detail view live inside that tab; the detail view replaces the grid with a
+  ← Back button. Works in all four themes and at small window sizes (cards wrap to one column).
 
 ### Cards and details
 
@@ -94,7 +94,6 @@ the MCP server, underlines). The core asks "is X installed" in one place.
 
 ## Calls I made (check these)
 
-- The page is an overlay inside the main window, not a separate window.
 - Screenshots are bundled, not fetched from GitHub.
 - A one-time notice tells updating users where the typing test and Cloud Sync went.
 - Custom shortcuts for removed extensions are kept for a later reinstall.
