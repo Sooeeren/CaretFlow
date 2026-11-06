@@ -5,6 +5,7 @@ use std::time::{Duration, UNIX_EPOCH};
 use tauri::Manager;
 
 mod cloud;
+mod mcp;
 mod pdf;
 
 #[derive(Serialize)]
