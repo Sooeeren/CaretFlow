@@ -16,7 +16,21 @@ export function initWriting(host) {
   H = host
   window.addEventListener('keydown', menuKeys, true) // before the app's shortcuts
 }
-const on = () => !!H?.settings.spellcheck
+// Other sources of findings (AI Writing Help): { id, active(), issues(blocks, ctx), ignore?(issue) }.
+// Their findings use the same underlines, menu and review panel as the spelling checker's.
+const sources = []
+const harperOn = () => !!H?.settings.spellcheck
+const on = () => harperOn() || sources.some((src) => src.active())
+
+export function registerSource(src) {
+  if (!sources.includes(src)) sources.push(src)
+  refresh(0)
+}
+/** A source has new findings (or was turned on or off): redraw. */
+export function sourceChanged() {
+  if (!on()) return clearAll()
+  refresh(0)
+}
 
 // ════════════════════════════════════════ engine + cache
 let engine = null
@@ -66,7 +80,7 @@ export function writingSettingsChanged() {
   }
   nativeOff()
   // only rebuild the engine when its own options changed; filters (style, grammar, rules) apply on the fly
-  if (!on() || JSON.stringify(engineOptions()) !== engineKey) {
+  if (!harperOn() || JSON.stringify(engineOptions()) !== engineKey) {
     engine?.dispose()
     engine = null
     enginePromise = null
@@ -82,6 +96,7 @@ export function writingSettingsChanged() {
 }
 
 async function checkTexts(texts) {
+  if (!harperOn()) return texts.map(() => [])
   const missing = [...new Set(texts.filter((t) => !cache.has(t)))]
   if (missing.length) {
     const eng = await getEngine()
@@ -106,6 +121,7 @@ function keep(iss, words) {
   const s = H.settings
   if (iss.cat === 'style' && !s.wcStyle) return false
   if (iss.cat === 'grammar' && s.wcGrammar === false) return false
+  if (iss.source && words.has(iss.problem.trim().toLowerCase())) return false
   if ((s.wcDisabledRules || []).includes(iss.rule)) return false
   if (iss.cat === 'spelling' && words.has(iss.problem.toLowerCase())) return false
   if (session.ignoreAll.has(allKey(iss)) || session.ignoreOnce.has(contextKey(iss))) return false
@@ -115,8 +131,18 @@ function keep(iss, words) {
 }
 
 /** Issues for blocks: [{ text, at(i) -> doc position, masks }] → absolute, filtered issues. */
-async function issuesFor(blocks) {
+async function issuesFor(blocks, ctx) {
+  // other sources first: they must see the document as it is now, not after the spelling
+  // checker has loaded (AI Writing Help tells opened text from new writing this way)
+  const extras = sources.filter((src) => src.active()).map((src) => src.issues(blocks, ctx))
   const results = await checkTexts(blocks.map((b) => b.text))
+  for (const extra of extras) {
+    extra.forEach((list, i) => {
+      // the spelling checker already marks exactly these words: one underline is enough
+      const own = list.filter((x) => !results[i].some((r) => !r.source && r.start === x.start && r.end === x.end))
+      if (own.length) results[i] = [...results[i], ...own].sort((a, b) => a.start - b.start)
+    })
+  }
   const words = dict()
   const out = []
   blocks.forEach((b, i) => {
@@ -312,7 +338,10 @@ async function run() {
   running = true
   try {
     const snap = ad.snapshot()
-    const found = await issuesFor(ad.blocks())
+    const blocks = ad.blocks()
+    const caret = ad.caret()
+    const caretBlock = blocks.findIndex((b) => caret >= b.at(0) && caret <= b.at(Math.max(0, b.text.length - 1)) + 1)
+    const found = await issuesFor(blocks, { caretBlock, idle: Date.now() - typingAt, view: ad.view })
     if (!on() || !ad.alive()) return
     if (ad.snapshot() !== snap) {
       again = true
@@ -422,6 +451,7 @@ export const writingPlugin = () =>
 function pmAdapter(v) {
   return {
     kind: 'pm',
+    view: v,
     alive: () => !v.isDestroyed && H.pmView() === v,
     snapshot: () => v.state.doc,
     blocks: () => pmBlocks(v.state.doc),
@@ -514,6 +544,7 @@ export function writingSourceExtension() {
 function cmAdapter(v) {
   return {
     kind: 'cm',
+    view: v,
     alive: () => H.cmView() === v,
     snapshot: () => v.state.doc,
     blocks: () => mdBlocks(v.state.doc.toString()),
@@ -552,6 +583,7 @@ function applyFix(ad, iss, text) {
 }
 
 function ignoreOnce(ad, iss) {
+  if (iss.source) sources.find((src) => iss.source === src.id || iss.source.startsWith(src.id + ':'))?.ignore?.(iss)
   session.ignoreOnce.add(contextKey(iss))
   dropIssues(ad, (x) => x === iss)
 }

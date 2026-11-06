@@ -116,4 +116,156 @@ export const scenes = {
       summary()
     },
   },
+  'ai-live': {
+    open: 'Welcome.md',
+    settings: AI({ aiProvider: 'custom', aiPause: 2, aiContext: true, autocorrect: false }), // AutoCorrect would fix the test's typos itself
+    async setup(page) {
+      this.srv = await fakeAi((r) => {
+        const user = r.body?.messages?.at(-1)?.content || ''
+        const text = user.split('TEXT:').pop()
+        const f = (quote, replacement, kind = 'grammar') => openaiAnswer(JSON.stringify({ findings: [{ quote, replacement, kind, message: 'Fix it.' }] }))
+        if (/32nd of May/.test(text)) return f('32nd', '31st')
+        if (/JUNKPROSE/.test(text)) return openaiAnswer('I think this paragraph is fine as it is.')
+        if (/FENCEDREPLY/.test(text)) return openaiAnswer('Sure! Here:\n```json\n{"findings":[{"quote":"the parcel yesterday","replacement":"the package yesterday","kind":"word choice","message":"Clearer."}]}\n```')
+        if (/MISSINGQUOTE/.test(text)) return f('words that are not there', 'x')
+        if (/SAMEREPLACEMENT/.test(text)) return f('stays', 'stays')
+        if (/SERVERFAIL/.test(text)) return { status: 500, body: { error: { message: 'boom' } } }
+        if (/SLOWREPLY/.test(text)) return { ...f('alpha', 'ALPHA'), delay: 2500 }
+        return openaiAnswer('{"findings":[]}')
+      })
+      await stubBackend(page, aiBackend({}))
+      await page.addInitScript((u) => {
+        const st = JSON.parse(localStorage.getItem('folio.settings'))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.removeItem('folio.ai.usage')
+      }, this.srv.url + '/v1')
+    },
+    async run(page) {
+      const { srv } = this
+      const sent = () => srv.seen.filter((r) => r.url.endsWith('/chat/completions')).map((r) => r.body.messages.at(-1).content)
+      const marks = () => page.$$eval('#wysiwyg .wc-ai-fix, #wysiwyg .wc-ai-rec', (xs) => xs.map((x) => x.textContent))
+      await wait(4000)
+      check('opening a document sends nothing', sent().length === 0, `${sent().length} requests`)
+      const para = async (text) => {
+        await page.click('#wysiwyg .ProseMirror')
+        await page.keyboard.press('Control+End')
+        await page.keyboard.press('Enter')
+        await page.keyboard.type(text, { delay: 5 })
+      }
+      await para('The meeting is on the 32nd of May with all of our friends.')
+      await para('Short one.')
+      await para('CODECHECK has `secretcode` inside of this paragraph here.')
+      await para('JUNKPROSE is a paragraph that gets an answer in plain prose.')
+      await para('FENCEDREPLY says that we did not receive the parcel yesterday.')
+      await para('MISSINGQUOTE gets a finding whose quote is nowhere in here.')
+      await para('SAMEREPLACEMENT gets a finding where the text stays the same.')
+      await page.keyboard.press('Enter')
+      await wait(9000)
+      const bodies = sent()
+      const texts = bodies.map((b) => b.split('TEXT:').pop())
+      check('finished paragraphs are sent', texts.some((b) => /32nd of May/.test(b)) && texts.some((b) => /FENCEDREPLY/.test(b)), `${bodies.length} requests`)
+      check('short paragraphs are not sent', !texts.some((b) => /Short one/.test(b)))
+      check('inline code is never sent', texts.some((b) => /CODECHECK/.test(b)) && !bodies.some((b) => /secretcode/.test(b)))
+      check('previous paragraph goes along as context', bodies.some((b) => /CONTEXT:[\s\S]*32nd of May[\s\S]*TEXT:/.test(b)))
+      let m = await marks()
+      check('underline on the finding', m.includes('32nd'), JSON.stringify(m))
+      check('fenced JSON answer is read', m.includes('the parcel yesterday'), JSON.stringify(m) + ' ' + (await page.$$eval('#wysiwyg span[class*=wc-]', (xs) => xs.map((x) => x.className + ':' + x.textContent).join(' | '))))
+      check('nothing placed for a missing quote or an unchanged replacement', !m.some((x) => /words that|stays/.test(x)), JSON.stringify(m))
+      const st = await run(page, () => import('/src/ai.js').then((x) => ({ status: x.status(), usage: x.usage() })))
+      check('unreadable answer: status says so, and it still counts', /could not be read/i.test(JSON.stringify(st.status)) && st.usage.req === bodies.length, JSON.stringify(st))
+
+      // apply from the right-click menu
+      const b = await (await page.$('#wysiwyg .wc-ai-fix')).boundingBox()
+      await page.mouse.click(b.x + 4, b.y + b.height / 2, { button: 'right' })
+      await wait(300)
+      await page.click('#ctxmenu .menu-item.wc-sugg')
+      await wait(400)
+      const text = await page.$eval('#wysiwyg .ProseMirror', (e) => e.textContent)
+      check('Apply changes the text', /the 31st of May/.test(text))
+
+      // a server error is reported once, not retried in a loop
+      const n0 = sent().length
+      await para('SERVERFAIL is a paragraph that the server cannot handle at all.')
+      await page.keyboard.press('Enter')
+      await wait(7000)
+      const st2 = await run(page, () => import('/src/ai.js').then((x) => x.status()))
+      check('server error: one request, status shows it', sent().slice(n0).filter((b) => /SERVERFAIL/.test(b.split('TEXT:').pop())).length === 1 && /boom/.test(JSON.stringify(st2)), `${sent().length - n0} requests; ${JSON.stringify(st2)}`)
+
+      // typing while the answer is on its way: the stale answer is dropped
+      await para('SLOWREPLY alpha beta gamma delta epsilon zeta eta theta.')
+      await page.keyboard.press('Enter')
+      await wait(3200)
+      await page.keyboard.press('ArrowUp')
+      await page.keyboard.press('Home')
+      for (let i = 0; i < 'SLOWREPLY '.length; i++) await page.keyboard.press('ArrowRight')
+      for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight')
+      await page.keyboard.type('omega')
+      await page.keyboard.press('Control+End')
+      await wait(7000)
+      m = await marks()
+      check('answer for text that changed meanwhile is dropped', !m.includes('alpha') && !m.includes('omega'), JSON.stringify(m))
+
+      // Ignore is remembered
+      const boxes = await page.$$('#wysiwyg .wc-ai-rec')
+      let target = null
+      for (const x of boxes) if ((await x.textContent()) === 'the parcel yesterday') target = x
+      const fb = await target.boundingBox()
+      await page.mouse.click(fb.x + 4, fb.y + fb.height / 2, { button: 'right' })
+      await wait(300)
+      await page.click('#ctxmenu .menu-item:has-text("Ignore")')
+      await wait(500)
+      m = await marks()
+      const ign = await page.evaluate(() => localStorage.getItem('folio.ai.ignored') || '')
+      check('Ignore removes it and is remembered', !m.includes('the parcel yesterday') && /parcel/.test(ign), JSON.stringify(m))
+      srv.close()
+      summary()
+    },
+  },
+  'ai-manual': {
+    open: 'Welcome.md',
+    settings: AI({ aiProvider: 'custom', aiFixWhen: 'manual', aiRecWhen: 'manual', aiPause: 2 }),
+    async setup(page) {
+      this.srv = await fakeAi(() => openaiAnswer('{"findings":[]}'))
+      await stubBackend(page, aiBackend({}))
+      await page.addInitScript((u) => {
+        const st = JSON.parse(localStorage.getItem('folio.settings'))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+      }, this.srv.url + '/v1')
+    },
+    async run(page) {
+      await page.click('#wysiwyg .ProseMirror')
+      await page.keyboard.press('Control+End')
+      await page.keyboard.press('Enter')
+      await page.keyboard.type('A long enough paragraph that would normally be checked by the AI.')
+      await page.keyboard.press('Enter')
+      await wait(6000)
+      check('"only when I ask": nothing sent while typing', this.srv.seen.length === 0, `${this.srv.seen.length}`)
+      this.srv.close()
+      summary()
+    },
+  },
+  'ai-nospell': {
+    open: 'Welcome.md',
+    settings: AI({ aiProvider: 'custom', spellcheck: false, autocorrect: false, aiPause: 2 }),
+    async setup(page) {
+      this.srv = await fakeAi(() => openaiAnswer(JSON.stringify({ findings: [{ quote: 'Thier', replacement: 'Their', kind: 'spelling', message: 'Spelling.' }] })))
+      await stubBackend(page, aiBackend({}))
+      await page.addInitScript((u) => {
+        const st = JSON.parse(localStorage.getItem('folio.settings'))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+      }, this.srv.url + '/v1')
+    },
+    async run(page) {
+      await page.click('#wysiwyg .ProseMirror')
+      await page.keyboard.press('Control+End')
+      await page.keyboard.press('Enter')
+      await page.keyboard.type('Thier car is red and teh dog is brown, said the neighbour.')
+      await page.keyboard.press('Enter')
+      await wait(6000)
+      const r = await page.evaluate(() => ({ ai: [...document.querySelectorAll('#wysiwyg .wc-ai-fix')].map((x) => x.textContent), harper: document.querySelectorAll('#wysiwyg .wc-spelling, #wysiwyg .wc-grammar').length }))
+      check("spell check off: AI underlines still appear, Harper's do not", r.ai.includes('Thier') && r.harper === 0, JSON.stringify(r))
+      this.srv.close()
+      summary()
+    },
+  },
 }

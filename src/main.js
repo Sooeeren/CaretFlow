@@ -25,6 +25,7 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
+import { registerSource, sourceChanged } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
@@ -122,6 +123,19 @@ const DEFAULTS = {
   aiTokensDay: 100000,
   aiTemperature: 0.2,
   aiParallel: 1,
+  aiFix: true, // AI spelling & grammar
+  aiFixWhen: 'leave', // 'leave' (a paragraph you finished) | 'pause' | 'manual'
+  aiFixLevel: 'balanced', // 'relaxed' | 'balanced' | 'strict'
+  aiRec: true, // recommendations
+  aiRecWhen: 'leave',
+  aiRecLevel: 'balanced',
+  aiRecAspects: ['clarity', 'concise', 'words'], // + 'tone', 'structure', 'consistency'
+  aiTone: '', // '' | 'neutral' | 'formal' | 'friendly' | 'academic' | 'technical'
+  aiLanguage: 'auto',
+  aiInstructions: '',
+  aiContext: true, // send the paragraph before as context
+  aiPause: 4, // seconds of not typing before a paragraph is sent
+  aiMinChars: 30, // shorter paragraphs are never sent
   extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
   extNoticeSeen: false, // the one-time "these are extensions now" notice after updating from 0.7.0
 }
@@ -2401,9 +2415,28 @@ function migrateExtensions() {
   ])
 }
 
+// ════════════════════════════════════════ AI Writing Help (ai.js, loaded once installed and turned on)
+let aiP = null
+function loadAi() {
+  aiP ||= import('./ai.js').then((m) => {
+    m.initAi({ settings, saveSettings, log, toast, installed: () => extOn('ai') })
+    m.setOnChange(sourceChanged)
+    registerSource(m.aiSource)
+    return m
+  })
+  return aiP
+}
+/** AI findings appear or disappear with the extension and its on/off switch. */
+function applyAi() {
+  if (extOn('ai') && settings.aiEnabled) loadAi().then(() => sourceChanged())
+  else if (aiP) sourceChanged()
+}
+
+/** After installing or removing an extension: shortcuts, tabs and background work follow. */
 function applyExtensions() {
   applyKeybindings()
   applyCloudUi()
+  applyAi()
   if (!extOn('typing') && typingTestOpen()) ttMod.closeTypingTest()
   saveSettings()
 }
@@ -3958,6 +3991,7 @@ async function boot() {
   wireTitlebar()
   applyTitlebar()
   applyCloudUi()
+  applyAi()
   setTab(settings.sidebarTab)
 
   const args = await invoke('cli_args').catch(() => [])
