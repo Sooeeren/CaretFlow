@@ -772,7 +772,7 @@ export function renderPane(box) {
     const syncBtn = el('button', { title: 'Sync now (Ctrl+Alt+S)', class: busy ? 'spin' : '', onclick: () => sync() }, '⟳')
     const flatBtn = el('button', { title: paneFlat ? 'Show folders' : 'Show all files in one list', class: paneFlat ? 'on' : '', onclick: () => ((paneFlat = !paneFlat), draw()) }, '≡')
     const gear = el('button', { title: 'Cloud Sync settings', onclick: () => ctx.openPrefs('cloud') }, '⚙')
-    box.append(el('div', { class: 'sb-head' }, el('span', { class: 'cl-where', title: label }, label), el('span', { class: 'sb-actions' }, syncBtn, flatBtn, gear)))
+    box.append(el('div', { class: 'sb-head' }, el('span', { class: 'cl-where', title: s().cloudProvider === 'webdav' ? s().cloudUrl : label }, label), el('span', { class: 'sb-actions' }, syncBtn, flatBtn, gear)))
     const list = entries()
     const pending = list.filter((e) => e.kind !== 'same').length
     const line = busy ? progress : st.error ? 'Last sync failed — ' + st.error.split('\n')[0] : st.last ? `Synced ${ago(st.last)}` + (pending ? ` · ${pending} change${pending > 1 ? 's' : ''} waiting` : '') : 'Not synced yet'
@@ -840,7 +840,7 @@ function drawDir(parent, node, path, depth) {
     const changes = countChanges(sub)
     const row = el(
       'div',
-      { class: 'tree-row dir', style: `padding-left:${8 + depth * 14}px`, title: p },
+      { class: 'tree-row dir', title: p },
       el('span', { class: 'tw' }, open.has(p) ? '▾' : '▸'),
       el('span', { class: 'nm' }, name),
       el('span', { class: 'cl-count' }, changes ? `${changes} ✱` : String(sub.count)),
@@ -874,7 +874,7 @@ function fileRow(e, depth, showDir) {
   const absPath = P.join(s().cloudLocal, e.rel)
   const row = el(
     'div',
-    { class: `tree-row cl-file k-${e.kind}` + (cur && cur.toLowerCase() === absPath.toLowerCase() ? ' current' : ''), style: `padding-left:${8 + depth * 14}px`, title: `${e.rel}\n${info.join('\n')}` },
+    { class: `tree-row cl-file k-${e.kind}` + (cur && cur.toLowerCase() === absPath.toLowerCase() ? ' current' : ''), title: `${e.rel}\n${info.join('\n')}` },
     el('span', { class: 'cl-st' }, icon),
     el('span', { class: 'nm' }, name.replace(/\.(md|markdown)$/i, ''), showDir && dir ? el('small', { class: 'cl-dir' }, dir) : null),
   )
@@ -955,8 +955,10 @@ function configLabel() {
   if (st.cloudProvider === 'rclone') return st.rcloneRemote
   if (st.cloudProvider === 's3') return `${st.s3Bucket}${st.s3Prefix ? '/' + st.s3Prefix.replace(/^\/+|\/+$/g, '') : ''}`
   try {
+    // long WebDAV paths (remote.php/dav/files/…) say little: the server and the folder name do
     const u = new URL(st.cloudUrl)
-    return u.host + decodeURIComponent(u.pathname).replace(/\/$/, '')
+    const folder = decodeURIComponent(u.pathname).replace(/\/+$/, '').split('/').pop()
+    return folder ? `${u.host} · ${folder}` : u.host
   } catch {
     return st.cloudUrl
   }

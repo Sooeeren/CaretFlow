@@ -161,6 +161,40 @@ const SCENES = {
       await page.keyboard.press('k')
     },
   },
+  cloud: {
+    open: 'Welcome.md',
+    settings: {
+      theme: 'paper',
+      sidebarTab: 'cloud',
+      sidebarWidth: 300,
+      cloudEnabled: true,
+      cloudProvider: 'webdav',
+      cloudUrl: 'https://cloud.example.com/remote.php/dav/files/you/Notes',
+      cloudUser: 'you',
+      cloudLocal: DEMO_DIR,
+      cloudAuto: false,
+    },
+    // a remembered sync state: the Cloud tab draws from it without any server
+    setup: (page) =>
+      page.addInitScript((dir) => {
+        const now = Date.now()
+        const files = {}
+        const local = {}
+        const remote = {}
+        const add = (rel, kind) => {
+          const f = { size: 800 + rel.length * 37, mtime: now - 3600e3 }
+          if (kind !== 'cloud') local[rel] = { ...f, mtime: kind === 'up' ? now - 60e3 : f.mtime }
+          if (kind !== 'local') remote[rel] = { ...f, tag: kind === 'down' ? 'new' + rel : 'v1' + rel }
+          if (kind !== 'cloud' && kind !== 'local') files[rel] = { lm: f.mtime, ls: f.size, rt: 'v1' + rel }
+        }
+        for (const r of ['Welcome.md', 'Draft.md', 'Ideas.md', 'Journal/2026-11-04.md', 'Journal/2026-11-05.md', 'Projects/CaretFlow/Roadmap.md', 'Projects/CaretFlow/Release notes.md', 'Reading list.md', 'assets/diagram.png']) add(r, 'same')
+        add('Draft.md', 'up')
+        add('Journal/2026-11-06.md', 'cloud')
+        add('Projects/Garden.md', 'down')
+        localStorage.setItem('folio.cloud', JSON.stringify({ id: `webdav|https://cloud.example.com/remote.php/dav/files/you/Notes|you|${dir}|notes`, files, local, remote, last: now - 4 * 60e3, error: null }))
+        localStorage.setItem('folio.cloud.openDirs', JSON.stringify(['Journal', 'Projects', 'Projects/CaretFlow']))
+      }, DEMO_DIR),
+  },
   about: {
     open: 'Welcome.md',
     settings: { theme: 'paper', sidebar: false },
