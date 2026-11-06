@@ -25,7 +25,7 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
-import { registerSource, sourceChanged, documentLoaded } from './writing.js'
+import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
@@ -136,6 +136,9 @@ const DEFAULTS = {
   aiContext: true, // send the paragraph before as context
   aiPause: 4, // seconds of not typing before a paragraph is sent
   aiMinChars: 30, // shorter paragraphs are never sent
+  aiGuideBanner: true, // "Need help setting up MCP?" at the top of Preferences → AI
+  mcpEnabled: false, // the local MCP server (mcp.js / mcp.rs)
+  mcpPort: 38457,
   extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
   extNoticeSeen: false, // the one-time "these are extensions now" notice after updating from 0.7.0
 }
@@ -2420,13 +2423,42 @@ function migrateExtensions() {
 let aiP = null
 function loadAi() {
   aiP ||= import('./ai.js').then((m) => {
-    m.initAi({ settings, saveSettings, log, toast, el, dialog, installed: () => extOn('ai'), openOptions: () => openPrefs('ai') })
+    m.initAi({
+      settings,
+      saveSettings,
+      log,
+      toast,
+      el,
+      dialog,
+      customSelect,
+      installed: () => extOn('ai'),
+      openOptions: () => openPrefs('ai'),
+      openDoc: (md) => (closePrefs?.(true), openBuiltin(md)),
+      aiToggled: applyAi,
+    })
     m.setOnChange(sourceChanged)
     registerSource(m.aiSource)
     return m
   })
   return aiP
 }
+/** Edit → AI commands: they need AI Writing Help turned on and set up. */
+const aiCmd = (fn) => async () => {
+  if (!settings.aiEnabled) {
+    toast('Turn on AI writing help first (Preferences → AI)', 2600)
+    return openPrefs('ai')
+  }
+  const m = await loadAi()
+  const h = blockHelpers()
+  if (h) fn(m, h)
+}
+/** Preferences → AI: built by ai.js, which loads the first time it's needed (no network). */
+function aiPrefs(row) {
+  const box = el('div', {}, el('p', { class: 'about-note' }, 'Loading…'))
+  loadAi().then((m) => box.replaceWith(m.prefsPage(row)))
+  return box
+}
+
 /** AI findings appear or disappear with the extension and its on/off switch. */
 function applyAi() {
   if (extOn('ai') && settings.aiEnabled) loadAi().then(() => sourceChanged())
@@ -2646,6 +2678,7 @@ function openPrefs(section) {
     ]],
     ['keys', 'Keyboard', [keyboardPrefs()]],
     ['writing', 'Writing', [writingPrefs(row, chk, sel)]],
+    extOn('ai') ? ['ai', 'AI', [aiPrefs(row)]] : null,
     ['typing', 'Typing', [
       row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
       row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
@@ -3063,7 +3096,11 @@ const MENU = [
       }),
       '-',
       k('Spelling & Grammar…', 'F7', toggleWritingPanel),
-      k('Next Spelling or Grammar Issue', 'Alt+F7', nextIssueMenu),
+      k('Next Spelling or Grammar Issue', 'Alt+F7', () => nextIssueMenu()),
+      k('AI: Check Paragraph', 'Ctrl+Alt+K', aiCmd((m, h) => m.commands.checkCaret(h)), { ext: 'ai' }),
+      k('AI: Check Document', null, aiCmd((m, h) => m.commands.checkAll(h)), { ext: 'ai' }),
+      k('AI: Next Suggestion', 'Shift+Alt+F7', aiCmd(() => nextIssueMenu(true)), { ext: 'ai' }),
+      k('AI: Review Panel', null, aiCmd(() => openAiPanel()), { ext: 'ai' }),
       '-',
       k('Read-only Mode', 'Ctrl+Shift+R', toggleReadonly, { checked: () => S.readonly }),
     ],
@@ -3202,6 +3239,7 @@ const MENU = [
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       k('Customize Shortcuts…', null, () => openPrefs('keys')),
+      k('AI Setup Guide', null, () => loadAi().then((m) => m.openSetupGuide()), { ext: 'ai' }),
       '-',
       k('Check for Updates…', null, () => checkUpdates(true)),
       k('About CaretFlow', null, showAbout),

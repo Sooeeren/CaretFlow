@@ -29,6 +29,12 @@ export function registerSource(src) {
   if (ad) src.opened?.(ad.view, ad.blocks())
   refresh(0)
 }
+/** The open document's blocks and the cursor's block, for commands like AI: Check Paragraph. */
+export function blockHelpers() {
+  const ad = adapter()
+  return ad && { blocks: () => ad.blocks(), caretBlock: () => checkContext(ad, ad.blocks()).caretBlock }
+}
+
 /** main.js loaded a file (or a reload from disk) into the editor: that text isn't new writing. */
 export function documentLoaded() {
   const ad = adapter()
@@ -726,11 +732,11 @@ function menuKeys(e) {
 }
 
 /** Alt+F7: jump to the next issue after the caret and show its suggestions. */
-export function nextIssueMenu() {
+export function nextIssueMenu(onlySources = false) {
   if (!on()) return H.toast('Spelling & grammar checking is off (Preferences → Writing)')
   const ad = adapter()
-  const list = ad?.issues() || []
-  if (!list.length) return H.toast(engineState === 'loading' ? 'Loading the writing checker…' : 'No spelling or grammar issues')
+  const list = (ad?.issues() || []).filter((x) => !onlySources || x.source)
+  if (!list.length) return H.toast(onlySources ? 'No AI suggestions' : engineState === 'loading' ? 'Loading the writing checker…' : 'No spelling or grammar issues')
   const caret = ad.caret()
   const iss = list.find((x) => x.from > caret) || list[0]
   ad.select(iss)

@@ -552,3 +552,247 @@ function statusText() {
 Object.assign(aiSource, { panel, menuExtras, statusText })
 /** Edit → AI: Check Paragraph / Check Document, for menus and shortcuts. */
 export const commands = { checkCaret, checkAll }
+
+// ════════════════════════════════════════ MCP setup guide
+const GUIDE_URL = 'https://raw.githubusercontent.com/Sooeeren/CaretFlow/main/docs/MCP.md'
+
+/** docs/MCP.md from GitHub (always current), or the copy that comes with the app when offline. */
+export async function openSetupGuide() {
+  let md = ''
+  try {
+    const r = await invoke('cloud_http', { req: { method: 'GET', url: GUIDE_URL, headers: [], timeoutMs: 8000 } })
+    const text = dec.decode(Uint8Array.from(atob(r.body || ''), (c) => c.charCodeAt(0)))
+    if (r.status === 200 && /^#\s/.test(text)) md = text
+  } catch {}
+  if (!md) md = (await import('../docs/MCP.md?raw')).default
+  ctx.openDoc(md)
+}
+
+// ════════════════════════════════════════ Preferences → AI
+const LANGS = [
+  ['auto', 'Same as the text'],
+  ['English', 'English'],
+  ['German', 'German'],
+  ['French', 'French'],
+  ['Spanish', 'Spanish'],
+  ['Italian', 'Italian'],
+  ['Portuguese', 'Portuguese'],
+  ['Dutch', 'Dutch'],
+  ['Polish', 'Polish'],
+  ['Swedish', 'Swedish'],
+  ['Danish', 'Danish'],
+  ['Norwegian', 'Norwegian'],
+  ['Czech', 'Czech'],
+  ['Ukrainian', 'Ukrainian'],
+  ['Russian', 'Russian'],
+  ['Turkish', 'Turkish'],
+  ['Japanese', 'Japanese'],
+  ['Chinese', 'Chinese'],
+]
+const WHEN = [
+  ['leave', 'When I finish a paragraph'],
+  ['pause', 'When I pause typing'],
+  ['manual', 'Only when I ask'],
+]
+const LEVEL = [
+  ['relaxed', 'Relaxed'],
+  ['balanced', 'Balanced'],
+  ['strict', 'Strict'],
+]
+
+let mcpSection = null // filled in by mcp.js (Preferences → AI → MCP server)
+export const setMcpSection = (fn) => (mcpSection = fn)
+
+export function prefsPage(row) {
+  const { el, customSelect } = ctx
+  const st = s()
+  const changed = () => {
+    ctx.saveSettings()
+    onChange()
+  }
+  const check = (key, after) => {
+    const c = el('input', { type: 'checkbox', checked: !!st[key] })
+    c.onchange = () => {
+      st[key] = c.checked
+      changed()
+      after?.()
+    }
+    return c
+  }
+  const pick = (key, opts, after) =>
+    customSelect(opts, st[key], (v) => {
+      st[key] = v
+      changed()
+      after?.()
+    })
+  const text = (key, { placeholder = '', width = 260 } = {}) => {
+    const i = el('input', { type: 'text', value: st[key] ?? '', placeholder, spellcheck: 'false', style: `width:${width}px;max-width:100%` })
+    i.onchange = () => {
+      st[key] = i.value.trim()
+      changed()
+    }
+    return i
+  }
+  const num = (key, min, max, step = 1) => {
+    const i = el('input', { type: 'number', value: st[key], min, max, step, style: 'width:110px' })
+    i.onchange = () => {
+      const v = Math.min(max, Math.max(min, +i.value || min))
+      i.value = v
+      st[key] = v
+      changed()
+    }
+    return i
+  }
+  const sub = (title, hint) => el('div', { class: 'pref-sub' }, title, hint ? el('small', {}, hint) : null)
+
+  // the banner at the top: help with MCP
+  const banner = st.aiGuideBanner
+    ? el(
+        'div',
+        { class: 'ai-banner' },
+        el('span', {}, el('b', {}, 'Need help setting up MCP?'), ' Connect Claude Desktop, Cursor, VS Code or another AI app to CaretFlow. '),
+        el('button', { type: 'button', class: 'ai-guide-btn', onclick: () => openSetupGuide() }, 'Open the setup guide'),
+        el('button', {
+          type: 'button',
+          class: 'ai-banner-x',
+          title: 'Hide (Help → AI Setup Guide still opens it)',
+          onclick: (e) => {
+            st.aiGuideBanner = false
+            ctx.saveSettings()
+            e.target.closest('.ai-banner').remove()
+          },
+        }, '✕'),
+      )
+    : null
+
+  // connection
+  const keyRow = row('API key', 'Stored on this computer only, outside the editor’s storage', secretInput())
+  const urlRow = row('Address', 'The server’s OpenAI-compatible API, e.g. http://localhost:11434/v1', text('aiBaseUrl', { placeholder: 'http://localhost:11434/v1', width: 300 }))
+  const models = el('datalist', { id: 'ai-models' })
+  const model = text('aiModel', { placeholder: 'e.g. claude-sonnet-5-5, gpt-5-mini, llama3.2' })
+  model.setAttribute('list', 'ai-models')
+  const loadModels = el('button', { type: 'button', class: 'fsel' }, 'Load list')
+  loadModels.onclick = async () => {
+    loadModels.textContent = 'Loading…'
+    try {
+      models.innerHTML = ''
+      const list = await listModels()
+      for (const m of list) models.append(el('option', { value: m }))
+      loadModels.textContent = `${list.length} models`
+      model.focus()
+    } catch (e) {
+      loadModels.textContent = 'Load list'
+      ctx.toast('Could not load the models: ' + (e.message || e), 4000)
+    }
+  }
+  const result = el('div', { class: 'ai-test' })
+  const test = el('button', { type: 'button', class: 'fsel' }, 'Test connection')
+  test.onclick = async () => {
+    result.className = 'ai-test'
+    result.textContent = 'Sending one small request…'
+    const r = await testConnection()
+    result.classList.add(r.ok ? 'ok' : 'err')
+    result.textContent = r.msg
+    usageLine()
+  }
+  function secretInput() {
+    const i = el('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', style: 'width:260px;max-width:100%' })
+    const show = () =>
+      invoke('secret_get', { key: secretKey() })
+        .then((v) => (i.placeholder = v ? '•••••••• (saved)' : preset().key ? 'Paste your API key' : 'Optional'))
+        .catch(() => {})
+    show()
+    i.onchange = async () => {
+      await invoke('secret_set', { key: secretKey(), value: i.value.trim() })
+      i.value = ''
+      show()
+      ctx.toast('Saved')
+    }
+    i.refresh = show
+    return i
+  }
+  const showProvider = () => {
+    const p = preset()
+    const local = !p.base || /localhost/.test(p.base)
+    urlRow.hidden = !local
+    keyRow.hidden = local && st.aiProvider !== 'custom'
+    keyRow.querySelector('input').refresh?.()
+    result.textContent = ''
+  }
+
+  // recommendations: what to look for
+  const aspects = el('span', { class: 'ai-aspects' })
+  for (const [id, label] of [
+    ['clarity', 'Clarity'],
+    ['concise', 'Conciseness'],
+    ['words', 'Word choice'],
+    ['structure', 'Sentence structure'],
+    ['consistency', 'Consistency'],
+    ['tone', 'Tone'],
+  ]) {
+    const c = el('input', { type: 'checkbox', checked: (st.aiRecAspects || []).includes(id) })
+    c.onchange = () => {
+      const set = new Set(st.aiRecAspects || [])
+      c.checked ? set.add(id) : set.delete(id)
+      st.aiRecAspects = [...set]
+      changed()
+    }
+    aspects.append(el('label', { class: 'ai-aspect' }, c, label))
+  }
+  const instructions = el('textarea', { class: 'ai-instr', rows: 3, spellcheck: 'false', placeholder: 'e.g. British spelling. I use the Oxford comma. Don’t shorten dialogue.' })
+  instructions.value = st.aiInstructions || ''
+  instructions.onchange = () => {
+    st.aiInstructions = instructions.value
+    changed()
+  }
+
+  // usage
+  const usageOut = el('span', { class: 'ai-usage' })
+  function usageLine() {
+    const u = usage()
+    usageOut.textContent = `Today: ${u.req} request${u.req === 1 ? '' : 's'}, ${u.tokens.toLocaleString()} tokens`
+  }
+  usageLine()
+  const resetBtn = el('button', { type: 'button', class: 'fsel', onclick: () => (resetUsage(), usageLine(), ctx.toast('Usage counter reset')) }, 'Reset')
+
+  const page = el(
+    'div',
+    { 'data-section': 'ai' },
+    banner,
+    row('Turn on AI writing help', 'Text is sent only to the provider below, and only once this is on. Nothing changes until you click Apply', check('aiEnabled', () => ctx.aiToggled?.())),
+    sub('Connection'),
+    row('Provider', 'Your own account and key, or a model on this computer', pick('aiProvider', PRESETS.map(([id, label]) => [id, label]), showProvider)),
+    urlRow,
+    keyRow,
+    row('Model', 'The model’s name at the provider', el('span', { class: 'ai-model' }, model, loadModels, models)),
+    row('', null, el('span', {}, test, result)),
+    sub('AI spelling & grammar', 'Mistakes the offline check misses: wrong words in context, agreement, any language the model knows'),
+    row('Check spelling & grammar with AI', null, check('aiFix')),
+    row('When to check', null, pick('aiFixWhen', WHEN)),
+    row('Sensitivity', 'Relaxed: only clear mistakes. Strict: everything worth mentioning', pick('aiFixLevel', LEVEL)),
+    sub('Recommendations', 'Clearer, shorter, better-fitting wording'),
+    row('Suggest improvements', null, check('aiRec')),
+    row('When to check', null, pick('aiRecWhen', WHEN)),
+    row('Sensitivity', 'Relaxed: only strong improvements. Strict: every idea', pick('aiRecLevel', LEVEL)),
+    row('Look for', null, aspects),
+    row('Tone to aim for', 'Used when Tone is checked', pick('aiTone', [['', 'No preference'], ['neutral', 'Neutral'], ['formal', 'Formal'], ['friendly', 'Friendly'], ['academic', 'Academic'], ['technical', 'Technical']])),
+    sub('Both'),
+    row('Language', null, pick('aiLanguage', LANGS)),
+    row('Your instructions', 'Added to every request', instructions),
+    row('Send the paragraph before as context', 'Better answers; a bit more text per request', check('aiContext')),
+    row('Pause before checking', 'Seconds without typing', num('aiPause', 2, 30)),
+    row('Skip paragraphs shorter than', 'Characters', num('aiMinChars', 5, 500)),
+    sub('Limits & usage', 'Checking pauses when a limit is reached; you can always check one paragraph anyway'),
+    row('Max answer length', 'Output tokens per request', num('aiMaxOut', 50, 4000, 50)),
+    row('Max text per request', 'Characters; longer paragraphs are checked only when you ask', num('aiMaxChars', 200, 20000, 100)),
+    row('Requests per hour', null, num('aiPerHour', 1, 1000)),
+    row('Requests per day', null, num('aiPerDay', 1, 10000)),
+    row('Tokens per day', 'Sent and received together', num('aiTokensDay', 1000, 10000000, 1000)),
+    row('Temperature', '0 = most predictable', num('aiTemperature', 0, 1, 0.1)),
+    row('Usage', 'Counted from the provider’s answers', el('span', {}, usageOut, ' ', resetBtn)),
+    sub('MCP server', 'Let your AI app (Claude Desktop, Cursor, VS Code…) read the open document and send suggestions'),
+    mcpSection ? mcpSection(row) : el('p', { class: 'about-note' }, 'Loading…'),
+  )
+  showProvider()
+  return page
+}

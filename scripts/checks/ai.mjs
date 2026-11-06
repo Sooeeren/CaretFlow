@@ -433,4 +433,103 @@ export const scenes = {
       summary()
     },
   },
+  'ai-prefs': {
+    open: 'Welcome.md',
+    settings: { extensions: ['ai'] },
+    async setup(page) {
+      this.srv = await fakeAi(() => openaiAnswer('OK', 'fake-model'))
+      const be = aiBackend({})
+      const http = be.cloud_http
+      this.guideFetches = 0
+      // the setup guide comes from GitHub: answer that address here instead of going online
+      be.cloud_http = async (a) => {
+        if (/raw\.githubusercontent\.com/.test(a.req.url)) {
+          this.guideFetches++
+          return { status: 200, headers: [], body: Buffer.from('# Set up MCP\n\nFRESH FROM GITHUB\n').toString('base64') }
+        }
+        return http(a)
+      }
+      await stubBackend(page, be)
+    },
+    async run(page) {
+      const { srv } = this
+      const openAi = async () => {
+        await page.keyboard.press('Control+,')
+        await wait(300)
+        await page.click('.prefs-nav button:has-text("AI")')
+        await wait(700)
+      }
+      const rowVisible = (label) => page.evaluate((l) => [...document.querySelectorAll('.prefs-page:not([hidden]) .pref-row')].some((r) => r.querySelector('label')?.firstChild?.textContent === l && r.offsetParent !== null), label)
+      await openAi()
+      const subs = await page.$$eval('.prefs-page:not([hidden]) .pref-sub', (xs) => xs.map((x) => x.firstChild.textContent))
+      check('sections in order', JSON.stringify(subs) === JSON.stringify(['Connection', 'AI spelling & grammar', 'Recommendations', 'Both', 'Limits & usage', 'MCP server']), JSON.stringify(subs))
+      check('MCP help banner at the top', await page.$eval('.prefs-page:not([hidden])', (p) => /Need help setting up MCP\?/.test(p.firstElementChild.nextElementSibling?.textContent || '')))
+      check('off by default', !(await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).aiEnabled)))
+
+      await page.click('.prefs-page:not([hidden]) .pref-row:has-text("Provider") button.fsel')
+      await page.click('#ctxmenu .menu-item:has-text("Ollama")')
+      await wait(200)
+      check('local provider: address shown, no API key', (await rowVisible('Address')) && !(await rowVisible('API key')))
+      await page.click('.prefs-page:not([hidden]) .pref-row:has-text("Provider") button.fsel')
+      await page.click('#ctxmenu .menu-item:has-text("Anthropic")')
+      await wait(200)
+      check('cloud provider: API key shown, no address', (await rowVisible('API key')) && !(await rowVisible('Address')))
+      await page.click('.prefs-page:not([hidden]) .pref-row:has-text("Provider") button.fsel')
+      await page.click('#ctxmenu .menu-item:has-text("Other OpenAI-compatible")')
+      await page.fill('.prefs-page:not([hidden]) .pref-row:has-text("Address") input', srv.url + '/v1')
+      await page.press('.prefs-page:not([hidden]) .pref-row:has-text("Address") input', 'Tab')
+      await page.fill('.prefs-page:not([hidden]) .pref-row:has-text("Model") input', 'm1')
+      await page.press('.prefs-page:not([hidden]) .pref-row:has-text("Model") input', 'Tab')
+      check('nothing sent before Test connection', srv.seen.length === 0, `${srv.seen.length}`)
+      await page.click('.prefs-page:not([hidden]) button:has-text("Test connection")')
+      await wait(1200)
+      const res = await page.$eval('.prefs-page:not([hidden]) .ai-test', (e) => e.textContent).catch(() => '')
+      check('Test connection shows the model', /fake-model/.test(res), res)
+
+      await page.click('.prefs-page:not([hidden]) button:has-text("Open the setup guide")')
+      await wait(1200)
+      const doc = await page.$eval('#wysiwyg .ProseMirror', (e) => e.textContent)
+      check('setup guide opens in the editor, fresh from GitHub', /Set up MCP/.test(doc) && /FRESH FROM GITHUB/.test(doc) && this.guideFetches === 1, doc.slice(0, 80))
+
+      await openAi()
+      await page.click('.prefs-page:not([hidden]) .ai-banner .ai-banner-x')
+      await wait(200)
+      check('banner can be dismissed', !(await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).aiGuideBanner)))
+      await page.keyboard.press('Escape')
+      await wait(200)
+      const menu = async (label) => {
+        await page.click(`#menus .menu-root > button:has-text("${label}")`)
+        const items = await page.$$eval('.menu-pop .menu-item', (xs) => xs.map((x) => x.textContent))
+        return items
+      }
+      const edit = await menu('Edit')
+      await page.mouse.click(700, 500)
+      check('Edit menu has the AI commands', edit.some((t) => /AI: Check Paragraph.*Ctrl\+Alt\+K/.test(t)) && edit.some((t) => /AI: Check Document/.test(t)) && edit.some((t) => /AI: Next Suggestion.*Shift\+Alt\+F7/.test(t)), JSON.stringify(edit))
+      await menu('Help')
+      await page.click('.menu-pop .menu-item:has-text("AI Setup Guide")')
+      await wait(1000)
+      check('Help → AI Setup Guide opens it too', /Set up MCP/.test(await page.$eval('#wysiwyg .ProseMirror', (e) => e.textContent)))
+      srv.close()
+      summary()
+    },
+  },
+  'ai-guide-offline': {
+    open: 'Welcome.md',
+    settings: { extensions: ['ai'] },
+    async setup(page) {
+      const be = aiBackend({})
+      be.cloud_http = async () => {
+        throw 'offline'
+      }
+      await stubBackend(page, be)
+    },
+    async run(page) {
+      await page.click('#menus .menu-root > button:has-text("Help")')
+      await page.click('.menu-pop .menu-item:has-text("AI Setup Guide")')
+      await wait(1500)
+      const doc = await page.$eval('#wysiwyg .ProseMirror', (e) => e.textContent)
+      check('offline: the copy that comes with the app opens', /Set up MCP/.test(doc) && /Claude Desktop/.test(doc), doc.slice(0, 80))
+      summary()
+    },
+  },
 }
