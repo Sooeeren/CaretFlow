@@ -1,0 +1,42 @@
+# Compiles CaretFlow on Windows and Linux for every push and pull request (no installers, no release),
+# so a change that breaks the build shows up before a version is tagged.
+name: Check
+
+on:
+  push:
+    branches: ['**']
+    paths-ignore: ['**.md', 'docs/**', 'packaging/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: System packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci --no-audit --no-fund
+      - name: Frontend
+        run: npm run build
+      - name: Rust
+        working-directory: src-tauri
+        run: cargo check --locked
