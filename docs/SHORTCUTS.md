@@ -2,7 +2,8 @@
 
 Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctrl+Shift+P`).
 `Shift+F1` lists all shortcuts inside the app. Any command can get a different shortcut, or none, in
-**Preferences → Keyboard** (Help → Customize Shortcuts…). These are the defaults.
+**Preferences → Keyboard** (Help → Customize Shortcuts…). These are the defaults. Shortcuts marked
+*(extension)* work once that extension is installed (Preferences → Extensions).
 
 ## File
 
@@ -15,7 +16,7 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Quick open (any file in the folder) | `Ctrl+P` |
 | Save / Save as… | `Ctrl+S` / `Ctrl+Shift+S` |
 | Close file | `Ctrl+F4` |
-| Sync now (Cloud Sync) | `Ctrl+Alt+S` |
+| Sync now *(Cloud Sync extension)* | `Ctrl+Alt+S` |
 | Export as PDF… | `Ctrl+Alt+E` |
 | Print… | `Ctrl+Alt+P` |
 | Preferences… | `Ctrl+,` |
@@ -32,6 +33,8 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Find in folder | `Ctrl+Shift+F` |
 | Spelling & grammar review | `F7` |
 | Next spelling or grammar issue | `Alt+F7` |
+| AI: check paragraph *(AI Writing Help extension)* | `Ctrl+Alt+K` |
+| AI: next suggestion *(AI Writing Help extension)* | `Shift+Alt+F7` |
 | Read-only mode | `Ctrl+Shift+R` |
 
 ## Paragraph
@@ -68,13 +71,13 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | --- | --- |
 | Source mode (raw Markdown) | `Ctrl+/` |
 | Sidebar | `Ctrl+Shift+L` |
-| Outline / Files / Search / Cloud tab | `Ctrl+Shift+1` / `2` / `3` / `4` |
+| Outline / Files / Search / Cloud tab *(Cloud Sync extension)* | `Ctrl+Shift+1` / `2` / `3` / `4` |
 | Focus mode / typewriter mode | `F8` / `F9` |
 | Zen mode (hide everything but the text) | `Ctrl+Shift+J` |
 | Zoom in / out / actual size | `Ctrl+Shift+=` / `Ctrl+Shift+-` / `Ctrl+Shift+9` |
 | Full screen | `F11` |
 | Page preview | `Ctrl+Alt+L` |
-| Typing test | `Ctrl+Alt+T` |
+| Typing test *(extension)* | `Ctrl+Alt+T` |
 | Command palette | `F1` or `Ctrl+Shift+P` |
 | Keyboard shortcuts | `Shift+F1` |
 

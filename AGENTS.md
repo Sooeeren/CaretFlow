@@ -53,7 +53,10 @@ These decide most design questions:
 | `src/codestyle.js` | Syntax colors shared by code blocks, source mode and exports (`--tok-*` per theme) |
 | `src/export.js` | HTML export and print-to-PDF (lazy) |
 | `src/updater.js` | In-app updates (lazy): check, signed download, install, restart |
-| `src/cloud.js` | Cloud Sync (lazy, off by default): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
+| `src/extensions.js` | The extension catalog (`EXTENSIONS`) and installed state (`settings.extensions`) |
+| `src/ai.js` | AI Writing Help (lazy, an extension): providers (Anthropic + OpenAI-compatible), limits and usage, live checking of finished paragraphs, the AI tab of the review panel, Preferences → AI, the MCP setup guide |
+| `src/mcp.js` | MCP tool answers (document, selection, suggestions) and Preferences → AI → MCP server |
+| `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
@@ -62,9 +65,11 @@ These decide most design questions:
 | `src/caret.js` | The text cursor CaretFlow draws itself in the rendered view (Linux default; WebKitGTK leaves stale carets) |
 | `src-tauri/windows/installer-hooks.nsh` | Windows installer hooks: remove an old Folio install, recreate its shortcuts |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
-| `src-tauri/src/cloud.rs` | Cloud Sync commands: HTTP (reqwest), folder scan, sync trash, `cloud-secrets.json`, running rclone |
+| `src-tauri/src/cloud.rs` | Cloud Sync commands: HTTP (reqwest, also used by AI), folder scan, sync trash, `secrets.json`, running rclone |
+| `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux for every push and pull request |
-| `docs/` | User docs split from the README: `SHORTCUTS.md`, `FEATURES.md`, `CLOUD-SYNC.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
+| `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
 | `packaging/rpm/caretflow.spec`, `scripts/rpm-repackage.sh`, `scripts/deb-repackage.sh` | The `.rpm` and `.deb`, rebuilt from Tauri's as `caretflow`, replacing the old Folio packages |
 | `packaging/arch/PKGBUILD` | Arch package (`caretflow-bin`) made from the release `.deb`; built by release.yml |
@@ -82,6 +87,12 @@ These decide most design questions:
 - Match the existing style: ES modules, no semicolons, single quotes, 2-space indent, small helper
   functions, `el()` for DOM, comments that explain *why*.
 - New settings go into `DEFAULTS` in `main.js`; add them to Preferences and, if useful, the menus.
+- Bigger optional features are **extensions**: add an entry to `EXTENSIONS` in `src/extensions.js`
+  (texts, icon, two screenshots made by `scripts/screenshots.mjs` scenes with `webp:`), tag their menu
+  items with `ext: '<id>'`, gate their UI and background work with `extOn('<id>')` in `main.js`
+  (`applyExtensions()` runs on install/remove), and load their code lazily.
+- UI checks: `node scripts/screenshots.mjs <scene> --extra scripts/checks/<file>.mjs --out <tmp>`;
+  every scene must end with `ALL PASSED`.
 - New UI must work in all four themes (use the CSS variables) and at small window sizes.
 - Update `README.md` (short overview), the matching file in `docs/` and `src/guide.md` when you add or
   change user-facing features; new shortcuts go into `docs/SHORTCUTS.md`.
@@ -131,3 +142,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Sonnet 5.5 | Claude Code | 2026-11-05 | README split (docs/BUILDING.md, docs/RELEASING.md), Install and comparison sections, Dependabot, cargo/npm audit workflow, PKGBUILD url and license |
 | Claude Opus 5.5 | Claude Code | 2026-11-06 | Dependabot PRs #11–#18 checked and merged (lopdf, pdfjs-dist, playwright-core, Actions); windows-core/webview2-com pinned to Tauri |
 | Claude Opus 5.5 | Claude Code | 2026-11-06 | Cloud Sync (WebDAV, S3, rclone for Google Drive / Proton Drive), Cloud sidebar tab, build-check workflow, README split into docs/ |
+| Claude Opus 5.5 | Claude Code | 2026-11-06 | Extensions (Preferences tab; Cloud Sync and Typing Test moved there), AI Writing Help (API key / local models, live checking, AI review tab, limits), MCP server and `--mcp` bridge, UI checks in scripts/checks |

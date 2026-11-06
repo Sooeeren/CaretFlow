@@ -65,10 +65,10 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
   command line.
 - **Files and folders**: sidebar with outline, file tree and folder search; quick open (`Ctrl+P`);
   command palette (`F1`).
-- **Cloud Sync (optional)** with your own server or storage: WebDAV (Nextcloud, NAS…), S3, or Google
-  Drive and Proton Drive through rclone.
 - **Four themes** (Paper, Sepia, Ink, Slate) plus custom CSS, focus, typewriter and zen modes.
-- **Typing test** (`Ctrl+Alt+T`) and optional extras: a live WPM meter and a typing cat.
+- **Extensions you add when you want them**: Cloud Sync with your own server, AI writing help with
+  the AI you choose, and a typing test. Until installed they stay out of your menus.
+- **Optional extras**: a live WPM meter and a typing cat (View menu).
 
 ## Writing check
 
@@ -84,7 +84,8 @@ suggestion, `Enter` applies the first one, and a clean document shows readabilit
 ![The Spelling & Grammar review panel in the Sepia theme](docs/screenshots/review.png)
 
 The checker is [Harper](https://writewithharper.com), which runs on your computer (English), or
-optionally [LanguageTool](https://languagetool.org) for 30+ more languages. More in
+optionally [LanguageTool](https://languagetool.org) for 30+ more languages. The **AI Writing Help**
+extension adds corrections and suggestions from the AI you choose. More in
 [docs/FEATURES.md](docs/FEATURES.md#writing-check).
 
 ## Looks
@@ -100,38 +101,29 @@ optionally [LanguageTool](https://languagetool.org) for 30+ more languages. More
   </tr>
 </table>
 
-## Typing test
+## Typing cat and WPM meter
 
-`Ctrl+Alt+T` opens a minimal speed test, by time or by word count, or on the text of the document
-you have open. Results show WPM, accuracy, consistency and a per-second chart.
-
-<table>
-  <tr>
-    <td><img src="docs/screenshots/typing.png" alt="Typing test in progress"></td>
-    <td><img src="docs/screenshots/results.png" alt="Typing test results with chart"></td>
-  </tr>
-</table>
-
-While writing, **View → Typing Speed (WPM)** shows your speed in the status bar and
-**View → Typing Cat** adds a small companion that taps along. Both are off by default.
+**View → Typing Speed (WPM)** shows your speed in the status bar and **View → Typing Cat** adds a
+small companion that taps along while you write. Both are off by default.
 
 ![The typing cat in the corner and the WPM meter in the status bar](docs/screenshots/bongo.png)
 
-## Cloud Sync
+## Extensions
 
-Keep a folder in sync between computers with storage **you** choose. CaretFlow has no servers or
-accounts of its own, and Cloud Sync stays off until you turn it on in Preferences → Cloud Sync.
+Bigger features come as extensions: they ship with CaretFlow, and you install them with one click
+in **Preferences → Extensions** (Settings → Extensions…). Until then they add no menus, tabs or
+settings, and their code never loads. Removing one keeps its settings.
 
-- **WebDAV**: Nextcloud, ownCloud, Synology/QNAP, pCloud, Koofr and any WebDAV server
-- **S3-compatible**: AWS, Backblaze B2, Cloudflare R2, Wasabi, MinIO
-- **Google Drive, Proton Drive, OneDrive, Dropbox** and more through your own [rclone](https://rclone.org) remotes
+![Preferences → Extensions](docs/screenshots/extensions.png)
 
-Changes go both ways; conflicts keep both versions, files a sync removes land in a sync trash, and
-CaretFlow asks before deleting many files at once. The **Cloud** tab in the sidebar (`Ctrl+Shift+4`)
-lists every file in the cloud by folder, with its sync state. Setup for each service:
-[docs/CLOUD-SYNC.md](docs/CLOUD-SYNC.md).
+| Extension | What it does |
+| --- | --- |
+| **Cloud Sync** | Keeps a folder in sync with storage **you** choose: WebDAV (Nextcloud, NAS…), S3-compatible (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through [rclone](https://rclone.org). A Cloud tab in the sidebar shows every file and its sync state. [Setup](docs/CLOUD-SYNC.md) |
+| **AI Writing Help** | Spelling, grammar and style suggestions from Claude, ChatGPT, Gemini, DeepSeek and others with your API key, or a model on your computer (Ollama, LM Studio), with limits you set. Or connect Claude Desktop, Cursor or VS Code over **MCP** to review your document. Nothing changes until you click Apply. [Details](docs/AI.md) · [MCP setup](docs/MCP.md) |
+| **Typing Test** | A minimal speed test by time or word count, or on your own document, with WPM, accuracy and a per-second chart. [Details](docs/FEATURES.md#typing-test-and-extras) |
 
-![The Cloud tab: files in the cloud by folder, with their sync state](docs/screenshots/cloud.png)
+CaretFlow has no servers or accounts of its own: Cloud Sync and AI Writing Help only talk to the
+services you set up, and only once you turn them on.
 
 ## Documentation
 
@@ -139,7 +131,9 @@ lists every file in the cloud by folder, with its sync state. Setup for each ser
 | --- | --- |
 | [Keyboard shortcuts](docs/SHORTCUTS.md) | Every default shortcut, by menu |
 | [Features in detail](docs/FEATURES.md) | Writing check, Vim, PDF export and preview, callouts, updates, command line |
+| [Extensions](docs/EXTENSIONS.md) | Installing and removing extensions, what each one adds |
 | [Cloud Sync](docs/CLOUD-SYNC.md) | Setting up WebDAV, S3 and rclone; how syncing works |
+| [AI Writing Help](docs/AI.md) · [MCP setup](docs/MCP.md) | Providers and keys, local models, every setting and limit; connecting your AI app |
 | [Notes](docs/NOTES.md) | Privacy and network access, platform notes, where files are stored |
 | [Building](docs/BUILDING.md) · [Releasing](docs/RELEASING.md) | For developers |
 
@@ -147,8 +141,6 @@ In the app, **Help → Markdown Guide** shows the Markdown syntax and **Shift+F1
 
 ## Roadmap & Planned Features
 
-* **Model Context Protocol (MCP) Support (Optional)**  
-  Enable modular connections to custom tools, local resources, and specialized agent workflows.
 * **Native Android Client**  
   A dedicated mobile app offering offline access, quick capture, and platform-native UI/UX.
 

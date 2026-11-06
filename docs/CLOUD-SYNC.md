@@ -5,7 +5,8 @@ your notes are the same on every computer you write on. It is **optional and off
 CaretFlow has no servers or accounts of its own, and nothing leaves your computer until you turn it
 on and choose where it goes.
 
-Turn it on in **Preferences → Cloud Sync** (also Settings → Cloud Sync…).
+Cloud Sync is an extension: install it in **Preferences → Extensions**, then turn it on in
+**Preferences → Cloud Sync** (also Settings → Cloud Sync…).
 
 ## Services
 

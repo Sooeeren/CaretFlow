@@ -221,6 +221,72 @@ const SCENES = {
       await settle(page, 600)
     },
   },
+  // Preferences → Extensions, for the README
+  extensions: {
+    open: 'Welcome.md',
+    settings: { theme: 'paper', extensions: ['cloud'] },
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("Extensions")')
+      await settle(page, 400)
+    },
+  },
+  // the AI Writing Help screenshots of the Extensions page: an AI answer comes from a stand-in
+  'ai-tab': {
+    webp: 'ai-1',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'paper', sidebar: false, extensions: ['ai'], aiEnabled: true, aiProvider: 'anthropic', aiModel: 'claude-sonnet-5-5', aiFixWhen: 'manual', aiRecWhen: 'manual', autocorrect: false },
+    setup: (page) =>
+      page.addInitScript(() => {
+        const answer = {
+          model: 'claude-sonnet-5-5',
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                findings: [
+                  { quote: 'in order to', replacement: 'to', kind: 'conciseness', message: '“In order to” says the same as “to”.' },
+                  { quote: 'it’s', replacement: 'its', kind: 'grammar', message: 'The possessive has no apostrophe.' },
+                ],
+              }),
+            },
+          ],
+          usage: { input_tokens: 412, output_tokens: 96 },
+        }
+        const b64 = (t) => btoa(String.fromCharCode(...new TextEncoder().encode(t)))
+        window.__stubExtra = {
+          cloud_http: async () => ({ status: 200, headers: [], body: b64(JSON.stringify(answer)) }),
+          secret_get: async () => 'key',
+          secret_set: async () => null,
+        }
+      }),
+    run: async (page) => {
+      await page.click('#wysiwyg .ProseMirror h1')
+      await key(page, 'End')
+      await key(page, 'Enter')
+      await key(page, 'Control+0')
+      await page.keyboard.type('We moved the meeting in order to give the team time to read the draft, and the draft has it’s own summary now.')
+      await key(page, 'F7')
+      await settle(page, 300)
+      await page.click('#wc-panel .wc-tab:nth-child(2)')
+      await page.click('#wc-panel button:has-text("Check paragraph")')
+      await settle(page, 1500)
+    },
+  },
+  'ai-prefs': {
+    webp: 'ai-2',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'paper', extensions: ['ai'], aiEnabled: true, aiProvider: 'anthropic', aiModel: 'claude-sonnet-5-5' },
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("AI")')
+      await settle(page, 800)
+    },
+  },
   about: {
     open: 'Welcome.md',
     settings: { theme: 'paper', sidebar: false },
