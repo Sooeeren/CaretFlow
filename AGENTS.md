@@ -124,3 +124,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | Issues #8/#9: drawn caret on Linux, no giant caret beside tables, Vim command line without scroll jumps, custom shortcuts (Preferences → Keyboard) |
 | Claude Opus 5.5 | Claude Code | 2026-11-04 | GitHub issue forms (bug report, feature request), README download link to the CaretFlow repo |
 | Claude Sonnet 5.5 | Claude Code | 2026-11-05 | README split (docs/BUILDING.md, docs/RELEASING.md), Install and comparison sections, Dependabot, cargo/npm audit workflow, PKGBUILD url and license |
+| Claude Opus 5.5 | Claude Code | 2026-11-06 | Dependabot PRs #11–#18 checked and merged (lopdf, pdfjs-dist, playwright-core, Actions); windows-core/webview2-com pinned to Tauri |
