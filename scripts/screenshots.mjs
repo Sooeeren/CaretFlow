@@ -9,7 +9,7 @@
 // The demo documents live in scripts/shots/demo/.
 import { createServer, preview } from 'vite'
 import { chromium } from 'playwright-core'
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -124,6 +124,7 @@ const SCENES = {
     },
   },
   typing: {
+    webp: 'typing-1',
     open: 'Welcome.md',
     settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
@@ -137,6 +138,7 @@ const SCENES = {
     },
   },
   results: {
+    webp: 'typing-2',
     open: 'Welcome.md',
     settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
@@ -162,6 +164,7 @@ const SCENES = {
     },
   },
   cloud: {
+    webp: 'cloud-1',
     open: 'Welcome.md',
     settings: {
       theme: 'paper',
@@ -195,6 +198,28 @@ const SCENES = {
         localStorage.setItem('folio.cloud', JSON.stringify({ id: `webdav|https://cloud.example.com/remote.php/dav/files/you/Notes|you|${dir}|notes`, files, local, remote, last: now - 4 * 60e3, error: null }))
         localStorage.setItem('folio.cloud.openDirs', JSON.stringify(['Journal', 'Projects', 'Projects/CaretFlow']))
       }, DEMO_DIR),
+  },
+  // only for the Extensions page (public/extensions/cloud-2.webp)
+  'cloud-prefs': {
+    webp: 'cloud-2',
+    only: true,
+    open: 'Welcome.md',
+    settings: {
+      theme: 'paper',
+      extensions: ['cloud'],
+      cloudEnabled: true,
+      cloudProvider: 'webdav',
+      cloudUrl: 'https://cloud.example.com/remote.php/dav/files/you/Notes',
+      cloudUser: 'you',
+      cloudLocal: DEMO_DIR,
+      cloudAuto: false,
+    },
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("Cloud Sync")')
+      await settle(page, 600)
+    },
   },
   about: {
     open: 'Welcome.md',
@@ -253,6 +278,25 @@ async function heroShot(browser, src, dest) {
   console.log('saved', dest)
 }
 
+/** Small WebP copies for the Extensions page (1280 px wide), encoded by the browser itself. */
+async function toWebp(browser, src, dest) {
+  mkdirSync(dirname(dest), { recursive: true })
+  const page = await browser.newPage()
+  const b64 = await page.evaluate(async (png) => {
+    const img = new Image()
+    img.src = 'data:image/png;base64,' + png
+    await img.decode()
+    const c = document.createElement('canvas')
+    c.width = 1280
+    c.height = Math.round((img.height * 1280) / img.width)
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
+    return c.toDataURL('image/webp', 0.72).split(',')[1]
+  }, readFileSync(src).toString('base64'))
+  writeFileSync(dest, Buffer.from(b64, 'base64'))
+  await page.close()
+  console.log('saved', dest)
+}
+
 // --built: serve the production build in dist/ (run `npx vite build` first) instead of the dev server
 const built = args.includes('--built')
 const server = built
@@ -264,7 +308,7 @@ const browser = await chromium.launch({ executablePath: findBrowser() })
 mkdirSync(outDir, { recursive: true })
 try {
   for (const [name, scene] of Object.entries(SCENES)) {
-    if (only.length && !only.includes(name)) continue
+    if (only.length ? !only.includes(name) : scene.only) continue
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5 })
     const page = await ctx.newPage()
     page.on('pageerror', (e) => console.log(`[${name}] page error:`, e.message))
@@ -290,6 +334,7 @@ try {
     console.log('saved', file)
     await ctx.close()
     if (name === 'editor') await heroShot(browser, file, join(outDir, 'hero.png'))
+    if (scene.webp) await toWebp(browser, file, join(root, 'public', 'extensions', scene.webp + '.webp'))
   }
 } finally {
   await browser.close()

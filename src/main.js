@@ -28,7 +28,7 @@ import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, 
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
-import { isInstalled } from './extensions.js'
+import { isInstalled, setInstalled, EXTENSIONS } from './extensions.js'
 import aiStats from './ai-stats.json'
 import { version as APP_VERSION } from '../package.json'
 
@@ -121,7 +121,8 @@ const FIRST_RUN = (() => {
     return false
   }
 })()
-const settings = { ...DEFAULTS, ...readJSON('folio.settings', {}) }
+const SAVED = readJSON('folio.settings', {}) // as stored, to tell what an older version didn't know yet
+const settings = { ...DEFAULTS, ...SAVED }
 let recent = readJSON('folio.recent', [])
 /** Is this extension installed? Things without an extension (id undefined) always are. */
 const extOn = (id) => !id || isInstalled(settings, id)
@@ -2373,6 +2374,21 @@ function applyCloudUi() {
 }
 
 /** After installing or removing an extension: shortcuts, tabs and background work follow. */
+/**
+ * Updating from 0.7.0, which had no extensions: Cloud Sync stays installed if it was on; the typing
+ * test doesn't (its personal bests stay saved). A one-time notice says where they went.
+ */
+function migrateExtensions() {
+  if (FIRST_RUN || 'extensions' in SAVED || settings.extNoticeSeen) return
+  settings.extensions = settings.cloudEnabled ? ['cloud'] : []
+  settings.extNoticeSeen = true
+  applyExtensions()
+  showNotice('Typing Test and Cloud Sync are now extensions: Settings → Extensions…', [
+    { label: 'Open Extensions', fn: () => (hideNotice(), openPrefs('extensions')) },
+    { label: 'OK', fn: () => hideNotice() },
+  ])
+}
+
 function applyExtensions() {
   applyKeybindings()
   applyCloudUi()
@@ -2553,10 +2569,12 @@ function openPrefs(section) {
 
   const PAGES = [
     ['general', 'General', [
+      el('p', { class: 'about-note ext-hint' }, 'More features (Cloud Sync, AI writing help, a typing test): ', el('button', { type: 'button', class: 'wc-link', onclick: () => show('extensions') }, 'Extensions…')),
       row('Reopen last file on startup', null, chk('reopenLast')),
       row('Check for updates automatically', 'On startup, ask GitHub whether a new version is out. Only the version file is downloaded; nothing is sent', chk('updateCheck')),
       row('Use system title bar', 'Off = CaretFlow draws its own title bar matching the theme', titlebar),
     ]],
+    ['extensions', 'Extensions', [extensionsPage()]],
     ['appearance', 'Appearance', [
       row('Theme', null, sel('theme', [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ['system', 'Follow system']], setTheme)),
       row('Document font', null, sel('font', [['auto', 'Theme default'], ['sans', 'Sans-serif'], ['serif', 'Serif'], ['mono', 'Monospace']])),
@@ -2635,8 +2653,117 @@ function openPrefs(section) {
     body: el('div', { class: 'prefs' }, nav, pages),
     wide: true,
     buttons: [{ label: 'Done', value: true, primary: true, cancel: true }],
-    onMount: (box) => box.classList.add('prefs-dialog'),
-  })
+    onMount: (box, done) => {
+      box.classList.add('prefs-dialog')
+      closePrefs = done
+    },
+  }).then(() => (closePrefs = null))
+}
+let closePrefs = null
+/** Rebuild Preferences on the same page (an extension added or removed a page). */
+function reopenPrefs(section) {
+  closePrefs?.(true)
+  openPrefs(section)
+}
+
+// ════════════════════════════════════════ Preferences → Extensions
+let extDetail = null // id shown in the detail view, kept across the rebuild after Install/Remove
+function extensionsPage() {
+  const box = el('div', { class: 'ext-page' })
+  const icon = (x) => {
+    const i = el('span', { class: 'ext-icon' })
+    i.innerHTML = x.icon // our own SVG from extensions.js
+    return i
+  }
+  const button = (x) => {
+    const on = extOn(x.id)
+    return el('button', { type: 'button', class: 'ext-act' + (on ? '' : ' primary'), onclick: (e) => (e.stopPropagation(), toggleExtension(x)) }, on ? 'Remove' : 'Install')
+  }
+  const grid = () => {
+    box.innerHTML = ''
+    box.append(el('p', { class: 'about-note' }, 'Optional features. They come with CaretFlow, so installing needs no download; until then they stay out of your menus and never load.'))
+    const g = el('div', { class: 'ext-grid' })
+    for (const x of EXTENSIONS) {
+      const card = el(
+        'div',
+        { class: 'ext-card' + (extOn(x.id) ? ' on' : ''), tabindex: '0', onclick: () => detail(x), onkeydown: (e) => e.key === 'Enter' && e.target === card && detail(x) },
+        el('div', { class: 'ext-top' }, icon(x), extOn(x.id) ? el('span', { class: 'ext-badge' }, 'Installed') : null),
+        el('div', { class: 'ext-name' }, x.name),
+        el('p', { class: 'ext-tag' }, x.tagline),
+        button(x),
+      )
+      g.append(card)
+    }
+    box.append(g)
+  }
+  const detail = (x) => {
+    extDetail = x.id
+    box.innerHTML = ''
+    let i = 0
+    const img = el('img', { src: x.shots[0], alt: `${x.name} screenshot` })
+    const dots = el('div', { class: 'ext-dots' })
+    const go = (n) => {
+      i = (n + x.shots.length) % x.shots.length
+      img.src = x.shots[i]
+      dots.querySelectorAll('button').forEach((d, k) => d.classList.toggle('on', k === i))
+    }
+    x.shots.forEach((_, k) => dots.append(el('button', { type: 'button', class: k ? '' : 'on', title: `Screenshot ${k + 1}`, onclick: () => go(k) })))
+    const shots = el(
+      'div',
+      { class: 'ext-shots', tabindex: '0', onkeydown: (e) => (e.key === 'ArrowLeft' ? go(i - 1) : e.key === 'ArrowRight' ? go(i + 1) : null) },
+      img,
+      el('button', { type: 'button', class: 'ext-prev', title: 'Previous', onclick: () => go(i - 1) }, '‹'),
+      el('button', { type: 'button', class: 'ext-next', title: 'Next', onclick: () => go(i + 1) }, '›'),
+    )
+    const after =
+      extOn(x.id) &&
+      {
+        cloud: ['Open Cloud Sync settings', () => reopenPrefs('cloud')],
+        ai: ['Open AI settings', () => reopenPrefs('ai')],
+        typing: ['Start the typing test', () => (closePrefs?.(true), typingTest())],
+      }[x.id]
+    box.append(
+      el('button', { type: 'button', class: 'ext-back wc-link', onclick: () => ((extDetail = null), grid()) }, '← Back'),
+      el('div', { class: 'ext-head' }, icon(x), el('div', {}, el('div', { class: 'ext-name' }, x.name), el('p', { class: 'ext-tag' }, x.tagline)), after ? el('button', { type: 'button', class: 'ext-after', onclick: after[1] }, after[0]) : '', button(x)),
+      el('div', { class: 'ext-detail' }, shots, dots),
+      el('p', { class: 'ext-desc' }, x.description),
+      el('h5', {}, 'What it adds'),
+      el('ul', { class: 'ext-adds' }, ...x.adds.map((a) => el('li', {}, a))),
+      el('h5', {}, 'Network'),
+      el('p', { class: 'ext-net' }, x.network),
+    )
+  }
+  const x = EXTENSIONS.find((e) => e.id === extDetail)
+  x ? detail(x) : grid()
+  return box
+}
+
+/** Install or remove an extension from the Extensions page. */
+async function toggleExtension(x) {
+  const on = extOn(x.id)
+  const busy = { cloud: () => settings.cloudEnabled, ai: () => settings.aiEnabled, typing: () => typingTestOpen() }[x.id]?.()
+  if (on && busy) {
+    const what = {
+      cloud: 'Sync stops; your files stay where they are.',
+      ai: 'AI checking and the MCP server stop.',
+      typing: 'The open typing test closes.',
+    }[x.id]
+    // the confirm takes Preferences' place in the modal; Preferences comes back afterwards
+    closePrefs?.(true)
+    const ok = await dialog({
+      title: `Remove ${x.name}?`,
+      body: `${what} Install it again any time; its settings are kept.`,
+      buttons: [
+        { label: 'Cancel', value: false, cancel: true },
+        { label: 'Remove', value: true, primary: true },
+      ],
+    })
+    if (!ok) return openPrefs('extensions')
+  }
+  setInstalled(settings, x.id, !on)
+  applyExtensions()
+  toast(on ? `${x.name} removed` : `${x.name} installed`)
+  reopenPrefs('extensions')
 }
 
 /** Preferences → Cloud Sync: built by cloud.js, which loads the first time the page is needed. */
@@ -3001,6 +3128,7 @@ const MENU = [
       k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
       k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
       k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled, ext: 'cloud' }),
+      k('Extensions…', null, () => openPrefs('extensions')),
       {
         label: 'Export / PDF Theme',
         sub: () =>
@@ -3858,6 +3986,7 @@ async function boot() {
     openPagePreview() // `folio --preview file.md`
   }
   if (args.includes('--about')) showAbout()
+  migrateExtensions()
   noteUpdated()
   setTimeout(startupUpdateCheck, 2500)
 }

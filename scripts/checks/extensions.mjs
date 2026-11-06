@@ -96,4 +96,90 @@ export const scenes = {
       summary()
     },
   },
+  'ext-tab': {
+    open: 'Welcome.md',
+    settings: { ...CLOUD, extensions: ['cloud'] },
+    // a server that never answers, so a sync is still running when Cloud Sync is removed
+    setup: (page) => stubBackend(page, { cloud_http: () => new Promise(() => {}), cloud_scan: () => [], cloud_secret_get: () => null }),
+    async run(page) {
+      const errors = []
+      page.on('pageerror', (e) => errors.push(e.message))
+      const openTab = async () => {
+        await page.keyboard.press('Control+,')
+        await wait(300)
+        await page.click('.prefs-nav button:has-text("Extensions")')
+        await wait(300)
+      }
+      await openTab()
+      const cards = await page.$$eval('.ext-card', (cs) => cs.map((c) => ({ name: c.querySelector('.ext-name').textContent, btn: c.querySelector('button.ext-act').textContent })))
+      check('three cards', cards.length === 3, JSON.stringify(cards))
+      check('Cloud Sync shows Remove, others Install', cards[0]?.btn === 'Remove' && cards[1]?.btn === 'Install' && cards[2]?.btn === 'Install', JSON.stringify(cards))
+      await page.click('.ext-card:nth-child(1) .ext-name')
+      await wait(300)
+      const detail = await page.evaluate(() => ({ imgs: document.querySelectorAll('.ext-dots button').length, back: !!document.querySelector('.ext-back'), net: document.querySelector('.ext-net')?.textContent || '' }))
+      check('detail view: screenshots, back button, network line', detail.imgs >= 2 && detail.back && /server/.test(detail.net), JSON.stringify(detail))
+      await page.click('.ext-back')
+      await wait(200)
+      await page.click('.ext-card:nth-child(2) button.ext-act')
+      await wait(400)
+      const typing = await page.evaluate(() => ({ ext: JSON.parse(localStorage.getItem('folio.settings')).extensions, btn: document.querySelector('.ext-card:nth-child(2) button.ext-act')?.textContent }))
+      check('install Typing Test', typing.ext.includes('typing') && typing.btn === 'Remove', JSON.stringify(typing))
+      await page.keyboard.press('Escape')
+      await wait(200)
+      await page.click('#menus .menu-root > button:has-text("View")')
+      const view = await page.$$eval('.menu-pop .menu-item .lbl', (xs) => xs.map((x) => x.textContent))
+      await page.mouse.click(700, 500)
+      check('Typing Test in View right after install', view.includes('Typing Test…'))
+
+      // remove Cloud Sync while a sync is running
+      page.evaluate(() => import('/src/cloud.js').then((m) => m.sync())).catch(() => {}) // never finishes
+      await wait(300)
+      await openTab()
+      await page.click('.ext-card:nth-child(1) button.ext-act')
+      await wait(300)
+      const confirm = await page.$eval('#modal h3', (h) => h.textContent).catch(() => '')
+      check('removing active Cloud Sync asks first', /Remove Cloud Sync/.test(confirm), confirm)
+      await page.click('#modal button:has-text("Remove")')
+      await wait(500)
+      const after = await page.evaluate(() => ({ ext: JSON.parse(localStorage.getItem('folio.settings')).extensions, tab: !document.querySelector('#tab-cloud').hidden, btn: !document.querySelector('#st-cloud').hidden }))
+      check('Cloud Sync removed mid-sync: gone, no errors', !after.ext.includes('cloud') && !after.tab && !after.btn && !errors.length, JSON.stringify({ ...after, errors }))
+      summary()
+    },
+  },
+  'ext-update': {
+    open: 'Welcome.md',
+    // settings saved by 0.7.0: no `extensions` key yet
+    settings: { cloudEnabled: true, cloudUrl: 'https://example.invalid/dav/Notes', cloudLocal: 'C:/Notes', cloudAuto: false },
+    setup: (page) => stubBackend(page, { cloud_secret_get: () => null }),
+    async run(page) {
+      const st = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')))
+      const notice = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
+      check('update keeps Cloud Sync installed (it was on)', JSON.stringify(st.extensions) === '["cloud"]', JSON.stringify(st.extensions))
+      check('one-time notice', /Settings → Extensions/.test(notice) && st.extNoticeSeen === true, notice)
+      await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('folio.settings'))
+        sessionStorage.setItem('test.override', JSON.stringify(s))
+      })
+      await page.reload()
+      await page.waitForSelector('#wysiwyg .ProseMirror')
+      await wait(800)
+      const again = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
+      check('notice shows only once', !/Extensions/.test(again), again)
+      summary()
+    },
+  },
+  'ext-fresh': {
+    open: 'Welcome.md',
+    settings: {},
+    // a first start: no saved settings at all
+    setup: (page) => page.addInitScript(() => localStorage.removeItem('folio.settings')),
+    async run(page) {
+      await wait(500)
+      const st = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings') || '{}'))
+      const notice = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
+      check('fresh install: nothing installed', JSON.stringify(st.extensions || []) === '[]', JSON.stringify(st.extensions))
+      check('fresh install: no notice', !/Extensions/.test(notice), notice)
+      summary()
+    },
+  },
 }

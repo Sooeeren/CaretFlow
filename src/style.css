@@ -1242,3 +1242,45 @@ button { font: inherit; color: inherit; }
 @container (max-width: 270px) {
   .sb-tabs button { font-size: 10.5px; letter-spacing: 0; padding-left: 2px; padding-right: 2px; }
 }
+
+/* Preferences → Extensions */
+.ext-hint { margin: 0 0 10px; }
+.ext-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 10px; }
+.ext-card {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg); cursor: pointer; outline: none; transition: border-color 0.15s;
+}
+.ext-card:hover, .ext-card:focus-visible { border-color: var(--accent); }
+.ext-card.on { background: var(--chrome-2); }
+.ext-top { display: flex; align-items: flex-start; justify-content: space-between; }
+.ext-icon { display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 9px; background: var(--accent-soft); color: var(--accent); flex: none; }
+.ext-badge { font-size: 11px; color: var(--accent); font-weight: 600; }
+.ext-name { font-weight: 600; color: var(--fg-strong); font-size: 14px; }
+.ext-tag { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; flex: 1; }
+.ext-page .ext-act, .ext-page .ext-after {
+  padding: 5px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; cursor: pointer;
+}
+.ext-page .ext-act:hover, .ext-page .ext-after:hover { border-color: var(--accent); }
+.ext-act { align-self: flex-start; margin-top: 4px; }
+.ext-page button.ext-act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ext-back { margin-bottom: 8px; }
+.ext-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ext-head > div { flex: 1; min-width: 0; }
+.ext-head .ext-act { margin: 0; align-self: center; }
+.ext-head .ext-after { align-self: center; }
+.ext-detail { margin-top: 14px; }
+.ext-shots { position: relative; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--chrome-2); aspect-ratio: 16 / 10; outline: none; }
+.ext-shots img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+.ext-shots .ext-prev, .ext-shots .ext-next {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--bg); color: var(--fg); font-size: 18px; line-height: 1; padding: 0; opacity: 0.85;
+}
+.ext-shots .ext-prev { left: 8px; }
+.ext-shots .ext-next { right: 8px; }
+.ext-dots { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.ext-dots button { width: 8px; height: 8px; padding: 0; border-radius: 50%; border: 0; background: var(--border); }
+.ext-dots button.on { background: var(--accent); }
+.ext-desc { line-height: 1.6; }
+.ext-page h5 { margin: 14px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.ext-adds { margin: 0; padding-left: 18px; line-height: 1.6; }
+.ext-net { margin: 0; }

@@ -721,7 +721,7 @@ export function stop() {
 export function statusButton(btn) {
   const draw = () => {
     const st = currentState()
-    btn.hidden = !s().cloudEnabled
+    btn.hidden = !started || !s().cloudEnabled // stopped = removed or turned off
     const pending = pendingCount()
     btn.classList.toggle('busy', busy)
     btn.classList.toggle('err', !!st.error && !busy)
