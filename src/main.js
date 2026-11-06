@@ -114,7 +114,7 @@ const DEFAULTS = {
   // AI Writing Help (ai.js, an extension): limits are deliberately careful by default
   aiEnabled: false,
   aiProvider: 'anthropic', // a preset id in ai.js PRESETS
-  aiBaseUrl: '', // empty = the preset's address
+  aiBaseUrls: {}, // provider id → address the user entered (custom and local servers); else the preset's
   aiModel: '',
   aiMaxOut: 400, // max output tokens per request
   aiMaxChars: 2000, // max text per request
@@ -2481,6 +2481,7 @@ function loadMcp() {
         return { text: selectedPlainText(), block: i >= 0 ? h.blocks()[i].text : '' }
       },
       writingIssues: currentIssues,
+      currentPath: () => S.path || null,
       plainText: () => blocks().map((b) => b.text).join('\n'),
     })
     registerSource(m.mcpSource)
@@ -2498,7 +2499,7 @@ function applyMcp() {
 /** AI findings appear or disappear with the extension and its on/off switch. */
 function applyAi() {
   if (extOn('ai') && settings.aiEnabled) loadAi().then(() => sourceChanged())
-  else if (aiP) sourceChanged()
+  else if (aiP) aiP.then((m) => (m.stop(), sourceChanged()))
 }
 
 /** After installing or removing an extension: shortcuts, tabs and background work follow. */

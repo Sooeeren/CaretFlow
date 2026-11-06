@@ -144,4 +144,61 @@ export const scenes = {
       summary()
     },
   },
+  'mcp-limits': {
+    open: 'Welcome.md',
+    settings: AI,
+    async setup(page) {
+      this.log = []
+      await stubBackend(page, backend(this.log))
+      await captureEvents(page)
+    },
+    async run(page) {
+      const log = this.log
+      let id = 100
+      const call = async (tool, args = {}, client = 'Claude Desktop') => {
+        const n = ++id
+        await page.evaluate(
+          ([n, tool, args, client]) => {
+            const l = window.__listens.find((x) => x.event === 'mcp-call')
+            window.__cbs[l.handler]({ event: 'mcp-call', id: n, payload: { id: n, client, tool, args } })
+          },
+          [n, tool, args, client],
+        )
+        for (let i = 0; i < 40; i++) {
+          const r = log.find((x) => x[0] === 'reply' && x[1].id === n)
+          if (r) return r[1]
+          await wait(100)
+        }
+        return null
+      }
+      await wait(1500)
+      // installing another extension must not restart the running server
+      const starts = () => log.filter((x) => x[0] === 'start').length
+      const s0 = starts()
+      await page.keyboard.press('Control+,')
+      await wait(300)
+      await page.click('.prefs-nav button:has-text("Extensions")')
+      await wait(200)
+      await page.click('.ext-card:nth-child(2) button.ext-act')
+      await wait(600)
+      await page.keyboard.press('Escape')
+      check('installing another extension leaves the MCP server alone', starts() === s0 && !log.some((x) => x[0] === 'stop'), `${starts() - s0} restarts`)
+
+      // at most 200 suggestions per app
+      const many = Array.from({ length: 250 }, () => ({ quote: 'the', replacement: 'THE' }))
+      const r = await call('add_suggestions', { suggestions: many })
+      check('at most 200 suggestions per app', r?.result?.placed === 200 && r?.result?.skipped === 50, JSON.stringify(r?.result))
+      await wait(2500)
+      const here = await page.$$eval('#wysiwyg .wc-ai-rec, #wysiwyg .wc-ai-fix', (xs) => xs.length)
+      check('suggestions show in this document', here > 0, `${here}`)
+      // open another file: the suggestions were for Welcome.md, not for it
+      await page.click('.sb-tabs button[data-tab="files"]')
+      await wait(300)
+      await page.click('#tree .tree-row:has-text("Draft")')
+      await wait(2500)
+      const there = await page.$$eval('#wysiwyg .wc-ai-rec, #wysiwyg .wc-ai-fix', (xs) => xs.length)
+      check('suggestions stay with their document', there === 0, `${there}`)
+      summary()
+    },
+  },
 }

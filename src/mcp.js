@@ -9,8 +9,9 @@ let ctx // { settings, saveSettings, el, toast, showNotice, hideNotice, doc(), s
 const s = () => ctx.settings
 const TOKEN_KEY = 'mcp:token'
 let unlisten = null
-let started = false
+let started = '' // 'port|token' the server is running with
 let lastError = ''
+const MAX_PER_APP = 200 // suggestions one app can have open at once
 const seenClients = new Set()
 // suggestions from AI apps: { client, quote, replacement, message, kind }
 let suggestions = []
@@ -32,12 +33,15 @@ async function token(fresh = false) {
 /** Start the server (MCP turned on, AI Writing Help installed). Returns an error message or ''. */
 export async function startMcp() {
   if (!unlisten) unlisten = await listen('mcp-call', (e) => answer(e.payload))
+  const t = await token()
+  const want = `${+s().mcpPort}|${t}`
+  if (started === want) return '' // already running like this: a restart would drop the connected apps
   try {
-    await invoke('mcp_start', { port: +s().mcpPort, token: await token() })
-    started = true
+    await invoke('mcp_start', { port: +s().mcpPort, token: t })
+    started = want
     lastError = ''
   } catch (e) {
-    started = false
+    started = ''
     lastError = String(e)
   }
   return lastError
@@ -45,7 +49,7 @@ export async function startMcp() {
 
 export async function stopMcp() {
   if (started) await invoke('mcp_stop').catch(() => {})
-  started = false
+  started = ''
   unlisten?.()
   unlisten = null
   suggestions = []
@@ -55,6 +59,7 @@ export async function stopMcp() {
 
 async function newToken() {
   await invoke('mcp_stop').catch(() => {})
+  started = ''
   await token(true)
   return startMcp()
 }
@@ -102,15 +107,19 @@ const TOOLS = {
   add_suggestions({ suggestions: list }, client) {
     if (!Array.isArray(list)) throw new Error('suggestions must be a list')
     const text = ctx.plainText()
+    const path = ctx.currentPath()
+    let room = MAX_PER_APP - suggestions.filter((x) => x.client === client && x.path === path).length
     let placed = 0
     let skipped = 0
     for (const x of list) {
-      if (!x || typeof x.quote !== 'string' || !x.quote || x.quote === (x.replacement ?? '') || !text.includes(x.quote)) {
+      if (room <= 0 || !x || typeof x.quote !== 'string' || !x.quote.trim() || x.quote === (x.replacement ?? '') || !text.includes(x.quote)) {
         skipped++
         continue
       }
-      suggestions.push({ client, quote: x.quote, replacement: String(x.replacement ?? ''), message: String(x.message || ''), kind: String(x.kind || 'suggestion').toLowerCase() })
+      // a suggestion belongs to the document it was made for
+      suggestions.push({ client, path, quote: x.quote, replacement: String(x.replacement ?? ''), message: String(x.message || ''), kind: String(x.kind || 'suggestion').toLowerCase() })
       placed++
+      room--
     }
     ctx.onChange()
     return { placed, skipped }
@@ -129,11 +138,12 @@ const label = (client, kind) => `${client} · ${kind.replace(/^./, (c) => c.toUp
 
 export const mcpSource = {
   id: 'mcp',
-  active: () => !!ctx?.installed?.() && suggestions.length > 0,
+  active: () => !!ctx?.installed?.() && suggestions.some((x) => x.path === ctx.currentPath()),
   issues(blocks) {
+    const here = suggestions.filter((x) => x.path === ctx.currentPath())
     return blocks.map((b) => {
       const out = []
-      for (const x of suggestions) {
+      for (const x of here) {
         const start = b.text.indexOf(x.quote)
         if (start < 0 || (b.masks || []).some(([a, z]) => start < z && start + x.quote.length > a)) continue
         out.push({

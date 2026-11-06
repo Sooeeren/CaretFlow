@@ -27,8 +27,9 @@ export const PRESETS = [
   ['custom', 'Other OpenAI-compatible server', { format: 'openai', base: '', key: false }],
 ]
 export const preset = (id = s().aiProvider) => (PRESETS.find((p) => p[0] === id) || PRESETS[0])[2]
-/** The API base: the preset's, unless the user entered one (custom servers, local ports, proxies). */
-export const baseUrl = () => (s().aiBaseUrl || preset().base).replace(/\/+$/, '')
+/** The API base: the preset's, unless the user entered one for this provider (custom server, local port).
+ *  Kept per provider, so an address typed for Ollama never receives a cloud provider's API key. */
+export const baseUrl = () => ((s().aiBaseUrls || {})[s().aiProvider] || preset().base).replace(/\/+$/, '')
 export const secretKey = (id = s().aiProvider) => 'ai:' + id
 
 export class AiError extends Error {
@@ -192,6 +193,7 @@ const queued = new Set()
 const queue = []
 let inflight = 0
 let pollTimer = null
+let waitingLeave = false // a paragraph waits for the cursor to leave it (writing.js tells us)
 let baseline = new Set()
 let lastView = null
 let lastTexts = new Set()
@@ -275,23 +277,35 @@ function observe(texts, info) {
     return
   }
   lastTexts = new Set(texts)
-  let waiting = false
+  let nextDue = Infinity
+  waitingLeave = false
   texts.forEach((t, i) => {
     if (baseline.has(t) || t.replace(/\[code\]/g, '').trim().length < +s().aiMinChars || t.length > +s().aiMaxChars) return
     const due = features().filter((f) => {
       if (f.when === 'manual') return false
       const k = keyOf(f.id, t)
       if (cache.has(k) || failed.has(k) || queued.has(k)) return false
-      const ready = info.idle >= +s().aiPause * 1000 && (f.when === 'pause' || i !== info.caretBlock)
-      if (!ready) waiting = true
-      return ready
+      const left = f.when === 'pause' || i !== info.caretBlock
+      const wait = +s().aiPause * 1000 - info.idle
+      if (left && wait <= 0) return true
+      if (left) nextDue = Math.min(nextDue, wait)
+      else waitingLeave = true // no timer: the cursor moving away brings it back
+      return false
     })
     if (due.length) enqueue(t, s().aiContext ? texts[i - 1] || '' : '', due.map((f) => f.id))
   })
-  // nothing happens in the editor while you pause or move the caret: look again shortly
+  // a paragraph becomes due when the pause is over: one timer for the earliest one
   clearTimeout(pollTimer)
-  if (waiting) pollTimer = setTimeout(() => onChange(), 1000)
+  if (nextDue < Infinity) pollTimer = setTimeout(() => onChange(), nextDue + 50)
   pump()
+}
+
+/** AI turned off or removed: drop everything that hasn't been sent yet. */
+export function stop() {
+  for (const j of queue.splice(0)) for (const f of j.feats) queued.delete(keyOf(f, j.text))
+  clearTimeout(pollTimer)
+  waitingLeave = false
+  paused = null
 }
 
 function enqueue(text, prev, feats, force = false) {
@@ -300,6 +314,7 @@ function enqueue(text, prev, feats, force = false) {
 }
 
 function pump() {
+  if (!aiSource.active()) return stop()
   while (inflight < Math.max(1, +s().aiParallel) && queue.length) {
     const job = queue[0]
     const b = budget()
@@ -549,7 +564,16 @@ function statusText() {
   return st.last ? 'AI: ' + st.last : ''
 }
 
-Object.assign(aiSource, { panel, menuExtras, statusText })
+/** A few characters for the status bar: checking, paused, or a problem. */
+function statusBadge() {
+  const st = status()
+  if (st.paused) return 'AI paused'
+  if (st.checking) return 'AI…'
+  if (/failed|could not/.test(st.last) && Date.now() - (statusLog.at(-1)?.at || 0) < 10 * 60000) return 'AI ⚠'
+  return ''
+}
+
+Object.assign(aiSource, { panel, menuExtras, statusText, statusBadge, wantsCaret: () => waitingLeave })
 /** Edit → AI: Check Paragraph / Check Document, for menus and shortcuts. */
 export const commands = { checkCaret, checkAll }
 
@@ -667,7 +691,12 @@ export function prefsPage(row) {
 
   // connection
   const keyRow = row('API key', 'Stored on this computer only, outside the editor’s storage', secretInput())
-  const urlRow = row('Address', 'The server’s OpenAI-compatible API, e.g. http://localhost:11434/v1', text('aiBaseUrl', { placeholder: 'http://localhost:11434/v1', width: 300 }))
+  const urlInput = el('input', { type: 'text', spellcheck: 'false', style: 'width:300px;max-width:100%' })
+  urlInput.onchange = () => {
+    st.aiBaseUrls = { ...(st.aiBaseUrls || {}), [st.aiProvider]: urlInput.value.trim() }
+    changed()
+  }
+  const urlRow = row('Address', 'The server’s OpenAI-compatible API, e.g. http://localhost:11434/v1', urlInput)
   const models = el('datalist', { id: 'ai-models' })
   const model = text('aiModel', { placeholder: 'e.g. claude-sonnet-5-5, gpt-5-mini, llama3.2' })
   model.setAttribute('list', 'ai-models')
@@ -715,6 +744,8 @@ export function prefsPage(row) {
     const p = preset()
     const local = !p.base || /localhost/.test(p.base)
     urlRow.hidden = !local
+    urlInput.value = (st.aiBaseUrls || {})[st.aiProvider] || ''
+    urlInput.placeholder = p.base || 'http://localhost:8080/v1'
     keyRow.hidden = local && st.aiProvider !== 'custom'
     keyRow.querySelector('input').refresh?.()
     result.textContent = ''

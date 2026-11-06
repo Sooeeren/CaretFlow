@@ -46,7 +46,7 @@ export function aiBackend(secrets = {}) {
 }
 
 // the AI defaults from main.js DEFAULTS (the app always merges them into settings)
-const AI_DEFAULTS = { aiProvider: 'anthropic', aiBaseUrl: '', aiModel: '', aiMaxOut: 400, aiMaxChars: 2000, aiPerHour: 30, aiPerDay: 150, aiTokensDay: 100000, aiTemperature: 0.2, aiParallel: 1 }
+const AI_DEFAULTS = { aiProvider: 'anthropic', aiBaseUrls: {}, aiModel: '', aiMaxOut: 400, aiMaxChars: 2000, aiPerHour: 30, aiPerDay: 150, aiTokensDay: 100000, aiTemperature: 0.2, aiParallel: 1 }
 const AI = (o) => ({ ...AI_DEFAULTS, extensions: ['ai'], aiEnabled: true, aiModel: 'm1', ...o })
 
 export const scenes = {
@@ -70,7 +70,7 @@ export const scenes = {
           },
           [settings, fn.toString()],
         )
-      let r = await call(AI({ aiProvider: 'custom', aiBaseUrl: oa.url + '/v1' }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 400 }))
+      let r = await call(AI({ aiProvider: 'custom', aiBaseUrls: { custom: oa.url + '/v1' } }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 400 }))
       const q = oa.seen.at(-1)
       check('OpenAI format: endpoint', q?.url === '/v1/chat/completions', q?.url)
       check('OpenAI format: bearer key', q?.headers.authorization === 'Bearer k', q?.headers.authorization)
@@ -78,20 +78,20 @@ export const scenes = {
       check('OpenAI format: system + user', q?.body.messages[0].role === 'system' && q?.body.messages[1].content === 'U')
       check('OpenAI format: text and usage', r.text === 'hello' && r.inTokens === 50 && r.outTokens === 10, JSON.stringify(r))
 
-      r = await call(AI({ aiProvider: 'anthropic', aiBaseUrl: an.url + '/v1' }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 300 }))
+      r = await call(AI({ aiProvider: 'anthropic', aiBaseUrls: { anthropic: an.url + '/v1' } }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 300 }))
       const a = an.seen.at(-1)
       check('Anthropic format: endpoint and headers', a?.url === '/v1/messages' && a.headers['x-api-key'] === 'k' && a.headers['anthropic-version'] === '2023-06-01', JSON.stringify(a?.headers))
       check('Anthropic format: system field', a?.body.system === 'S' && a.body.max_tokens === 300 && a.body.messages[0].content === 'U', JSON.stringify(a?.body))
       check('Anthropic format: text and usage', r.text === 'hi' && r.inTokens === 40, JSON.stringify(r))
 
       const before = oa.seen.length
-      await call(AI({ aiProvider: 'ollama', aiBaseUrl: oa.url + '/v1' }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 50 }))
+      await call(AI({ aiProvider: 'ollama', aiBaseUrls: { ollama: oa.url + '/v1' } }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 50 }))
       check('local server: request made, no key sent', oa.seen.length === before + 1 && !oa.seen.at(-1)?.headers.authorization)
 
-      r = await call(AI({ aiProvider: 'custom', aiBaseUrl: oa.url + '/v1', aiModel: 'busy' }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 50 }).then(() => 'no error', (e) => ({ name: e.name, status: e.status, msg: e.message })))
+      r = await call(AI({ aiProvider: 'custom', aiBaseUrls: { custom: oa.url + '/v1' }, aiModel: 'busy' }), async (m) => m.complete({ system: 'S', user: 'U', maxTokens: 50 }).then(() => 'no error', (e) => ({ name: e.name, status: e.status, msg: e.message })))
       check('HTTP 429 becomes AiError', r.name === 'AiError' && r.status === 429 && /Rate limit/.test(r.msg), JSON.stringify(r))
 
-      r = await call(AI({ aiProvider: 'custom', aiBaseUrl: oa.url + '/v1' }), async (m) => m.listModels())
+      r = await call(AI({ aiProvider: 'custom', aiBaseUrls: { custom: oa.url + '/v1' } }), async (m) => m.listModels())
       check('model list', JSON.stringify(r) === '["m1","m2"]', JSON.stringify(r))
 
       r = await call(AI({ aiPerHour: 30 }), async (m) => {
@@ -136,7 +136,7 @@ export const scenes = {
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
         const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
         localStorage.removeItem('folio.ai.usage')
       }, this.srv.url + '/v1')
     },
@@ -239,7 +239,7 @@ export const scenes = {
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
         const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
       }, this.srv.url + '/v1')
     },
     async run(page) {
@@ -262,7 +262,7 @@ export const scenes = {
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
         const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
       }, this.srv.url + '/v1')
     },
     async run(page) {
@@ -293,7 +293,7 @@ export const scenes = {
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
         const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
         localStorage.removeItem('folio.ai.usage')
       }, this.srv.url + '/v1')
     },
@@ -403,7 +403,7 @@ export const scenes = {
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
         const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
         localStorage.removeItem('folio.ai.usage')
       }, this.srv.url + '/v1')
     },

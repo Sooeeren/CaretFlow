@@ -52,8 +52,14 @@ function opened(view, blocks) {
 /** A source has new findings (or was turned on or off): redraw. */
 export function sourceChanged() {
   if (!on()) return clearAll()
+  publish()
   refresh(0)
 }
+/** The cursor moved: a source waiting for it to leave a paragraph looks again. */
+function caretMoved() {
+  if (sources.some((src) => src.active() && src.wantsCaret?.())) refresh(200)
+}
+const sameIssues = (a, b) => a.length === b.length && a.every((x, i) => x.id === b[i].id && x.to === b[i].to && x.message === b[i].message && x.source === b[i].source)
 
 // ════════════════════════════════════════ engine + cache
 let engine = null
@@ -372,7 +378,8 @@ async function run() {
       again = true
       return
     }
-    ad.setIssues(found)
+    if (!sameIssues(found, ad.issues())) ad.setIssues(found)
+    else publish()
   } catch (e) {
     if (engineState !== 'error') H.log?.('writing check failed', e)
     publish()
@@ -471,6 +478,7 @@ export const writingPlugin = () =>
       return {
         update(v, prev) {
           if (v.state.doc !== prev.doc) refresh()
+          else if (!v.state.selection.eq(prev.selection)) caretMoved()
           const st = pmKey.getState(v.state)
           if (st.issues !== issues && H.mode() !== 'source') {
             issues = st.issues
@@ -558,6 +566,7 @@ export function writingSourceExtension() {
         }
         update(u) {
           if (u.docChanged) refresh()
+          else if (u.selectionSet) caretMoved()
           const st = u.state.field(cmField)
           if (st.issues !== issues && H.mode() === 'source') {
             issues = st.issues
@@ -773,6 +782,8 @@ function publish() {
           : 'No spelling or grammar issues (F7)'
     const extra = panelSource()?.statusText?.()
     if (extra) statusEl.title += '\n' + extra
+    const badge = panelSource()?.statusBadge?.()
+    if (badge) statusEl.textContent += ' · ' + badge
   }
   if (panel && !panel.hidden) renderPanel()
 }

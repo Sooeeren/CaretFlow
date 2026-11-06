@@ -231,6 +231,36 @@ fn respond(stream: &mut TcpStream, status: u16, extra: &[(&str, &str)], body: &s
 struct Running {
     port: u16,
     stop: Arc<AtomicBool>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+/// Accept connections on 127.0.0.1:port in a thread until `stop` is set; each one goes to `on_conn`.
+fn spawn_listener(port: u16, on_conn: impl Fn(TcpStream) + Send + 'static) -> std::io::Result<(Arc<AtomicBool>, std::thread::JoinHandle<()>)> {
+    let listener = TcpListener::bind(("127.0.0.1", port))?;
+    let stop = Arc::new(AtomicBool::new(false));
+    let flag = stop.clone();
+    let thread = std::thread::spawn(move || {
+        for conn in listener.incoming() {
+            if flag.load(Ordering::SeqCst) {
+                break;
+            }
+            if let Ok(s) = conn {
+                on_conn(s);
+            }
+        }
+        // the listener closes here, so the port is free once the thread has ended
+    });
+    Ok((stop, thread))
+}
+
+/// Stop the listener and wait until its port is free again (a restart binds the same port).
+fn stop_listener(port: u16, stop: &AtomicBool, thread: Option<std::thread::JoinHandle<()>>) {
+    stop.store(true, Ordering::SeqCst);
+    // wake the accept loop so it sees the stop flag
+    let woke = TcpStream::connect_timeout(&std::net::SocketAddr::from(([127, 0, 0, 1], port)), Duration::from_secs(1)).is_ok();
+    if let (true, Some(t)) = (woke, thread) {
+        let _ = t.join();
+    }
 }
 
 fn running() -> &'static Mutex<Option<Running>> {
@@ -273,14 +303,11 @@ struct CallEvent {
     args: Value,
 }
 
-fn serve(app: tauri::AppHandle, listener: TcpListener, token: String, stop: Arc<AtomicBool>) {
-    for conn in listener.incoming() {
-        if stop.load(Ordering::SeqCst) {
-            break;
-        }
-        let Ok(mut stream) = conn else { continue };
+/// One connection: check it, answer it (in its own thread, so a slow tool call blocks no one else).
+fn serve(app: &tauri::AppHandle, mut stream: TcpStream, token: &str) {
+    {
         let app = app.clone();
-        let token = token.clone();
+        let token = token.to_string();
         std::thread::spawn(move || {
             let Some(req) = read_request(&mut stream) else { return };
             let h = |k: &str| req.headers.get(k).map(|s| s.as_str());
@@ -333,9 +360,9 @@ pub fn mcp_start(app: tauri::AppHandle, port: u16, token: String) -> Result<(), 
     if token.len() < 16 {
         return Err("the token is too short".into());
     }
-    let listener = TcpListener::bind(("127.0.0.1", port)).map_err(|e| format!("Port {port} is in use or not allowed ({e}). Choose another port."))?;
-    let stop = Arc::new(AtomicBool::new(false));
-    *running().lock().unwrap() = Some(Running { port, stop: stop.clone() });
+    let tok = token.clone();
+    let (stop, thread) = spawn_listener(port, move |s| serve(&app, s, &tok)).map_err(|e| format!("Port {port} is in use or not allowed ({e}). Choose another port."))?;
+    *running().lock().unwrap() = Some(Running { port, stop, thread: Some(thread) });
     if let Some(f) = bridge_file() {
         if let Some(d) = f.parent() {
             let _ = std::fs::create_dir_all(d);
@@ -347,16 +374,14 @@ pub fn mcp_start(app: tauri::AppHandle, port: u16, token: String) -> Result<(), 
             let _ = std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o600));
         }
     }
-    std::thread::spawn(move || serve(app, listener, token, stop));
     Ok(())
 }
 
 #[tauri::command]
 pub fn mcp_stop() {
-    if let Some(r) = running().lock().unwrap().take() {
-        r.stop.store(true, Ordering::SeqCst);
-        // wake the accept loop so it sees the stop flag
-        let _ = TcpStream::connect(("127.0.0.1", r.port));
+    let r = running().lock().unwrap().take();
+    if let Some(mut r) = r {
+        stop_listener(r.port, &r.stop, r.thread.take());
         if let Some(f) = bridge_file() {
             let _ = std::fs::remove_file(f);
         }
@@ -545,6 +570,16 @@ mod tests {
     fn unknown_method() {
         let r = run(json!({"jsonrpc":"2.0","id":10,"method":"resources/list"})).unwrap();
         assert_eq!(r["error"]["code"], -32601);
+    }
+
+    #[test]
+    fn the_port_is_free_again_right_after_stopping() {
+        // find a free port, then start, stop and start again on it
+        let port = TcpListener::bind(("127.0.0.1", 0)).unwrap().local_addr().unwrap().port();
+        let (stop, thread) = spawn_listener(port, |_| {}).expect("first start");
+        stop_listener(port, &stop, Some(thread));
+        let (stop, thread) = spawn_listener(port, |_| {}).expect("restart on the same port");
+        stop_listener(port, &stop, Some(thread));
     }
 
     #[test]
