@@ -35,6 +35,11 @@ export function blockHelpers() {
   return ad && { blocks: () => ad.blocks(), caretBlock: () => checkContext(ad, ad.blocks()).caretBlock }
 }
 
+/** What the spelling checker found in the open document (for MCP's get_writing_issues). */
+export function currentIssues() {
+  return (adapter()?.issues() || []).filter((x) => !x.source).map((x) => ({ quote: x.problem, kind: x.kind, message: x.message }))
+}
+
 /** main.js loaded a file (or a reload from disk) into the editor: that text isn't new writing. */
 export function documentLoaded() {
   const ad = adapter()

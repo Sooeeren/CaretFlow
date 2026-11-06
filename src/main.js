@@ -25,7 +25,7 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
-import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel } from './writing.js'
+import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
@@ -2455,8 +2455,44 @@ const aiCmd = (fn) => async () => {
 /** Preferences → AI: built by ai.js, which loads the first time it's needed (no network). */
 function aiPrefs(row) {
   const box = el('div', {}, el('p', { class: 'about-note' }, 'Loading…'))
-  loadAi().then((m) => box.replaceWith(m.prefsPage(row)))
+  Promise.all([loadAi(), loadMcp()]).then(([m]) => box.replaceWith(m.prefsPage(row)))
   return box
+}
+
+// ════════════════════════════════════════ MCP (mcp.js + Rust mcp.rs, part of AI Writing Help)
+let mcpP = null
+function loadMcp() {
+  mcpP ||= Promise.all([import('./mcp.js'), loadAi()]).then(([m, ai]) => {
+    const blocks = () => blockHelpers()?.blocks() || []
+    m.initMcp({
+      settings,
+      saveSettings,
+      el,
+      toast,
+      showNotice,
+      hideNotice,
+      installed: () => extOn('ai'),
+      onChange: sourceChanged,
+      openGuide: () => ai.openSetupGuide(),
+      doc: () => ({ path: S.path || null, title: S.path ? P.basename(S.path) : firstHeading() || 'Untitled', markdown: currentText(), selection: { text: selectedPlainText() } }),
+      selection: () => {
+        const h = blockHelpers()
+        const i = h ? h.caretBlock() : -1
+        return { text: selectedPlainText(), block: i >= 0 ? h.blocks()[i].text : '' }
+      },
+      writingIssues: currentIssues,
+      plainText: () => blocks().map((b) => b.text).join('\n'),
+    })
+    registerSource(m.mcpSource)
+    ai.setMcpSection(m.prefsSection)
+    return m
+  })
+  return mcpP
+}
+/** The MCP server runs while AI Writing Help is installed and MCP is turned on. */
+function applyMcp() {
+  if (extOn('ai') && settings.mcpEnabled) loadMcp().then((m) => m.startMcp())
+  else mcpP?.then((m) => m.stopMcp())
 }
 
 /** AI findings appear or disappear with the extension and its on/off switch. */
@@ -2470,6 +2506,7 @@ function applyExtensions() {
   applyKeybindings()
   applyCloudUi()
   applyAi()
+  applyMcp()
   if (!extOn('typing') && typingTestOpen()) ttMod.closeTypingTest()
   saveSettings()
 }
@@ -2820,7 +2857,7 @@ function extensionsPage() {
 /** Install or remove an extension from the Extensions page. */
 async function toggleExtension(x) {
   const on = extOn(x.id)
-  const busy = { cloud: () => settings.cloudEnabled, ai: () => settings.aiEnabled, typing: () => typingTestOpen() }[x.id]?.()
+  const busy = { cloud: () => settings.cloudEnabled, ai: () => settings.aiEnabled || settings.mcpEnabled, typing: () => typingTestOpen() }[x.id]?.()
   if (on && busy) {
     const what = {
       cloud: 'Sync stops; your files stay where they are.',
@@ -4031,6 +4068,7 @@ async function boot() {
   applyTitlebar()
   applyCloudUi()
   applyAi()
+  applyMcp()
   setTab(settings.sidebarTab)
 
   const args = await invoke('cli_args').catch(() => [])

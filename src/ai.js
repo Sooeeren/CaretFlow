@@ -791,7 +791,7 @@ export function prefsPage(row) {
     row('Temperature', '0 = most predictable', num('aiTemperature', 0, 1, 0.1)),
     row('Usage', 'Counted from the provider’s answers', el('span', {}, usageOut, ' ', resetBtn)),
     sub('MCP server', 'Let your AI app (Claude Desktop, Cursor, VS Code…) read the open document and send suggestions'),
-    mcpSection ? mcpSection(row) : el('p', { class: 'about-note' }, 'Loading…'),
+    mcpSection ? mcpSection(row) : el('p', { class: 'about-note' }, 'Not available'),
   )
   showProvider()
   return page
