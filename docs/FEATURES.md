@@ -1,7 +1,8 @@
 # Features in detail
 
 The [README](../README.md) gives the overview; this page has the details. For shortcuts see
-[SHORTCUTS.md](SHORTCUTS.md), for Cloud Sync [CLOUD-SYNC.md](CLOUD-SYNC.md).
+[SHORTCUTS.md](SHORTCUTS.md); for the extensions [EXTENSIONS.md](EXTENSIONS.md),
+[CLOUD-SYNC.md](CLOUD-SYNC.md) and [AI.md](AI.md).
 
 ## Writing check
 
@@ -17,6 +18,7 @@ optional style hints. Right-click a marked word to fix it, ignore it or add it t
 | **AutoCorrect** | Fixes common typos while you type (*teh* → *the*, *dont* → *don't*, *i* → *I*). `Backspace` right after a fix undoes it. |
 | **Markdown-aware** | Code, inline code, math, links and file names are skipped, in both the rendered and the source view. |
 | **Settings** | Preferences → Writing: engine, language, style hints, custom dictionary, rules you turned off. |
+| **AI** | The AI Writing Help extension adds findings from the AI you choose, in the same menu and in an AI tab of the review panel ([AI.md](AI.md)). |
 
 ## Vim mode
 
@@ -58,7 +60,7 @@ folder next to the document (Preferences → Editing).
 
 ## Typing test and extras
 
-`Ctrl+Alt+T` opens a minimal speed test: 15 to 120 seconds or 10 to 100 words, with optional
+The typing test is an extension: install it in Preferences → Extensions. Then `Ctrl+Alt+T` opens a minimal speed test: 15 to 120 seconds or 10 to 100 words, with optional
 punctuation and numbers, or practice on the text of the document you have open. Results show WPM,
 accuracy, raw speed, consistency and a per-second chart, and personal bests are kept.
 

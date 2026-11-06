@@ -398,7 +398,7 @@ async function backend() {
   const st = s()
   const p = st.cloudProvider
   if (p === 'rclone') return rclone({ remote: st.rcloneRemote, exe: st.rclonePath })
-  const secret = (await invoke('cloud_secret_get', { key: secretKey(p) }).catch(() => null)) || ''
+  const secret = (await invoke('secret_get', { key: secretKey(p) }).catch(() => null)) || ''
   if (p === 's3') return s3({ endpoint: st.s3Endpoint, region: st.s3Region, bucket: st.s3Bucket, prefix: st.s3Prefix, accessKey: st.s3AccessKey, secretKey: secret })
   if (!st.cloudUrl) throw new CloudError('Enter the WebDAV address of your cloud folder.')
   return webdav({ url: st.cloudUrl, user: st.cloudUser, pass: secret })
@@ -671,39 +671,57 @@ async function runSync(st, summary, auto) {
 
 // ════════════════════════════════════════ automatic sync
 let timer = null
-const afterSave = (() => {
-  let t
-  return () => {
-    clearTimeout(t)
-    t = setTimeout(() => sync({ auto: true }), 4000)
-  }
-})()
+let saveTimer = null
+let started = false
+let startedOnce = false // the startup sync runs once per session, not on every reinstall
+const afterSave = () => {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => sync({ auto: true }), 4000)
+}
+const onOnline = () => s().cloudAuto && configured() && sync({ auto: true })
 
 /** Called by main.js after CaretFlow saved, created or renamed a file. */
 export function noteSaved(path) {
-  if (s().cloudAuto && configured() && path && P.isInside(path, s().cloudLocal)) afterSave()
+  if (started && s().cloudAuto && configured() && path && P.isInside(path, s().cloudLocal)) afterSave()
 }
 
 export function settingsChanged() {
   clearInterval(timer)
   timer = null
   const min = +s().cloudInterval
-  if (configured() && min > 0) timer = setInterval(() => sync({ auto: true }), min * 60000)
+  if (started && configured() && min > 0) timer = setInterval(() => sync({ auto: true }), min * 60000)
   emit()
 }
 
 export function initCloud(c) {
   ctx = c
+}
+
+/** Start the automatic syncs (Cloud Sync installed and turned on); the first start syncs once. */
+export function start() {
+  if (started) return
+  const first = !startedOnce
+  started = startedOnce = true
   settingsChanged()
-  if (s().cloudAuto && configured()) setTimeout(() => sync({ auto: true }), 3000)
-  addEventListener('online', () => s().cloudAuto && configured() && sync({ auto: true }))
+  addEventListener('online', onOnline)
+  if (first && s().cloudAuto && configured()) setTimeout(() => started && sync({ auto: true }), 3000)
+}
+
+/** Stop everything automatic (the extension was removed or sync turned off). A running sync finishes. */
+export function stop() {
+  started = false
+  clearInterval(timer)
+  timer = null
+  clearTimeout(saveTimer)
+  removeEventListener('online', onOnline)
+  emit()
 }
 
 // ════════════════════════════════════════ status bar button
 export function statusButton(btn) {
   const draw = () => {
     const st = currentState()
-    btn.hidden = !s().cloudEnabled
+    btn.hidden = !started || !s().cloudEnabled // stopped = removed or turned off
     const pending = pendingCount()
     btn.classList.toggle('busy', busy)
     btn.classList.toggle('err', !!st.error && !busy)
@@ -1005,11 +1023,11 @@ export function prefsPage(row) {
     })
   const secret = (p) => {
     const i = el('input', { type: 'password', placeholder: '', spellcheck: 'false', autocomplete: 'off', style: 'width:260px;max-width:100%' })
-    invoke('cloud_secret_get', { key: secretKey(p) })
+    invoke('secret_get', { key: secretKey(p) })
       .then((v) => (i.placeholder = v ? '•••••••• (saved)' : ''))
       .catch(() => {})
     i.onchange = async () => {
-      await invoke('cloud_secret_set', { key: secretKey(p), value: i.value })
+      await invoke('secret_set', { key: secretKey(p), value: i.value })
       i.placeholder = i.value ? '•••••••• (saved)' : ''
       i.value = ''
       ctx.toast(i.placeholder ? 'Saved' : 'Removed')

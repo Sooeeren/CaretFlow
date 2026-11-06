@@ -25,9 +25,11 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
+import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
+import { isInstalled, setInstalled, EXTENSIONS } from './extensions.js'
 import aiStats from './ai-stats.json'
 import { version as APP_VERSION } from '../package.json'
 
@@ -99,7 +101,7 @@ const DEFAULTS = {
   s3Region: 'us-east-1',
   s3Bucket: '',
   s3Prefix: '',
-  s3AccessKey: '', // the secret key and passwords live in Rust's cloud-secrets.json, not here
+  s3AccessKey: '', // the secret key and passwords live in Rust's secrets.json, not here
   rcloneRemote: '', // e.g. 'gdrive:Notes'
   rclonePath: '',
   cloudLocal: '', // the local folder that is kept in sync
@@ -109,6 +111,36 @@ const DEFAULTS = {
   cloudInterval: 15, // minutes, 0 = off
   cloudDeletes: true, // deletions reach the other side (local ones go to the sync trash)
   cloudConflict: 'both', // 'both' | 'local' | 'remote'
+  // AI Writing Help (ai.js, an extension): limits are deliberately careful by default
+  aiEnabled: false,
+  aiProvider: 'anthropic', // a preset id in ai.js PRESETS
+  aiBaseUrls: {}, // provider id → address the user entered (custom and local servers); else the preset's
+  aiModel: '',
+  aiMaxOut: 400, // max output tokens per request
+  aiMaxChars: 2000, // max text per request
+  aiPerHour: 30,
+  aiPerDay: 150,
+  aiTokensDay: 100000,
+  aiTemperature: 0.2,
+  aiParallel: 1,
+  aiFix: true, // AI spelling & grammar
+  aiFixWhen: 'leave', // 'leave' (a paragraph you finished) | 'pause' | 'manual'
+  aiFixLevel: 'balanced', // 'relaxed' | 'balanced' | 'strict'
+  aiRec: true, // recommendations
+  aiRecWhen: 'leave',
+  aiRecLevel: 'balanced',
+  aiRecAspects: ['clarity', 'concise', 'words'], // + 'tone', 'structure', 'consistency'
+  aiTone: '', // '' | 'neutral' | 'formal' | 'friendly' | 'academic' | 'technical'
+  aiLanguage: 'auto',
+  aiInstructions: '',
+  aiContext: true, // send the paragraph before as context
+  aiPause: 4, // seconds of not typing before a paragraph is sent
+  aiMinChars: 30, // shorter paragraphs are never sent
+  aiGuideBanner: true, // "Need help setting up MCP?" at the top of Preferences → AI
+  mcpEnabled: false, // the local MCP server (mcp.js / mcp.rs)
+  mcpPort: 38457,
+  extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
+  extNoticeSeen: false, // the one-time "these are extensions now" notice after updating from 0.7.0
 }
 // No saved settings yet: CaretFlow's very first start (shows the welcome page)
 const FIRST_RUN = (() => {
@@ -118,8 +150,11 @@ const FIRST_RUN = (() => {
     return false
   }
 })()
-const settings = { ...DEFAULTS, ...readJSON('folio.settings', {}) }
+const SAVED = readJSON('folio.settings', {}) // as stored, to tell what an older version didn't know yet
+const settings = { ...DEFAULTS, ...SAVED }
 let recent = readJSON('folio.recent', [])
+/** Is this extension installed? Things without an extension (id undefined) always are. */
+const extOn = (id) => !id || isInstalled(settings, id)
 
 function readJSON(k, d) {
   try {
@@ -575,6 +610,7 @@ async function loadText(text, { keepScroll = false } = {}) {
     S.baseline = crepe.getMarkdown()
   }
   S.dirty = false
+  documentLoaded()
   scroller.scrollTop = keepScroll ? top : 0
   updateTitle()
   scheduleDocInfo(true)
@@ -2349,7 +2385,7 @@ function loadCloud() {
   return cloudP
 }
 function cloudSaved(path) {
-  if (settings.cloudEnabled) loadCloud().then((m) => m.noteSaved(path))
+  if (extOn('cloud') && settings.cloudEnabled) loadCloud().then((m) => m.noteSaved(path))
 }
 async function cloudSyncNow() {
   if (!settings.cloudEnabled) return openPrefs('cloud')
@@ -2357,11 +2393,123 @@ async function cloudSyncNow() {
 }
 /** Show the Cloud tab and status-bar button only while Cloud Sync is on. */
 function applyCloudUi() {
-  const on = settings.cloudEnabled
+  const on = extOn('cloud') && settings.cloudEnabled
   $('#tab-cloud').hidden = !on
   $('#st-cloud').hidden = !on
-  if (on) loadCloud()
-  else if (settings.sidebarTab === 'cloud') setTab('files')
+  if (on) loadCloud().then((m) => m.start())
+  else {
+    cloudP?.then((m) => m.stop())
+    if (settings.sidebarTab === 'cloud') setTab('files')
+  }
+}
+
+/** After installing or removing an extension: shortcuts, tabs and background work follow. */
+/**
+ * Updating from 0.7.0, which had no extensions: Cloud Sync stays installed if it was on; the typing
+ * test doesn't (its personal bests stay saved). A one-time notice says where they went.
+ */
+function migrateExtensions() {
+  if (FIRST_RUN || 'extensions' in SAVED || settings.extNoticeSeen) return
+  settings.extensions = settings.cloudEnabled ? ['cloud'] : []
+  settings.extNoticeSeen = true
+  applyExtensions()
+  showNotice('Typing Test and Cloud Sync are now extensions: Settings → Extensions…', [
+    { label: 'Open Extensions', fn: () => (hideNotice(), openPrefs('extensions')) },
+    { label: 'OK', fn: () => hideNotice() },
+  ])
+}
+
+// ════════════════════════════════════════ AI Writing Help (ai.js, loaded once installed and turned on)
+let aiP = null
+function loadAi() {
+  aiP ||= import('./ai.js').then((m) => {
+    m.initAi({
+      settings,
+      saveSettings,
+      log,
+      toast,
+      el,
+      dialog,
+      customSelect,
+      installed: () => extOn('ai'),
+      openOptions: () => openPrefs('ai'),
+      openDoc: (md) => (closePrefs?.(true), openBuiltin(md)),
+      aiToggled: applyAi,
+    })
+    m.setOnChange(sourceChanged)
+    registerSource(m.aiSource)
+    return m
+  })
+  return aiP
+}
+/** Edit → AI commands: they need AI Writing Help turned on and set up. */
+const aiCmd = (fn) => async () => {
+  if (!settings.aiEnabled) {
+    toast('Turn on AI writing help first (Preferences → AI)', 2600)
+    return openPrefs('ai')
+  }
+  const m = await loadAi()
+  const h = blockHelpers()
+  if (h) fn(m, h)
+}
+/** Preferences → AI: built by ai.js, which loads the first time it's needed (no network). */
+function aiPrefs(row) {
+  const box = el('div', {}, el('p', { class: 'about-note' }, 'Loading…'))
+  Promise.all([loadAi(), loadMcp()]).then(([m]) => box.replaceWith(m.prefsPage(row)))
+  return box
+}
+
+// ════════════════════════════════════════ MCP (mcp.js + Rust mcp.rs, part of AI Writing Help)
+let mcpP = null
+function loadMcp() {
+  mcpP ||= Promise.all([import('./mcp.js'), loadAi()]).then(([m, ai]) => {
+    const blocks = () => blockHelpers()?.blocks() || []
+    m.initMcp({
+      settings,
+      saveSettings,
+      el,
+      toast,
+      showNotice,
+      hideNotice,
+      installed: () => extOn('ai'),
+      onChange: sourceChanged,
+      openGuide: () => ai.openSetupGuide(),
+      doc: () => ({ path: S.path || null, title: S.path ? P.basename(S.path) : firstHeading() || 'Untitled', markdown: currentText(), selection: { text: selectedPlainText() } }),
+      selection: () => {
+        const h = blockHelpers()
+        const i = h ? h.caretBlock() : -1
+        return { text: selectedPlainText(), block: i >= 0 ? h.blocks()[i].text : '' }
+      },
+      writingIssues: currentIssues,
+      currentPath: () => S.path || null,
+      plainText: () => blocks().map((b) => b.text).join('\n'),
+    })
+    registerSource(m.mcpSource)
+    ai.setMcpSection(m.prefsSection)
+    return m
+  })
+  return mcpP
+}
+/** The MCP server runs while AI Writing Help is installed and MCP is turned on. */
+function applyMcp() {
+  if (extOn('ai') && settings.mcpEnabled) loadMcp().then((m) => m.startMcp())
+  else mcpP?.then((m) => m.stopMcp())
+}
+
+/** AI findings appear or disappear with the extension and its on/off switch. */
+function applyAi() {
+  if (extOn('ai') && settings.aiEnabled) loadAi().then(() => sourceChanged())
+  else if (aiP) aiP.then((m) => (m.stop(), sourceChanged()))
+}
+
+/** After installing or removing an extension: shortcuts, tabs and background work follow. */
+function applyExtensions() {
+  applyKeybindings()
+  applyCloudUi()
+  applyAi()
+  applyMcp()
+  if (!extOn('typing') && typingTestOpen()) ttMod.closeTypingTest()
+  saveSettings()
 }
 
 function applyReadonly() {
@@ -2472,6 +2620,7 @@ function focusEditor() {
 let ttMod = null
 const typingTestOpen = () => !!ttMod?.isOpen()
 async function typingTest() {
+  if (!extOn('typing')) return
   ttMod ||= await import('./typingtest.js')
   if (ttMod.isOpen()) return ttMod.closeTypingTest()
   closeMenus()
@@ -2536,10 +2685,12 @@ function openPrefs(section) {
 
   const PAGES = [
     ['general', 'General', [
+      el('p', { class: 'about-note ext-hint' }, 'More features (Cloud Sync, AI writing help, a typing test): ', el('button', { type: 'button', class: 'wc-link', onclick: () => show('extensions') }, 'Extensions…')),
       row('Reopen last file on startup', null, chk('reopenLast')),
       row('Check for updates automatically', 'On startup, ask GitHub whether a new version is out. Only the version file is downloaded; nothing is sent', chk('updateCheck')),
       row('Use system title bar', 'Off = CaretFlow draws its own title bar matching the theme', titlebar),
     ]],
+    ['extensions', 'Extensions', [extensionsPage()]],
     ['appearance', 'Appearance', [
       row('Theme', null, sel('theme', [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ['system', 'Follow system']], setTheme)),
       row('Document font', null, sel('font', [['auto', 'Theme default'], ['sans', 'Sans-serif'], ['serif', 'Serif'], ['mono', 'Monospace']])),
@@ -2565,11 +2716,12 @@ function openPrefs(section) {
     ]],
     ['keys', 'Keyboard', [keyboardPrefs()]],
     ['writing', 'Writing', [writingPrefs(row, chk, sel)]],
+    extOn('ai') ? ['ai', 'AI', [aiPrefs(row)]] : null,
     ['typing', 'Typing', [
       row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
       row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
     ]],
-    ['cloud', 'Cloud Sync', [cloudPrefs(row)]],
+    extOn('cloud') ? ['cloud', 'Cloud Sync', [cloudPrefs(row)]] : null,
     ['export', 'Export', [
       row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
     ]],
@@ -2591,7 +2743,7 @@ function openPrefs(section) {
       localStorage.setItem('folio.prefsPage', id)
     } catch {}
   }
-  for (const [id, label, rows] of PAGES) {
+  for (const [id, label, rows] of PAGES.filter(Boolean)) {
     const btn = el('button', { type: 'button', onclick: () => show(id) }, label)
     const page = el('div', { class: 'prefs-page' }, el('h4', {}, label), ...rows)
     tabs[id] = { btn, page }
@@ -2618,8 +2770,117 @@ function openPrefs(section) {
     body: el('div', { class: 'prefs' }, nav, pages),
     wide: true,
     buttons: [{ label: 'Done', value: true, primary: true, cancel: true }],
-    onMount: (box) => box.classList.add('prefs-dialog'),
-  })
+    onMount: (box, done) => {
+      box.classList.add('prefs-dialog')
+      closePrefs = done
+    },
+  }).then(() => (closePrefs = null))
+}
+let closePrefs = null
+/** Rebuild Preferences on the same page (an extension added or removed a page). */
+function reopenPrefs(section) {
+  closePrefs?.(true)
+  openPrefs(section)
+}
+
+// ════════════════════════════════════════ Preferences → Extensions
+let extDetail = null // id shown in the detail view, kept across the rebuild after Install/Remove
+function extensionsPage() {
+  const box = el('div', { class: 'ext-page' })
+  const icon = (x) => {
+    const i = el('span', { class: 'ext-icon' })
+    i.innerHTML = x.icon // our own SVG from extensions.js
+    return i
+  }
+  const button = (x) => {
+    const on = extOn(x.id)
+    return el('button', { type: 'button', class: 'ext-act' + (on ? '' : ' primary'), onclick: (e) => (e.stopPropagation(), toggleExtension(x)) }, on ? 'Remove' : 'Install')
+  }
+  const grid = () => {
+    box.innerHTML = ''
+    box.append(el('p', { class: 'about-note' }, 'Optional features. They come with CaretFlow, so installing needs no download; until then they stay out of your menus and never load.'))
+    const g = el('div', { class: 'ext-grid' })
+    for (const x of EXTENSIONS) {
+      const card = el(
+        'div',
+        { class: 'ext-card' + (extOn(x.id) ? ' on' : ''), tabindex: '0', onclick: () => detail(x), onkeydown: (e) => e.key === 'Enter' && e.target === card && detail(x) },
+        el('div', { class: 'ext-top' }, icon(x), extOn(x.id) ? el('span', { class: 'ext-badge' }, 'Installed') : null),
+        el('div', { class: 'ext-name' }, x.name),
+        el('p', { class: 'ext-tag' }, x.tagline),
+        button(x),
+      )
+      g.append(card)
+    }
+    box.append(g)
+  }
+  const detail = (x) => {
+    extDetail = x.id
+    box.innerHTML = ''
+    let i = 0
+    const img = el('img', { src: x.shots[0], alt: `${x.name} screenshot` })
+    const dots = el('div', { class: 'ext-dots' })
+    const go = (n) => {
+      i = (n + x.shots.length) % x.shots.length
+      img.src = x.shots[i]
+      dots.querySelectorAll('button').forEach((d, k) => d.classList.toggle('on', k === i))
+    }
+    x.shots.forEach((_, k) => dots.append(el('button', { type: 'button', class: k ? '' : 'on', title: `Screenshot ${k + 1}`, onclick: () => go(k) })))
+    const shots = el(
+      'div',
+      { class: 'ext-shots', tabindex: '0', onkeydown: (e) => (e.key === 'ArrowLeft' ? go(i - 1) : e.key === 'ArrowRight' ? go(i + 1) : null) },
+      img,
+      el('button', { type: 'button', class: 'ext-prev', title: 'Previous', onclick: () => go(i - 1) }, '‹'),
+      el('button', { type: 'button', class: 'ext-next', title: 'Next', onclick: () => go(i + 1) }, '›'),
+    )
+    const after =
+      extOn(x.id) &&
+      {
+        cloud: ['Open Cloud Sync settings', () => reopenPrefs('cloud')],
+        ai: ['Open AI settings', () => reopenPrefs('ai')],
+        typing: ['Start the typing test', () => (closePrefs?.(true), typingTest())],
+      }[x.id]
+    box.append(
+      el('button', { type: 'button', class: 'ext-back wc-link', onclick: () => ((extDetail = null), grid()) }, '← Back'),
+      el('div', { class: 'ext-head' }, icon(x), el('div', {}, el('div', { class: 'ext-name' }, x.name), el('p', { class: 'ext-tag' }, x.tagline)), after ? el('button', { type: 'button', class: 'ext-after', onclick: after[1] }, after[0]) : '', button(x)),
+      el('div', { class: 'ext-detail' }, shots, dots),
+      el('p', { class: 'ext-desc' }, x.description),
+      el('h5', {}, 'What it adds'),
+      el('ul', { class: 'ext-adds' }, ...x.adds.map((a) => el('li', {}, a))),
+      el('h5', {}, 'Network'),
+      el('p', { class: 'ext-net' }, x.network),
+    )
+  }
+  const x = EXTENSIONS.find((e) => e.id === extDetail)
+  x ? detail(x) : grid()
+  return box
+}
+
+/** Install or remove an extension from the Extensions page. */
+async function toggleExtension(x) {
+  const on = extOn(x.id)
+  const busy = { cloud: () => settings.cloudEnabled, ai: () => settings.aiEnabled || settings.mcpEnabled, typing: () => typingTestOpen() }[x.id]?.()
+  if (on && busy) {
+    const what = {
+      cloud: 'Sync stops; your files stay where they are.',
+      ai: 'AI checking and the MCP server stop.',
+      typing: 'The open typing test closes.',
+    }[x.id]
+    // the confirm takes Preferences' place in the modal; Preferences comes back afterwards
+    closePrefs?.(true)
+    const ok = await dialog({
+      title: `Remove ${x.name}?`,
+      body: `${what} Install it again any time; its settings are kept.`,
+      buttons: [
+        { label: 'Cancel', value: false, cancel: true },
+        { label: 'Remove', value: true, primary: true },
+      ],
+    })
+    if (!ok) return openPrefs('extensions')
+  }
+  setInstalled(settings, x.id, !on)
+  applyExtensions()
+  toast(on ? `${x.name} removed` : `${x.name} installed`)
+  reopenPrefs('extensions')
 }
 
 /** Preferences → Cloud Sync: built by cloud.js, which loads the first time the page is needed. */
@@ -2698,6 +2959,7 @@ function keyboardPrefs() {
     const rows = []
     let group = null
     for (const a of ACTIONS) {
+      if (!extOn(a.ext)) continue
       if (q && !`${a.group} ${a.label} ${a.keys || ''}`.toLowerCase().includes(q)) continue
       if (a.group !== group) rows.push(el('div', { class: 'kb-group' }, (group = a.group)))
       const custom = a.id in kb()
@@ -2827,7 +3089,7 @@ const MENU = [
       k('Open…', 'Ctrl+O', openFileDialog),
       k('Open Folder…', 'Ctrl+Shift+O', openFolderDialog),
       k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
-      k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync' }),
+      k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync', ext: 'cloud' }),
       k('Quick Open…', 'Ctrl+P', () => quickOpen()),
       { label: 'Open Recent', sub: () => recentMenu() },
       '-',
@@ -2872,7 +3134,11 @@ const MENU = [
       }),
       '-',
       k('Spelling & Grammar…', 'F7', toggleWritingPanel),
-      k('Next Spelling or Grammar Issue', 'Alt+F7', nextIssueMenu),
+      k('Next Spelling or Grammar Issue', 'Alt+F7', () => nextIssueMenu()),
+      k('AI: Check Paragraph', 'Ctrl+Alt+K', aiCmd((m, h) => m.commands.checkCaret(h)), { ext: 'ai' }),
+      k('AI: Check Document', null, aiCmd((m, h) => m.commands.checkAll(h)), { ext: 'ai' }),
+      k('AI: Next Suggestion', 'Shift+Alt+F7', aiCmd(() => nextIssueMenu(true)), { ext: 'ai' }),
+      k('AI: Review Panel', null, aiCmd(() => openAiPanel()), { ext: 'ai' }),
       '-',
       k('Read-only Mode', 'Ctrl+Shift+R', toggleReadonly, { checked: () => S.readonly }),
     ],
@@ -2928,7 +3194,7 @@ const MENU = [
       k('Outline', 'Ctrl+Shift+1', showTab('outline')),
       k('Files', 'Ctrl+Shift+2', showTab('files')),
       k('Search', 'Ctrl+Shift+3', showTab('search')),
-      k('Cloud Files', 'Ctrl+Shift+4', () => (settings.cloudEnabled ? showTab('cloud')() : openPrefs('cloud'))),
+      k('Cloud Files', 'Ctrl+Shift+4', () => (settings.cloudEnabled ? showTab('cloud')() : openPrefs('cloud')), { ext: 'cloud' }),
       '-',
       k('Focus Mode', 'F8', toggle('focus'), { checked: () => settings.focus }),
       k('Typewriter Mode', 'F9', toggle('typewriter'), { checked: () => settings.typewriter }),
@@ -2943,7 +3209,7 @@ const MENU = [
       k('Full Screen', 'F11', toggleFullscreen),
       k('Page Preview', 'Ctrl+Alt+L', togglePagePreview, { checked: () => pagePreviewOpen() }),
       '-',
-      k('Typing Test…', 'Ctrl+Alt+T', typingTest),
+      k('Typing Test…', 'Ctrl+Alt+T', typingTest, { ext: 'typing' }),
       k('Typing Speed (WPM)', null, toggle('wpm'), { checked: () => settings.wpm }),
       k('Typing Cat', null, toggle('bongo'), { checked: () => settings.bongo }),
       '-',
@@ -2982,7 +3248,8 @@ const MENU = [
       k('Check for Updates Automatically', null, toggle('updateCheck'), { checked: () => settings.updateCheck }),
       k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
       k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
-      k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled }),
+      k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled, ext: 'cloud' }),
+      k('Extensions…', null, () => openPrefs('extensions')),
       {
         label: 'Export / PDF Theme',
         sub: () =>
@@ -3010,6 +3277,7 @@ const MENU = [
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       k('Customize Shortcuts…', null, () => openPrefs('keys')),
+      k('AI Setup Guide', null, () => loadAi().then((m) => m.openSetupGuide()), { ext: 'ai' }),
       '-',
       k('Check for Updates…', null, () => checkUpdates(true)),
       k('About CaretFlow', null, showAbout),
@@ -3082,6 +3350,7 @@ function buildMenubar() {
 function buildPop(items) {
   const pop = el('div', { class: 'menu-pop' })
   for (const it of typeof items === 'function' ? items() : items) {
+    if (it.ext && !extOn(it.ext)) continue
     if (it === '-') {
       pop.append(el('div', { class: 'menu-sep' }))
       continue
@@ -3258,10 +3527,11 @@ function applyKeybindings() {
   for (const a of ACTIONS) a.keys = a.id in kb ? kb[a.id] || null : a.defaultKeys
   KEYMAP.clear()
   // Undo/Redo are left to the editors unless the user gave them other keys
-  for (const a of ACTIONS) if (a.keys && !(a.native && a.keys === a.defaultKeys)) KEYMAP.set(canon(a.keys), a.fn)
+  // commands of extensions that aren't installed get no keys (their custom shortcuts are kept)
+  for (const a of ACTIONS) if (extOn(a.ext) && a.keys && !(a.native && a.keys === a.defaultKeys)) KEYMAP.set(canon(a.keys), a.fn)
   // A default the user moved or removed does nothing, also where the editor has the same key
   // built in (Ctrl+B in Milkdown): otherwise removing a shortcut wouldn't remove it
-  for (const a of ACTIONS) if (a.defaultKeys && a.keys !== a.defaultKeys && !KEYMAP.has(canon(a.defaultKeys))) KEYMAP.set(canon(a.defaultKeys), () => {})
+  for (const a of ACTIONS) if (extOn(a.ext) && a.defaultKeys && a.keys !== a.defaultKeys && !KEYMAP.has(canon(a.defaultKeys))) KEYMAP.set(canon(a.defaultKeys), () => {})
   // Zoom on every layout: Shift+= gives '+' on US keyboards; German ones have their own + key
   // (Shift gives '*') and - key (Shift gives '_'), which never match Ctrl+Shift+= / Ctrl+Shift+-
   const unchanged = (id) => !(id in kb)
@@ -3413,7 +3683,7 @@ function wireLanguagePicker() {
 function showShortcuts() {
   const grid = el('div', { class: 'keys-grid' })
   for (const m of MENU) {
-    const acts = m.items.filter((i) => typeof i === 'object' && i.keys)
+    const acts = m.items.filter((i) => typeof i === 'object' && i.keys && extOn(i.ext))
     if (!acts.length) continue
     grid.append(el('h4', {}, m.label))
     for (const a of acts) grid.append(el('span', {}, a.label), el('kbd', {}, a.keys))
@@ -3521,6 +3791,7 @@ function renderPalette() {
     if (!q) rows.sort((a, b) => b.score - a.score)
   } else {
     for (const a of ACTIONS) {
+      if (!extOn(a.ext)) continue
       const label = `${a.group}: ${a.label}`
       const m = fuzzy(q, label)
       if (!m) continue
@@ -3797,6 +4068,8 @@ async function boot() {
   wireTitlebar()
   applyTitlebar()
   applyCloudUi()
+  applyAi()
+  applyMcp()
   setTab(settings.sidebarTab)
 
   const args = await invoke('cli_args').catch(() => [])
@@ -3837,6 +4110,7 @@ async function boot() {
     openPagePreview() // `folio --preview file.md`
   }
   if (args.includes('--about')) showAbout()
+  migrateExtensions()
   noteUpdated()
   setTimeout(startupUpdateCheck, 2500)
 }

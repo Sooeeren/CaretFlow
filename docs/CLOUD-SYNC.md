@@ -5,7 +5,8 @@ your notes are the same on every computer you write on. It is **optional and off
 CaretFlow has no servers or accounts of its own, and nothing leaves your computer until you turn it
 on and choose where it goes.
 
-Turn it on in **Preferences → Cloud Sync** (also Settings → Cloud Sync…).
+Cloud Sync is an extension: install it in **Preferences → Extensions**, then turn it on in
+**Preferences → Cloud Sync** (also Settings → Cloud Sync…).
 
 ## Services
 
@@ -113,7 +114,7 @@ red when a sync failed (hover for the reason).
 ## Privacy
 
 Your files go only to the server or storage you set up. Passwords and keys are stored in
-`cloud-secrets.json` in CaretFlow's config folder (readable only by your user), not in the editor's
+`secrets.json` in CaretFlow's config folder (readable only by your user), not in the editor's
 web storage. With rclone, CaretFlow never sees your login: rclone keeps it in its own config.
 Files are not encrypted by CaretFlow; use HTTPS, and a service you trust or an encrypted rclone
 remote ([crypt](https://rclone.org/crypt/)) if you need encryption at rest.

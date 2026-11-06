@@ -9,7 +9,7 @@
 // The demo documents live in scripts/shots/demo/.
 import { createServer, preview } from 'vite'
 import { chromium } from 'playwright-core'
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -124,8 +124,9 @@ const SCENES = {
     },
   },
   typing: {
+    webp: 'typing-1',
     open: 'Welcome.md',
-    settings: { theme: 'ink', sidebar: false },
+    settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
       await page.evaluate(() => localStorage.setItem('folio.typing.cfg', JSON.stringify({ mode: 'time', time: 30, punct: false, nums: false })))
       await key(page, 'Control+Alt+T')
@@ -137,8 +138,9 @@ const SCENES = {
     },
   },
   results: {
+    webp: 'typing-2',
     open: 'Welcome.md',
-    settings: { theme: 'ink', sidebar: false },
+    settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
       await page.evaluate(() => localStorage.setItem('folio.typing.cfg', JSON.stringify({ mode: 'words', words: 25, punct: false, nums: false })))
       await key(page, 'Control+Alt+T')
@@ -162,11 +164,13 @@ const SCENES = {
     },
   },
   cloud: {
+    webp: 'cloud-1',
     open: 'Welcome.md',
     settings: {
       theme: 'paper',
       sidebarTab: 'cloud',
       sidebarWidth: 300,
+      extensions: ['cloud'],
       cloudEnabled: true,
       cloudProvider: 'webdav',
       cloudUrl: 'https://cloud.example.com/remote.php/dav/files/you/Notes',
@@ -194,6 +198,94 @@ const SCENES = {
         localStorage.setItem('folio.cloud', JSON.stringify({ id: `webdav|https://cloud.example.com/remote.php/dav/files/you/Notes|you|${dir}|notes`, files, local, remote, last: now - 4 * 60e3, error: null }))
         localStorage.setItem('folio.cloud.openDirs', JSON.stringify(['Journal', 'Projects', 'Projects/CaretFlow']))
       }, DEMO_DIR),
+  },
+  // only for the Extensions page (public/extensions/cloud-2.webp)
+  'cloud-prefs': {
+    webp: 'cloud-2',
+    only: true,
+    open: 'Welcome.md',
+    settings: {
+      theme: 'paper',
+      extensions: ['cloud'],
+      cloudEnabled: true,
+      cloudProvider: 'webdav',
+      cloudUrl: 'https://cloud.example.com/remote.php/dav/files/you/Notes',
+      cloudUser: 'you',
+      cloudLocal: DEMO_DIR,
+      cloudAuto: false,
+    },
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("Cloud Sync")')
+      await settle(page, 600)
+    },
+  },
+  // Preferences → Extensions, for the README
+  extensions: {
+    open: 'Welcome.md',
+    settings: { theme: 'paper', extensions: ['cloud'] },
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("Extensions")')
+      await settle(page, 400)
+    },
+  },
+  // the AI Writing Help screenshots of the Extensions page: an AI answer comes from a stand-in
+  'ai-tab': {
+    webp: 'ai-1',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'paper', sidebar: false, extensions: ['ai'], aiEnabled: true, aiProvider: 'anthropic', aiModel: 'claude-sonnet-5-5', aiFixWhen: 'manual', aiRecWhen: 'manual', autocorrect: false },
+    setup: (page) =>
+      page.addInitScript(() => {
+        const answer = {
+          model: 'claude-sonnet-5-5',
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                findings: [
+                  { quote: 'in order to', replacement: 'to', kind: 'conciseness', message: '“In order to” says the same as “to”.' },
+                  { quote: 'it’s', replacement: 'its', kind: 'grammar', message: 'The possessive has no apostrophe.' },
+                ],
+              }),
+            },
+          ],
+          usage: { input_tokens: 412, output_tokens: 96 },
+        }
+        const b64 = (t) => btoa(String.fromCharCode(...new TextEncoder().encode(t)))
+        window.__stubExtra = {
+          cloud_http: async () => ({ status: 200, headers: [], body: b64(JSON.stringify(answer)) }),
+          secret_get: async () => 'key',
+          secret_set: async () => null,
+        }
+      }),
+    run: async (page) => {
+      await page.click('#wysiwyg .ProseMirror h1')
+      await key(page, 'End')
+      await key(page, 'Enter')
+      await key(page, 'Control+0')
+      await page.keyboard.type('We moved the meeting in order to give the team time to read the draft, and the draft has it’s own summary now.')
+      await key(page, 'F7')
+      await settle(page, 300)
+      await page.click('#wc-panel .wc-tab:nth-child(2)')
+      await page.click('#wc-panel button:has-text("Check paragraph")')
+      await settle(page, 1500)
+    },
+  },
+  'ai-prefs': {
+    webp: 'ai-2',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'paper', extensions: ['ai'], aiEnabled: true, aiProvider: 'anthropic', aiModel: 'claude-sonnet-5-5' },
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("AI")')
+      await settle(page, 800)
+    },
   },
   about: {
     open: 'Welcome.md',
@@ -252,6 +344,25 @@ async function heroShot(browser, src, dest) {
   console.log('saved', dest)
 }
 
+/** Small WebP copies for the Extensions page (1280 px wide), encoded by the browser itself. */
+async function toWebp(browser, src, dest) {
+  mkdirSync(dirname(dest), { recursive: true })
+  const page = await browser.newPage()
+  const b64 = await page.evaluate(async (png) => {
+    const img = new Image()
+    img.src = 'data:image/png;base64,' + png
+    await img.decode()
+    const c = document.createElement('canvas')
+    c.width = 1280
+    c.height = Math.round((img.height * 1280) / img.width)
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
+    return c.toDataURL('image/webp', 0.72).split(',')[1]
+  }, readFileSync(src).toString('base64'))
+  writeFileSync(dest, Buffer.from(b64, 'base64'))
+  await page.close()
+  console.log('saved', dest)
+}
+
 // --built: serve the production build in dist/ (run `npx vite build` first) instead of the dev server
 const built = args.includes('--built')
 const server = built
@@ -263,7 +374,7 @@ const browser = await chromium.launch({ executablePath: findBrowser() })
 mkdirSync(outDir, { recursive: true })
 try {
   for (const [name, scene] of Object.entries(SCENES)) {
-    if (only.length && !only.includes(name)) continue
+    if (only.length ? !only.includes(name) : scene.only) continue
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1.5 })
     const page = await ctx.newPage()
     page.on('pageerror', (e) => console.log(`[${name}] page error:`, e.message))
@@ -289,6 +400,7 @@ try {
     console.log('saved', file)
     await ctx.close()
     if (name === 'editor') await heroShot(browser, file, join(outDir, 'hero.png'))
+    if (scene.webp) await toWebp(browser, file, join(root, 'public', 'extensions', scene.webp + '.webp'))
   }
 } finally {
   await browser.close()

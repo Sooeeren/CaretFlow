@@ -16,7 +16,50 @@ export function initWriting(host) {
   H = host
   window.addEventListener('keydown', menuKeys, true) // before the app's shortcuts
 }
-const on = () => !!H?.settings.spellcheck
+// Other sources of findings (AI Writing Help): { id, active(), issues(blocks, ctx), ignore?(issue) }.
+// Their findings use the same underlines, menu and review panel as the spelling checker's.
+const sources = []
+const harperOn = () => !!H?.settings.spellcheck
+const on = () => harperOn() || sources.some((src) => src.active())
+
+export function registerSource(src) {
+  if (!sources.includes(src)) sources.push(src)
+  // a document may already be open: tell the source what was there before any new writing
+  const ad = adapter()
+  if (ad) src.opened?.(ad.view, ad.blocks())
+  refresh(0)
+}
+/** The open document's blocks and the cursor's block, for commands like AI: Check Paragraph. */
+export function blockHelpers() {
+  const ad = adapter()
+  return ad && { blocks: () => ad.blocks(), caretBlock: () => checkContext(ad, ad.blocks()).caretBlock }
+}
+
+/** What the spelling checker found in the open document (for MCP's get_writing_issues). */
+export function currentIssues() {
+  return (adapter()?.issues() || []).filter((x) => !x.source).map((x) => ({ quote: x.problem, kind: x.kind, message: x.message }))
+}
+
+/** main.js loaded a file (or a reload from disk) into the editor: that text isn't new writing. */
+export function documentLoaded() {
+  const ad = adapter()
+  if (ad) for (const src of sources) src.opened?.(ad.view, ad.blocks())
+}
+/** An editor opened a document: sources learn its text right away, before any check runs. */
+function opened(view, blocks) {
+  for (const src of sources) src.opened?.(view, blocks())
+}
+/** A source has new findings (or was turned on or off): redraw. */
+export function sourceChanged() {
+  if (!on()) return clearAll()
+  publish()
+  refresh(0)
+}
+/** The cursor moved: a source waiting for it to leave a paragraph looks again. */
+function caretMoved() {
+  if (sources.some((src) => src.active() && src.wantsCaret?.())) refresh(200)
+}
+const sameIssues = (a, b) => a.length === b.length && a.every((x, i) => x.id === b[i].id && x.to === b[i].to && x.message === b[i].message && x.source === b[i].source)
 
 // ════════════════════════════════════════ engine + cache
 let engine = null
@@ -66,7 +109,7 @@ export function writingSettingsChanged() {
   }
   nativeOff()
   // only rebuild the engine when its own options changed; filters (style, grammar, rules) apply on the fly
-  if (!on() || JSON.stringify(engineOptions()) !== engineKey) {
+  if (!harperOn() || JSON.stringify(engineOptions()) !== engineKey) {
     engine?.dispose()
     engine = null
     enginePromise = null
@@ -82,6 +125,7 @@ export function writingSettingsChanged() {
 }
 
 async function checkTexts(texts) {
+  if (!harperOn()) return texts.map(() => [])
   const missing = [...new Set(texts.filter((t) => !cache.has(t)))]
   if (missing.length) {
     const eng = await getEngine()
@@ -106,6 +150,7 @@ function keep(iss, words) {
   const s = H.settings
   if (iss.cat === 'style' && !s.wcStyle) return false
   if (iss.cat === 'grammar' && s.wcGrammar === false) return false
+  if (iss.source && words.has(iss.problem.trim().toLowerCase())) return false
   if ((s.wcDisabledRules || []).includes(iss.rule)) return false
   if (iss.cat === 'spelling' && words.has(iss.problem.toLowerCase())) return false
   if (session.ignoreAll.has(allKey(iss)) || session.ignoreOnce.has(contextKey(iss))) return false
@@ -115,8 +160,18 @@ function keep(iss, words) {
 }
 
 /** Issues for blocks: [{ text, at(i) -> doc position, masks }] → absolute, filtered issues. */
-async function issuesFor(blocks) {
+async function issuesFor(blocks, ctx) {
+  // other sources first: they must see the document as it is now, not after the spelling
+  // checker has loaded (AI Writing Help tells opened text from new writing this way)
+  const extras = sources.filter((src) => src.active()).map((src) => src.issues(blocks, ctx))
   const results = await checkTexts(blocks.map((b) => b.text))
+  for (const extra of extras) {
+    extra.forEach((list, i) => {
+      // the spelling checker already marks exactly these words: one underline is enough
+      const own = list.filter((x) => !results[i].some((r) => !r.source && r.start === x.start && r.end === x.end))
+      if (own.length) results[i] = [...results[i], ...own].sort((a, b) => a.start - b.start)
+    })
+  }
   const words = dict()
   const out = []
   blocks.forEach((b, i) => {
@@ -299,6 +354,10 @@ export function refresh(ms = delay()) {
 
 async function run() {
   if (running) {
+    // the spelling checker is still busy (loading, or waiting for LanguageTool): other sources
+    // look at the text anyway, so their requests don't wait for it
+    const ad = adapter()
+    if (ad && sources.some((src) => src.active())) sources.filter((src) => src.active()).forEach((src) => src.issues(ad.blocks(), checkContext(ad, ad.blocks())))
     again = true
     return
   }
@@ -312,13 +371,15 @@ async function run() {
   running = true
   try {
     const snap = ad.snapshot()
-    const found = await issuesFor(ad.blocks())
+    const blocks = ad.blocks()
+    const found = await issuesFor(blocks, checkContext(ad, blocks))
     if (!on() || !ad.alive()) return
     if (ad.snapshot() !== snap) {
       again = true
       return
     }
-    ad.setIssues(found)
+    if (!sameIssues(found, ad.issues())) ad.setIssues(found)
+    else publish()
   } catch (e) {
     if (engineState !== 'error') H.log?.('writing check failed', e)
     publish()
@@ -329,6 +390,13 @@ async function run() {
       refresh(delay())
     }
   }
+}
+
+/** What a source needs to know besides the text: where the caret is, how long since the last keystroke. */
+function checkContext(ad, blocks) {
+  const caret = ad.caret()
+  const caretBlock = blocks.findIndex((b) => caret >= b.at(0) && caret <= b.at(Math.max(0, b.text.length - 1)) + 1)
+  return { caretBlock, idle: Date.now() - typingAt, view: ad.view }
 }
 
 function clearAll() {
@@ -404,11 +472,13 @@ export const writingPlugin = () =>
         },
       },
     },
-    view: () => {
+    view: (v) => {
+      opened(v, () => pmBlocks(v.state.doc))
       refresh(150)
       return {
         update(v, prev) {
           if (v.state.doc !== prev.doc) refresh()
+          else if (!v.state.selection.eq(prev.selection)) caretMoved()
           const st = pmKey.getState(v.state)
           if (st.issues !== issues && H.mode() !== 'source') {
             issues = st.issues
@@ -422,6 +492,7 @@ export const writingPlugin = () =>
 function pmAdapter(v) {
   return {
     kind: 'pm',
+    view: v,
     alive: () => !v.isDestroyed && H.pmView() === v,
     snapshot: () => v.state.doc,
     blocks: () => pmBlocks(v.state.doc),
@@ -489,11 +560,13 @@ export function writingSourceExtension() {
     cmField,
     ViewPlugin.fromClass(
       class {
-        constructor() {
+        constructor(v) {
+          opened(v, () => mdBlocks(v.state.doc.toString()))
           refresh(150)
         }
         update(u) {
           if (u.docChanged) refresh()
+          else if (u.selectionSet) caretMoved()
           const st = u.state.field(cmField)
           if (st.issues !== issues && H.mode() === 'source') {
             issues = st.issues
@@ -514,6 +587,7 @@ export function writingSourceExtension() {
 function cmAdapter(v) {
   return {
     kind: 'cm',
+    view: v,
     alive: () => H.cmView() === v,
     snapshot: () => v.state.doc,
     blocks: () => mdBlocks(v.state.doc.toString()),
@@ -552,6 +626,7 @@ function applyFix(ad, iss, text) {
 }
 
 function ignoreOnce(ad, iss) {
+  if (iss.source) sources.find((src) => iss.source === src.id || iss.source.startsWith(src.id + ':'))?.ignore?.(iss)
   session.ignoreOnce.add(contextKey(iss))
   dropIssues(ad, (x) => x === iss)
 }
@@ -620,11 +695,15 @@ function showIssueMenu(ad, iss, x, y, viaKeyboard = false) {
   else m.append(el('div', { class: 'wc-none' }, 'No suggestions'))
   m.append(el('div', { class: 'menu-sep' }))
   item('Ignore', () => ignoreOnce(ad, iss))
-  item('Ignore All', () => ignoreAll(ad, iss))
-  if (iss.cat === 'spelling') item('Add to Dictionary', () => addToDictionary(ad, iss))
-  else if (iss.rule) item('Turn Off This Rule', () => disableRule(ad, iss))
+  const src = iss.source && sources.find((x) => iss.source === x.id || iss.source.startsWith(x.id + ':'))
+  if (src) for (const [label, fn] of src.menuExtras?.(iss) || []) item(label, () => (fn(), refresh(0)))
+  else {
+    item('Ignore All', () => ignoreAll(ad, iss))
+    if (iss.cat === 'spelling') item('Add to Dictionary', () => addToDictionary(ad, iss))
+    else if (iss.rule) item('Turn Off This Rule', () => disableRule(ad, iss))
+  }
   m.append(el('div', { class: 'menu-sep' }))
-  item('Spelling & Grammar…  F7', () => openPanel(iss.id))
+  item('Spelling & Grammar…  F7', () => ((tab = iss.source ? 'ai' : 'wc'), openPanel(iss.id)))
   item('Writing Check Options…', () => H.openOptions())
   m.hidden = false
   m.style.minWidth = '240px'
@@ -667,11 +746,11 @@ function menuKeys(e) {
 }
 
 /** Alt+F7: jump to the next issue after the caret and show its suggestions. */
-export function nextIssueMenu() {
+export function nextIssueMenu(onlySources = false) {
   if (!on()) return H.toast('Spelling & grammar checking is off (Preferences → Writing)')
   const ad = adapter()
-  const list = ad?.issues() || []
-  if (!list.length) return H.toast(engineState === 'loading' ? 'Loading the writing checker…' : 'No spelling or grammar issues')
+  const list = (ad?.issues() || []).filter((x) => !onlySources || x.source)
+  if (!list.length) return H.toast(onlySources ? 'No AI suggestions' : engineState === 'loading' ? 'Loading the writing checker…' : 'No spelling or grammar issues')
   const caret = ad.caret()
   const iss = list.find((x) => x.from > caret) || list[0]
   ad.select(iss)
@@ -701,12 +780,26 @@ function publish() {
         : n
           ? `${n} spelling/grammar ${n === 1 ? 'issue' : 'issues'} — click or press F7 to review`
           : 'No spelling or grammar issues (F7)'
+    const extra = panelSource()?.statusText?.()
+    if (extra) statusEl.title += '\n' + extra
+    const badge = panelSource()?.statusBadge?.()
+    if (badge) statusEl.textContent += ' · ' + badge
   }
   if (panel && !panel.hidden) renderPanel()
 }
 
 let panel = null
+let tab = 'wc' // review panel tab: 'wc' (spelling checker) | 'ai' (AI and MCP findings)
 export const panelOpen = () => !!panel && !panel.hidden
+/** A source with its own tab in the review panel (AI Writing Help), if it is on. */
+const panelSource = () => sources.find((src) => src.panel && src.active())
+const inTab = (x) => (tab === 'ai' ? !!x.source : !x.source)
+
+/** F7 panel on the AI tab. */
+export function openAiPanel() {
+  tab = 'ai'
+  panelOpen() ? renderPanel(true) : openPanel()
+}
 
 export function togglePanel() {
   panelOpen() ? closePanel(true) : openPanel()
@@ -724,7 +817,8 @@ function openPanel(id) {
   }
   panel.hidden = false
   const ad = adapter()
-  const list = ad?.issues() || []
+  if (!panelSource()) tab = 'wc'
+  const list = (ad?.issues() || []).filter(inTab)
   current = id || (list.find((x) => x.from >= (ad?.caret() ?? 0)) || list[0])?.id || null
   refresh(0)
   renderPanel(true)
@@ -743,7 +837,10 @@ let shownId = null
 function renderPanel(select = false) {
   const { el } = H
   const ad = adapter()
-  const list = ad?.issues() || []
+  const src = panelSource()
+  if (!src) tab = 'wc'
+  const all = ad?.issues() || []
+  const list = all.filter(inTab)
   let idx = list.findIndex((x) => x.id === current)
   if (idx < 0 && list.length) {
     // the shown issue was fixed: continue with the one that took its place
@@ -756,8 +853,29 @@ function renderPanel(select = false) {
   panel.innerHTML = ''
   const close = el('button', { class: 'wc-x', title: 'Close (Esc)' }, '✕')
   close.onclick = () => closePanel(true)
-  panel.append(el('div', { class: 'wc-head' }, el('b', {}, 'Spelling & Grammar'), el('span', { class: 'wc-count' }, list.length ? `${idx + 1} of ${list.length}` : ''), close))
+  const count = list.length ? `${idx + 1} of ${list.length}` : ''
+  if (src) {
+    const tabBtn = (id, label) => {
+      const n = all.filter((x) => (id === 'ai' ? !!x.source : !x.source)).length
+      const b2 = el('button', { class: 'wc-tab' + (tab === id ? ' on' : ''), title: id === 'ai' ? 'Corrections and suggestions from your AI' : 'The offline spelling & grammar check' }, label + (n ? ` (${n})` : ''))
+      b2.onclick = () => {
+        tab = id
+        current = null
+        renderPanel(true)
+        panel.focus()
+      }
+      return b2
+    }
+    panel.append(el('div', { class: 'wc-head' }, el('div', { class: 'wc-tabs' }, tabBtn('wc', 'Spelling & Grammar'), tabBtn('ai', 'AI')), close))
+    if (count) panel.append(el('div', { class: 'wc-count wc-count-row' }, count))
+  } else panel.append(el('div', { class: 'wc-head' }, el('b', {}, 'Spelling & Grammar'), el('span', { class: 'wc-count' }, count), close))
+  const aiBox = () => src.panel({ blocks: () => ad.blocks(), caretBlock: () => checkContext(ad, ad.blocks()).caretBlock })
 
+  if (!iss && tab === 'ai') {
+    panel.append(el('div', { class: 'wc-done' }, el('div', { class: 'wc-check' }, '✓'), el('p', {}, 'No AI suggestions here.')), aiBox())
+    shownId = null
+    return
+  }
   if (!iss) {
     const done = engineState === 'loading' ? 'Loading the checker…' : engineState === 'error' ? `The checker could not start: ${engineError}` : 'No spelling or grammar issues found.'
     panel.append(el('div', { class: 'wc-done' }, el('div', { class: 'wc-check' }, engineState === 'ready' ? '✓' : '…'), el('p', {}, done)))
@@ -803,11 +921,11 @@ function renderPanel(select = false) {
       { class: 'wc-actions' },
       iss.sugg.length ? btn('Change', 'Use the first suggestion (Enter)', () => change(0), 'primary') : null,
       btn('Ignore', 'Ignore this once (I)', () => act(ignoreOnce)),
-      btn('Ignore All', 'Ignore everywhere in this session (A)', () => act(ignoreAll)),
-      iss.cat === 'spelling' ? btn('Add to Dictionary', 'Never flag this word again (D)', () => act(addToDictionary)) : btn('Turn Off Rule', 'Stop checking for this (T)', () => act(disableRule)),
+      iss.source ? null : btn('Ignore All', 'Ignore everywhere in this session (A)', () => act(ignoreAll)),
+      iss.source ? null : iss.cat === 'spelling' ? btn('Add to Dictionary', 'Never flag this word again (D)', () => act(addToDictionary)) : btn('Turn Off Rule', 'Stop checking for this (T)', () => act(disableRule)),
     ),
     el('div', { class: 'wc-nav' }, btn('‹ Previous', 'Previous issue (←)', nav(-1)), btn('Next ›', 'Next issue (→)', nav(1))),
-    footer(),
+    tab === 'ai' ? aiBox() : footer(),
   )
   if (select || shownId !== iss.id) {
     ad.redraw()

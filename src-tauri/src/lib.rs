@@ -5,6 +5,7 @@ use std::time::{Duration, UNIX_EPOCH};
 use tauri::Manager;
 
 mod cloud;
+mod mcp;
 mod pdf;
 
 #[derive(Serialize)]
@@ -358,8 +359,19 @@ fn install_kind() -> &'static str {
     }
 }
 
+/// The running program's path (for the MCP setup snippets: Claude Desktop starts `caretflow --mcp`).
+#[tauri::command]
+fn exe_path() -> String {
+    std::env::current_exe().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|_| "caretflow".into())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // `caretflow --mcp`: a stdin/stdout MCP bridge to the running app, no window
+    if std::env::args().any(|a| a == "--mcp") {
+        mcp::bridge();
+        return;
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -424,9 +436,14 @@ pub fn run() {
             cloud::cloud_scan,
             cloud::cloud_trash,
             cloud::cloud_trash_dir,
-            cloud::cloud_secret_get,
-            cloud::cloud_secret_set,
-            cloud::cloud_rclone
+            cloud::secret_get,
+            cloud::secret_set,
+            cloud::cloud_rclone,
+            mcp::mcp_start,
+            mcp::mcp_stop,
+            mcp::mcp_reply,
+            mcp::mcp_status,
+            exe_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running CaretFlow");

@@ -21,13 +21,17 @@ CaretFlow checks your writing as you type, like a word processor: red wavy lines
 
 The default checker (Harper) runs entirely on your computer. For German, French, Spanish and other languages, switch to LanguageTool in **Preferences → Writing**.
 
+## Extensions
+
+Bigger optional features are extensions: **Settings → Extensions…** installs them with one click, and until then they stay out of your menus. **Cloud Sync** keeps a folder in sync with your own server, **AI Writing Help** adds suggestions from the AI you choose (or your AI app over MCP: **Help → AI Setup Guide**), and the **Typing Test** measures your speed.
+
 ## Typing test
 
-`Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **View → Typing Speed (WPM)** shows your speed while you write, and **View → Typing Cat** adds a small companion.
+With the Typing Test extension installed, `Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **View → Typing Speed (WPM)** shows your speed while you write, and **View → Typing Cat** adds a small companion.
 
 ## Cloud Sync
 
-Keep a folder in sync between your computers with your own server or storage: WebDAV (Nextcloud, ownCloud, a NAS), S3-compatible storage (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through rclone. It is off until you turn it on in **Preferences → Cloud Sync**; CaretFlow has no servers of its own. `Ctrl+Alt+S` syncs now, and the **Cloud** tab in the sidebar (`Ctrl+Shift+4`) shows every file in the cloud with its sync state. When a file changed on both sides, both versions are kept.
+Keep a folder in sync between your computers with your own server or storage: WebDAV (Nextcloud, ownCloud, a NAS), S3-compatible storage (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through rclone. Install it in **Settings → Extensions…**, then turn it on in **Preferences → Cloud Sync**; CaretFlow has no servers of its own. `Ctrl+Alt+S` syncs now, and the **Cloud** tab in the sidebar (`Ctrl+Shift+4`) shows every file in the cloud with its sync state. When a file changed on both sides, both versions are kept.
 
 ## Inline formatting
 

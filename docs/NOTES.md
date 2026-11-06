@@ -9,8 +9,11 @@ CaretFlow sends nothing anywhere unless you turn something on. There is no telem
 - **Update checks** download only `latest.json` from GitHub, and only after you agree. No data is sent.
 - **LanguageTool** sends the text being checked to the server you configure; the free public server
   allows about 20 checks a minute. Harper (the default checker) never sends anything.
+- **AI Writing Help** (an extension) sends the paragraphs it checks to the AI provider you choose,
+  only after you turn it on, within limits you set; with a local model nothing leaves your computer.
+  Its MCP server listens on this computer only (`127.0.0.1`) and needs a token. See [AI.md](AI.md).
 - **Cloud Sync** uploads the files in your sync folder to the server or storage you set up, and nowhere
-  else. CaretFlow has no servers of its own. Passwords and keys are stored in `cloud-secrets.json` in
+  else. CaretFlow has no servers of its own. Passwords and keys are stored in `secrets.json` in
   CaretFlow's config folder, readable only by your user. See [CLOUD-SYNC.md](CLOUD-SYNC.md).
 
 ## Platforms
@@ -29,8 +32,10 @@ CaretFlow sends nothing anywhere unless you turn something on. There is no telem
 | What | Where |
 | --- | --- |
 | Settings, recent files, window state | The app's web storage and config folder (`app.folio.markdown`, the name from before the rename) |
-| Cloud Sync passwords and keys | `cloud-secrets.json` in the config folder (`%APPDATA%\app.folio.markdown` on Windows, `~/.config/app.folio.markdown` on Linux) |
+| Passwords, API keys, the MCP token | `secrets.json` in the config folder (`%APPDATA%\app.folio.markdown` on Windows, `~/.config/app.folio.markdown` on Linux) |
 | Cloud Sync trash | `sync-trash` in the data folder (`%APPDATA%\app.folio.markdown`, `~/.local/share/app.folio.markdown`); also Cloud tab → Sync trash |
+| MCP port and token for `caretflow --mcp` | `mcp.json` in the config folder, while the MCP server runs |
+| AI answers cache, usage counter | The app's web storage (`folio.ai.*`) |
 | Logs | `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux), errors only |
 
 ## The name
