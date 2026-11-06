@@ -72,9 +72,14 @@ export const scenes = {
       let r = await call('get_document')
       check('get_document returns the Markdown', /# A quiet place to write/.test(r?.result?.markdown) && /Welcome\.md$/.test(r?.result?.path), JSON.stringify(r).slice(0, 160))
 
-      await page.click('#wysiwyg .ProseMirror h1')
-      await page.keyboard.press('Home')
-      await page.keyboard.press('Shift+End')
+      // select the title; a click can land on the heading's handle instead, so try until it's selected
+      for (let i = 0; i < 5; i++) {
+        await page.click('#wysiwyg .ProseMirror h1')
+        await page.keyboard.press('Home')
+        await page.keyboard.press('Shift+End')
+        await wait(150)
+        if (await page.evaluate(() => getSelection().toString() === 'A quiet place to write')) break
+      }
       r = await call('get_selection')
       check('get_selection returns the selected text', r?.result?.text === 'A quiet place to write', JSON.stringify(r))
 

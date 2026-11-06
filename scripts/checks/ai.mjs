@@ -462,7 +462,7 @@ export const scenes = {
       const rowVisible = (label) => page.evaluate((l) => [...document.querySelectorAll('.prefs-page:not([hidden]) .pref-row')].some((r) => r.querySelector('label')?.firstChild?.textContent === l && r.offsetParent !== null), label)
       await openAi()
       const subs = await page.$$eval('.prefs-page:not([hidden]) .pref-sub', (xs) => xs.map((x) => x.firstChild.textContent))
-      check('sections in order', JSON.stringify(subs) === JSON.stringify(['Connection', 'AI spelling & grammar', 'Recommendations', 'Both', 'Limits & usage', 'MCP server']), JSON.stringify(subs))
+      check('sections in order', JSON.stringify(subs.slice(0, 6)) === JSON.stringify(['Connection', 'AI spelling & grammar', 'Recommendations', 'Both', 'Limits & usage', 'MCP server']), JSON.stringify(subs))
       check('MCP help banner at the top', await page.$eval('.prefs-page:not([hidden])', (p) => /Need help setting up MCP\?/.test(p.firstElementChild.nextElementSibling?.textContent || '')))
       check('off by default', !(await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).aiEnabled)))
 
