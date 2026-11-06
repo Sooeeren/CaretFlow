@@ -10,7 +10,7 @@ CaretFlow sends nothing anywhere unless you turn something on. There is no telem
 - **LanguageTool** sends the text being checked to the server you configure; the free public server
   allows about 20 checks a minute. Harper (the default checker) never sends anything.
 - **Cloud Sync** uploads the files in your sync folder to the server or storage you set up, and nowhere
-  else. CaretFlow has no servers of its own. Passwords and keys are stored in `cloud-secrets.json` in
+  else. CaretFlow has no servers of its own. Passwords and keys are stored in `secrets.json` in
   CaretFlow's config folder, readable only by your user. See [CLOUD-SYNC.md](CLOUD-SYNC.md).
 
 ## Platforms
@@ -29,7 +29,7 @@ CaretFlow sends nothing anywhere unless you turn something on. There is no telem
 | What | Where |
 | --- | --- |
 | Settings, recent files, window state | The app's web storage and config folder (`app.folio.markdown`, the name from before the rename) |
-| Cloud Sync passwords and keys | `cloud-secrets.json` in the config folder (`%APPDATA%\app.folio.markdown` on Windows, `~/.config/app.folio.markdown` on Linux) |
+| Cloud Sync passwords and keys | `secrets.json` in the config folder (`%APPDATA%\app.folio.markdown` on Windows, `~/.config/app.folio.markdown` on Linux) |
 | Cloud Sync trash | `sync-trash` in the data folder (`%APPDATA%\app.folio.markdown`, `~/.local/share/app.folio.markdown`); also Cloud tab → Sync trash |
 | Logs | `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux), errors only |
 

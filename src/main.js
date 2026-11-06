@@ -100,7 +100,7 @@ const DEFAULTS = {
   s3Region: 'us-east-1',
   s3Bucket: '',
   s3Prefix: '',
-  s3AccessKey: '', // the secret key and passwords live in Rust's cloud-secrets.json, not here
+  s3AccessKey: '', // the secret key and passwords live in Rust's secrets.json, not here
   rcloneRemote: '', // e.g. 'gdrive:Notes'
   rclonePath: '',
   cloudLocal: '', // the local folder that is kept in sync
@@ -110,6 +110,18 @@ const DEFAULTS = {
   cloudInterval: 15, // minutes, 0 = off
   cloudDeletes: true, // deletions reach the other side (local ones go to the sync trash)
   cloudConflict: 'both', // 'both' | 'local' | 'remote'
+  // AI Writing Help (ai.js, an extension): limits are deliberately careful by default
+  aiEnabled: false,
+  aiProvider: 'anthropic', // a preset id in ai.js PRESETS
+  aiBaseUrl: '', // empty = the preset's address
+  aiModel: '',
+  aiMaxOut: 400, // max output tokens per request
+  aiMaxChars: 2000, // max text per request
+  aiPerHour: 30,
+  aiPerDay: 150,
+  aiTokensDay: 100000,
+  aiTemperature: 0.2,
+  aiParallel: 1,
   extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
   extNoticeSeen: false, // the one-time "these are extensions now" notice after updating from 0.7.0
 }

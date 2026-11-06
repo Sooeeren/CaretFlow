@@ -222,30 +222,33 @@ pub fn cloud_trash_dir(app: tauri::AppHandle) -> Result<String, String> {
     Ok(d.to_string_lossy().to_string())
 }
 
-// ───────────────────────────── passwords
+// ───────────────────────────── passwords and API keys (Cloud Sync, AI Writing Help, MCP token)
 
 // Kept out of the web view's storage: a file in CaretFlow's config folder that only the user can
 // read (mode 600 on Linux; the per-user AppData folder on Windows).
 fn secrets_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    Ok(app.path().app_config_dir().map_err(|e| e.to_string())?.join("cloud-secrets.json"))
+    Ok(app.path().app_config_dir().map_err(|e| e.to_string())?.join("secrets.json"))
 }
 
 fn read_secrets(app: &tauri::AppHandle) -> BTreeMap<String, String> {
-    secrets_path(app)
-        .ok()
-        .and_then(|p| fs::read_to_string(p).ok())
+    let dir = app.path().app_config_dir().ok();
+    // 0.7.0 kept Cloud Sync passwords in cloud-secrets.json; read it until secrets.json exists
+    [secrets_path(app).ok(), dir.map(|d| d.join("cloud-secrets.json"))]
+        .into_iter()
+        .flatten()
+        .find_map(|p| fs::read_to_string(p).ok())
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or_default()
 }
 
 #[tauri::command]
-pub fn cloud_secret_get(app: tauri::AppHandle, key: String) -> Option<String> {
+pub fn secret_get(app: tauri::AppHandle, key: String) -> Option<String> {
     read_secrets(&app).remove(&key)
 }
 
 /// An empty value removes the entry.
 #[tauri::command]
-pub fn cloud_secret_set(app: tauri::AppHandle, key: String, value: String) -> Result<(), String> {
+pub fn secret_set(app: tauri::AppHandle, key: String, value: String) -> Result<(), String> {
     let mut all = read_secrets(&app);
     if value.is_empty() {
         all.remove(&key);

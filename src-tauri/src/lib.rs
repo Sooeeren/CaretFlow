@@ -424,8 +424,8 @@ pub fn run() {
             cloud::cloud_scan,
             cloud::cloud_trash,
             cloud::cloud_trash_dir,
-            cloud::cloud_secret_get,
-            cloud::cloud_secret_set,
+            cloud::secret_get,
+            cloud::secret_set,
             cloud::cloud_rclone
         ])
         .run(tauri::generate_context!())

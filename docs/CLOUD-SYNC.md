@@ -113,7 +113,7 @@ red when a sync failed (hover for the reason).
 ## Privacy
 
 Your files go only to the server or storage you set up. Passwords and keys are stored in
-`cloud-secrets.json` in CaretFlow's config folder (readable only by your user), not in the editor's
+`secrets.json` in CaretFlow's config folder (readable only by your user), not in the editor's
 web storage. With rclone, CaretFlow never sees your login: rclone keeps it in its own config.
 Files are not encrypted by CaretFlow; use HTTPS, and a service you trust or an encrypted rclone
 remote ([crypt](https://rclone.org/crypt/)) if you need encryption at rest.

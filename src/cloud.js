@@ -398,7 +398,7 @@ async function backend() {
   const st = s()
   const p = st.cloudProvider
   if (p === 'rclone') return rclone({ remote: st.rcloneRemote, exe: st.rclonePath })
-  const secret = (await invoke('cloud_secret_get', { key: secretKey(p) }).catch(() => null)) || ''
+  const secret = (await invoke('secret_get', { key: secretKey(p) }).catch(() => null)) || ''
   if (p === 's3') return s3({ endpoint: st.s3Endpoint, region: st.s3Region, bucket: st.s3Bucket, prefix: st.s3Prefix, accessKey: st.s3AccessKey, secretKey: secret })
   if (!st.cloudUrl) throw new CloudError('Enter the WebDAV address of your cloud folder.')
   return webdav({ url: st.cloudUrl, user: st.cloudUser, pass: secret })
@@ -1023,11 +1023,11 @@ export function prefsPage(row) {
     })
   const secret = (p) => {
     const i = el('input', { type: 'password', placeholder: '', spellcheck: 'false', autocomplete: 'off', style: 'width:260px;max-width:100%' })
-    invoke('cloud_secret_get', { key: secretKey(p) })
+    invoke('secret_get', { key: secretKey(p) })
       .then((v) => (i.placeholder = v ? '•••••••• (saved)' : ''))
       .catch(() => {})
     i.onchange = async () => {
-      await invoke('cloud_secret_set', { key: secretKey(p), value: i.value })
+      await invoke('secret_set', { key: secretKey(p), value: i.value })
       i.placeholder = i.value ? '•••••••• (saved)' : ''
       i.value = ''
       ctx.toast(i.placeholder ? 'Saved' : 'Removed')

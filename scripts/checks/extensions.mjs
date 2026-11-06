@@ -100,7 +100,7 @@ export const scenes = {
     open: 'Welcome.md',
     settings: { ...CLOUD, extensions: ['cloud'] },
     // a server that never answers, so a sync is still running when Cloud Sync is removed
-    setup: (page) => stubBackend(page, { cloud_http: () => new Promise(() => {}), cloud_scan: () => [], cloud_secret_get: () => null }),
+    setup: (page) => stubBackend(page, { cloud_http: () => new Promise(() => {}), cloud_scan: () => [], secret_get: () => null }),
     async run(page) {
       const errors = []
       page.on('pageerror', (e) => errors.push(e.message))
@@ -150,7 +150,7 @@ export const scenes = {
     open: 'Welcome.md',
     // settings saved by 0.7.0: no `extensions` key yet
     settings: { cloudEnabled: true, cloudUrl: 'https://example.invalid/dav/Notes', cloudLocal: 'C:/Notes', cloudAuto: false },
-    setup: (page) => stubBackend(page, { cloud_secret_get: () => null }),
+    setup: (page) => stubBackend(page, { secret_get: () => null }),
     async run(page) {
       const st = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')))
       const notice = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
