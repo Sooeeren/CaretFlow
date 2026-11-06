@@ -22,6 +22,11 @@ updates:
     groups:
       tauri:
         patterns: ['tauri', 'tauri-*']
+    ignore:
+      # pdf.rs passes these types into Tauri's WebView2, so they must stay on the versions
+      # Tauri uses; a newer windows-core is a separate, incompatible copy of the crate.
+      - dependency-name: windows-core
+      - dependency-name: webview2-com
 
   - package-ecosystem: github-actions
     directory: /
