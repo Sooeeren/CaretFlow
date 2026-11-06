@@ -24,7 +24,19 @@ const on = () => harperOn() || sources.some((src) => src.active())
 
 export function registerSource(src) {
   if (!sources.includes(src)) sources.push(src)
+  // a document may already be open: tell the source what was there before any new writing
+  const ad = adapter()
+  if (ad) src.opened?.(ad.view, ad.blocks())
   refresh(0)
+}
+/** main.js loaded a file (or a reload from disk) into the editor: that text isn't new writing. */
+export function documentLoaded() {
+  const ad = adapter()
+  if (ad) for (const src of sources) src.opened?.(ad.view, ad.blocks())
+}
+/** An editor opened a document: sources learn its text right away, before any check runs. */
+function opened(view, blocks) {
+  for (const src of sources) src.opened?.(view, blocks())
 }
 /** A source has new findings (or was turned on or off): redraw. */
 export function sourceChanged() {
@@ -325,6 +337,10 @@ export function refresh(ms = delay()) {
 
 async function run() {
   if (running) {
+    // the spelling checker is still busy (loading, or waiting for LanguageTool): other sources
+    // look at the text anyway, so their requests don't wait for it
+    const ad = adapter()
+    if (ad && sources.some((src) => src.active())) sources.filter((src) => src.active()).forEach((src) => src.issues(ad.blocks(), checkContext(ad, ad.blocks())))
     again = true
     return
   }
@@ -339,9 +355,7 @@ async function run() {
   try {
     const snap = ad.snapshot()
     const blocks = ad.blocks()
-    const caret = ad.caret()
-    const caretBlock = blocks.findIndex((b) => caret >= b.at(0) && caret <= b.at(Math.max(0, b.text.length - 1)) + 1)
-    const found = await issuesFor(blocks, { caretBlock, idle: Date.now() - typingAt, view: ad.view })
+    const found = await issuesFor(blocks, checkContext(ad, blocks))
     if (!on() || !ad.alive()) return
     if (ad.snapshot() !== snap) {
       again = true
@@ -358,6 +372,13 @@ async function run() {
       refresh(delay())
     }
   }
+}
+
+/** What a source needs to know besides the text: where the caret is, how long since the last keystroke. */
+function checkContext(ad, blocks) {
+  const caret = ad.caret()
+  const caretBlock = blocks.findIndex((b) => caret >= b.at(0) && caret <= b.at(Math.max(0, b.text.length - 1)) + 1)
+  return { caretBlock, idle: Date.now() - typingAt, view: ad.view }
 }
 
 function clearAll() {
@@ -433,7 +454,8 @@ export const writingPlugin = () =>
         },
       },
     },
-    view: () => {
+    view: (v) => {
+      opened(v, () => pmBlocks(v.state.doc))
       refresh(150)
       return {
         update(v, prev) {
@@ -519,7 +541,8 @@ export function writingSourceExtension() {
     cmField,
     ViewPlugin.fromClass(
       class {
-        constructor() {
+        constructor(v) {
+          opened(v, () => mdBlocks(v.state.doc.toString()))
           refresh(150)
         }
         update(u) {

@@ -130,7 +130,7 @@ export const scenes = {
         if (/MISSINGQUOTE/.test(text)) return f('words that are not there', 'x')
         if (/SAMEREPLACEMENT/.test(text)) return f('stays', 'stays')
         if (/SERVERFAIL/.test(text)) return { status: 500, body: { error: { message: 'boom' } } }
-        if (/SLOWREPLY/.test(text)) return { ...f('alpha', 'ALPHA'), delay: 2500 }
+        if (/SLOWREPLY/.test(text)) return { ...f('alpha', 'ALPHA'), delay: 4000 }
         return openaiAnswer('{"findings":[]}')
       })
       await stubBackend(page, aiBackend({}))
@@ -146,8 +146,14 @@ export const scenes = {
       const marks = () => page.$$eval('#wysiwyg .wc-ai-fix, #wysiwyg .wc-ai-rec', (xs) => xs.map((x) => x.textContent))
       await wait(4000)
       check('opening a document sends nothing', sent().length === 0, `${sent().length} requests`)
+      // start from an empty document, then use only the keyboard: a click could land in a code or
+      // math block of the demo file and put the paragraphs somewhere else
+      await page.click('#wysiwyg .ProseMirror h1')
+      await page.keyboard.press('Control+A')
+      await page.keyboard.press('Delete')
+      await page.keyboard.press('Control+0')
+      await page.keyboard.type('A first line that stays as it is for this test.')
       const para = async (text) => {
-        await page.click('#wysiwyg .ProseMirror')
         await page.keyboard.press('Control+End')
         await page.keyboard.press('Enter')
         await page.keyboard.type(text, { delay: 5 })
@@ -166,10 +172,10 @@ export const scenes = {
       check('finished paragraphs are sent', texts.some((b) => /32nd of May/.test(b)) && texts.some((b) => /FENCEDREPLY/.test(b)), `${bodies.length} requests`)
       check('short paragraphs are not sent', !texts.some((b) => /Short one/.test(b)))
       check('inline code is never sent', texts.some((b) => /CODECHECK/.test(b)) && !bodies.some((b) => /secretcode/.test(b)))
-      check('previous paragraph goes along as context', bodies.some((b) => /CONTEXT:[\s\S]*32nd of May[\s\S]*TEXT:/.test(b)))
+      check('previous paragraph goes along as context', bodies.some((b) => /CONTEXT:[\s\S]*JUNKPROSE[\s\S]*TEXT:[\s\S]*FENCEDREPLY/.test(b)))
       let m = await marks()
       check('underline on the finding', m.includes('32nd'), JSON.stringify(m))
-      check('fenced JSON answer is read', m.includes('the parcel yesterday'), JSON.stringify(m) + ' ' + (await page.$$eval('#wysiwyg span[class*=wc-]', (xs) => xs.map((x) => x.className + ':' + x.textContent).join(' | '))))
+      check('fenced JSON answer is read', m.includes('the parcel yesterday'), JSON.stringify(m))
       check('nothing placed for a missing quote or an unchanged replacement', !m.some((x) => /words that|stays/.test(x)), JSON.stringify(m))
       const st = await run(page, () => import('/src/ai.js').then((x) => ({ status: x.status(), usage: x.usage() })))
       check('unreadable answer: status says so, and it still counts', /could not be read/i.test(JSON.stringify(st.status)) && st.usage.req === bodies.length, JSON.stringify(st))
@@ -194,7 +200,11 @@ export const scenes = {
       // typing while the answer is on its way: the stale answer is dropped
       await para('SLOWREPLY alpha beta gamma delta epsilon zeta eta theta.')
       await page.keyboard.press('Enter')
-      await wait(3200)
+      // sent after the 2 s pause; the answer takes 4 s more: edit while it is on its way
+      const n1 = sent().length
+      await wait(4000)
+      const slow = sent().slice(n1).filter((x) => /SLOWREPLY/.test(x.split('TEXT:').pop())).length
+      check('slow request is on its way before the edit', slow === 1, `${slow}`)
       await page.keyboard.press('ArrowUp')
       await page.keyboard.press('Home')
       for (let i = 0; i < 'SLOWREPLY '.length; i++) await page.keyboard.press('ArrowRight')

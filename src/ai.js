@@ -253,6 +253,12 @@ export const aiSource = {
     observe(texts, info)
     return blocks.map((b, i) => place(b, texts[i]))
   },
+  /** A document was opened: its paragraphs are not new writing and are never sent on their own. */
+  opened(view, blocks) {
+    lastView = view
+    baseline = new Set(blocks.map(sendable))
+    lastTexts = new Set(baseline)
+  },
   ignore(iss) {
     if (!iss.aiKey) return
     ignored.add(iss.aiKey)
@@ -268,10 +274,6 @@ function observe(texts, info) {
     lastTexts = new Set(texts)
     return
   }
-  const fresh = texts.filter((t) => !lastTexts.has(t))
-  const kept = texts.length - fresh.length
-  // most paragraphs replaced = another file loaded into the same editor; 8+ new ones = a big paste
-  if ((lastTexts.size >= 2 && kept < lastTexts.size / 2) || fresh.length >= 8) for (const t of fresh) baseline.add(t)
   lastTexts = new Set(texts)
   let waiting = false
   texts.forEach((t, i) => {

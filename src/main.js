@@ -25,7 +25,7 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
-import { registerSource, sourceChanged } from './writing.js'
+import { registerSource, sourceChanged, documentLoaded } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
@@ -607,6 +607,7 @@ async function loadText(text, { keepScroll = false } = {}) {
     S.baseline = crepe.getMarkdown()
   }
   S.dirty = false
+  documentLoaded()
   scroller.scrollTop = keepScroll ? top : 0
   updateTitle()
   scheduleDocInfo(true)
