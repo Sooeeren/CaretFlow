@@ -28,6 +28,7 @@ import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, 
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
+import { isInstalled } from './extensions.js'
 import aiStats from './ai-stats.json'
 import { version as APP_VERSION } from '../package.json'
 
@@ -122,6 +123,8 @@ const FIRST_RUN = (() => {
 })()
 const settings = { ...DEFAULTS, ...readJSON('folio.settings', {}) }
 let recent = readJSON('folio.recent', [])
+/** Is this extension installed? Things without an extension (id undefined) always are. */
+const extOn = (id) => !id || isInstalled(settings, id)
 
 function readJSON(k, d) {
   try {
@@ -2351,7 +2354,7 @@ function loadCloud() {
   return cloudP
 }
 function cloudSaved(path) {
-  if (settings.cloudEnabled) loadCloud().then((m) => m.noteSaved(path))
+  if (extOn('cloud') && settings.cloudEnabled) loadCloud().then((m) => m.noteSaved(path))
 }
 async function cloudSyncNow() {
   if (!settings.cloudEnabled) return openPrefs('cloud')
@@ -2359,11 +2362,22 @@ async function cloudSyncNow() {
 }
 /** Show the Cloud tab and status-bar button only while Cloud Sync is on. */
 function applyCloudUi() {
-  const on = settings.cloudEnabled
+  const on = extOn('cloud') && settings.cloudEnabled
   $('#tab-cloud').hidden = !on
   $('#st-cloud').hidden = !on
-  if (on) loadCloud()
-  else if (settings.sidebarTab === 'cloud') setTab('files')
+  if (on) loadCloud().then((m) => m.start())
+  else {
+    cloudP?.then((m) => m.stop())
+    if (settings.sidebarTab === 'cloud') setTab('files')
+  }
+}
+
+/** After installing or removing an extension: shortcuts, tabs and background work follow. */
+function applyExtensions() {
+  applyKeybindings()
+  applyCloudUi()
+  if (!extOn('typing') && typingTestOpen()) ttMod.closeTypingTest()
+  saveSettings()
 }
 
 function applyReadonly() {
@@ -2474,6 +2488,7 @@ function focusEditor() {
 let ttMod = null
 const typingTestOpen = () => !!ttMod?.isOpen()
 async function typingTest() {
+  if (!extOn('typing')) return
   ttMod ||= await import('./typingtest.js')
   if (ttMod.isOpen()) return ttMod.closeTypingTest()
   closeMenus()
@@ -2571,7 +2586,7 @@ function openPrefs(section) {
       row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
       row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
     ]],
-    ['cloud', 'Cloud Sync', [cloudPrefs(row)]],
+    extOn('cloud') ? ['cloud', 'Cloud Sync', [cloudPrefs(row)]] : null,
     ['export', 'Export', [
       row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
     ]],
@@ -2593,7 +2608,7 @@ function openPrefs(section) {
       localStorage.setItem('folio.prefsPage', id)
     } catch {}
   }
-  for (const [id, label, rows] of PAGES) {
+  for (const [id, label, rows] of PAGES.filter(Boolean)) {
     const btn = el('button', { type: 'button', onclick: () => show(id) }, label)
     const page = el('div', { class: 'prefs-page' }, el('h4', {}, label), ...rows)
     tabs[id] = { btn, page }
@@ -2700,6 +2715,7 @@ function keyboardPrefs() {
     const rows = []
     let group = null
     for (const a of ACTIONS) {
+      if (!extOn(a.ext)) continue
       if (q && !`${a.group} ${a.label} ${a.keys || ''}`.toLowerCase().includes(q)) continue
       if (a.group !== group) rows.push(el('div', { class: 'kb-group' }, (group = a.group)))
       const custom = a.id in kb()
@@ -3084,6 +3100,7 @@ function buildMenubar() {
 function buildPop(items) {
   const pop = el('div', { class: 'menu-pop' })
   for (const it of typeof items === 'function' ? items() : items) {
+    if (it.ext && !extOn(it.ext)) continue
     if (it === '-') {
       pop.append(el('div', { class: 'menu-sep' }))
       continue
@@ -3260,10 +3277,11 @@ function applyKeybindings() {
   for (const a of ACTIONS) a.keys = a.id in kb ? kb[a.id] || null : a.defaultKeys
   KEYMAP.clear()
   // Undo/Redo are left to the editors unless the user gave them other keys
-  for (const a of ACTIONS) if (a.keys && !(a.native && a.keys === a.defaultKeys)) KEYMAP.set(canon(a.keys), a.fn)
+  // commands of extensions that aren't installed get no keys (their custom shortcuts are kept)
+  for (const a of ACTIONS) if (extOn(a.ext) && a.keys && !(a.native && a.keys === a.defaultKeys)) KEYMAP.set(canon(a.keys), a.fn)
   // A default the user moved or removed does nothing, also where the editor has the same key
   // built in (Ctrl+B in Milkdown): otherwise removing a shortcut wouldn't remove it
-  for (const a of ACTIONS) if (a.defaultKeys && a.keys !== a.defaultKeys && !KEYMAP.has(canon(a.defaultKeys))) KEYMAP.set(canon(a.defaultKeys), () => {})
+  for (const a of ACTIONS) if (extOn(a.ext) && a.defaultKeys && a.keys !== a.defaultKeys && !KEYMAP.has(canon(a.defaultKeys))) KEYMAP.set(canon(a.defaultKeys), () => {})
   // Zoom on every layout: Shift+= gives '+' on US keyboards; German ones have their own + key
   // (Shift gives '*') and - key (Shift gives '_'), which never match Ctrl+Shift+= / Ctrl+Shift+-
   const unchanged = (id) => !(id in kb)
@@ -3415,7 +3433,7 @@ function wireLanguagePicker() {
 function showShortcuts() {
   const grid = el('div', { class: 'keys-grid' })
   for (const m of MENU) {
-    const acts = m.items.filter((i) => typeof i === 'object' && i.keys)
+    const acts = m.items.filter((i) => typeof i === 'object' && i.keys && extOn(i.ext))
     if (!acts.length) continue
     grid.append(el('h4', {}, m.label))
     for (const a of acts) grid.append(el('span', {}, a.label), el('kbd', {}, a.keys))
@@ -3523,6 +3541,7 @@ function renderPalette() {
     if (!q) rows.sort((a, b) => b.score - a.score)
   } else {
     for (const a of ACTIONS) {
+      if (!extOn(a.ext)) continue
       const label = `${a.group}: ${a.label}`
       const m = fuzzy(q, label)
       if (!m) continue

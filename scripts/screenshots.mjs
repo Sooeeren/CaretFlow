@@ -125,7 +125,7 @@ const SCENES = {
   },
   typing: {
     open: 'Welcome.md',
-    settings: { theme: 'ink', sidebar: false },
+    settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
       await page.evaluate(() => localStorage.setItem('folio.typing.cfg', JSON.stringify({ mode: 'time', time: 30, punct: false, nums: false })))
       await key(page, 'Control+Alt+T')
@@ -138,7 +138,7 @@ const SCENES = {
   },
   results: {
     open: 'Welcome.md',
-    settings: { theme: 'ink', sidebar: false },
+    settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
       await page.evaluate(() => localStorage.setItem('folio.typing.cfg', JSON.stringify({ mode: 'words', words: 25, punct: false, nums: false })))
       await key(page, 'Control+Alt+T')
@@ -167,6 +167,7 @@ const SCENES = {
       theme: 'paper',
       sidebarTab: 'cloud',
       sidebarWidth: 300,
+      extensions: ['cloud'],
       cloudEnabled: true,
       cloudProvider: 'webdav',
       cloudUrl: 'https://cloud.example.com/remote.php/dav/files/you/Notes',

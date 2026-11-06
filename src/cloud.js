@@ -671,32 +671,50 @@ async function runSync(st, summary, auto) {
 
 // ════════════════════════════════════════ automatic sync
 let timer = null
-const afterSave = (() => {
-  let t
-  return () => {
-    clearTimeout(t)
-    t = setTimeout(() => sync({ auto: true }), 4000)
-  }
-})()
+let saveTimer = null
+let started = false
+let startedOnce = false // the startup sync runs once per session, not on every reinstall
+const afterSave = () => {
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => sync({ auto: true }), 4000)
+}
+const onOnline = () => s().cloudAuto && configured() && sync({ auto: true })
 
 /** Called by main.js after CaretFlow saved, created or renamed a file. */
 export function noteSaved(path) {
-  if (s().cloudAuto && configured() && path && P.isInside(path, s().cloudLocal)) afterSave()
+  if (started && s().cloudAuto && configured() && path && P.isInside(path, s().cloudLocal)) afterSave()
 }
 
 export function settingsChanged() {
   clearInterval(timer)
   timer = null
   const min = +s().cloudInterval
-  if (configured() && min > 0) timer = setInterval(() => sync({ auto: true }), min * 60000)
+  if (started && configured() && min > 0) timer = setInterval(() => sync({ auto: true }), min * 60000)
   emit()
 }
 
 export function initCloud(c) {
   ctx = c
+}
+
+/** Start the automatic syncs (Cloud Sync installed and turned on); the first start syncs once. */
+export function start() {
+  if (started) return
+  const first = !startedOnce
+  started = startedOnce = true
   settingsChanged()
-  if (s().cloudAuto && configured()) setTimeout(() => sync({ auto: true }), 3000)
-  addEventListener('online', () => s().cloudAuto && configured() && sync({ auto: true }))
+  addEventListener('online', onOnline)
+  if (first && s().cloudAuto && configured()) setTimeout(() => started && sync({ auto: true }), 3000)
+}
+
+/** Stop everything automatic (the extension was removed or sync turned off). A running sync finishes. */
+export function stop() {
+  started = false
+  clearInterval(timer)
+  timer = null
+  clearTimeout(saveTimer)
+  removeEventListener('online', onOnline)
+  emit()
 }
 
 // ════════════════════════════════════════ status bar button
