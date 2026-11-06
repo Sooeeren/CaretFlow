@@ -1,6 +1,6 @@
 # AI writing help: design
 
-Status: draft for approval · 2026-11-06
+Status: approved 2026-11-06 · ships as an extension (see [Extensions](2026-11-06-extensions-design.md)): everything below exists only while AI Writing Help is installed
 
 ## Intent
 
