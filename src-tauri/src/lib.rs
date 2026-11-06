@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, UNIX_EPOCH};
 use tauri::Manager;
 
+mod cloud;
 mod pdf;
 
 #[derive(Serialize)]
@@ -418,7 +419,14 @@ pub fn run() {
             remove_temp,
             temp_dir,
             read_bytes,
-            install_kind
+            install_kind,
+            cloud::cloud_http,
+            cloud::cloud_scan,
+            cloud::cloud_trash,
+            cloud::cloud_trash_dir,
+            cloud::cloud_secret_get,
+            cloud::cloud_secret_set,
+            cloud::cloud_rclone
         ])
         .run(tauri::generate_context!())
         .expect("error while running CaretFlow");

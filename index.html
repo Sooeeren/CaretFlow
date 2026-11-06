@@ -44,6 +44,7 @@
             <button data-tab="files" title="Files (Ctrl+Shift+2)">Files</button>
             <button data-tab="outline" title="Outline (Ctrl+Shift+1)">Outline</button>
             <button data-tab="search" title="Search in folder (Ctrl+Shift+F)">Search</button>
+            <button data-tab="cloud" id="tab-cloud" title="Cloud files (Ctrl+Shift+4)" hidden>Cloud</button>
           </div>
           <div class="sb-pane" id="sb-files">
             <div class="sb-head">
@@ -62,6 +63,7 @@
             <input id="search-input" type="search" placeholder="Search in folder…" spellcheck="false" />
             <div id="search-results"></div>
           </div>
+          <div class="sb-pane" id="sb-cloud"></div>
         </aside>
         <div id="resizer"></div>
         <section id="content">
@@ -113,6 +115,7 @@
         <span class="spacer"></span>
         <span id="st-flags"></span>
         <span id="st-wpm" hidden></span>
+        <button id="st-cloud" hidden><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M4.5 12.5h7.2a2.8 2.8 0 0 0 .4-5.6 4 4 0 0 0-7.7-.9A3.3 3.3 0 0 0 4.5 12.5z"/></svg><span class="n"></span></button>
         <button id="st-wc" hidden></button>
         <button id="st-mode" title="Toggle source mode (Ctrl+/)">&lt;/&gt;</button>
         <span id="st-count" title=""></span>

@@ -90,6 +90,25 @@ const DEFAULTS = {
   updateCheck: null, // look for new versions on startup: null = not asked yet (no network until the user agrees)
   updateSkip: '', // version the user chose to skip
   updatedFrom: '', // set right before installing an update; shows "updated" once on the next start
+  // Cloud Sync (cloud.js): off until the user turns it on and chooses their own server
+  cloudEnabled: false,
+  cloudProvider: 'webdav', // 'webdav' | 's3' | 'rclone'
+  cloudUrl: '', // WebDAV folder URL
+  cloudUser: '',
+  s3Endpoint: '',
+  s3Region: 'us-east-1',
+  s3Bucket: '',
+  s3Prefix: '',
+  s3AccessKey: '', // the secret key and passwords live in Rust's cloud-secrets.json, not here
+  rcloneRemote: '', // e.g. 'gdrive:Notes'
+  rclonePath: '',
+  cloudLocal: '', // the local folder that is kept in sync
+  cloudFiles: 'notes', // 'notes' (Markdown and images) | 'all'
+  cloudExclude: '',
+  cloudAuto: true, // on startup, after saving, when back online
+  cloudInterval: 15, // minutes, 0 = off
+  cloudDeletes: true, // deletions reach the other side (local ones go to the sync trash)
+  cloudConflict: 'both', // 'both' | 'local' | 'remote'
 }
 // No saved settings yet: CaretFlow's very first start (shows the welcome page)
 const FIRST_RUN = (() => {
@@ -665,6 +684,7 @@ async function save() {
 async function writeDoc(path, text) {
   const out = (text.endsWith('\n') ? text : text + '\n').replace(/\n/g, S.eol)
   S.mtime = await invoke('write_text', { path, content: out })
+  cloudSaved(path)
   S.diskText = text
   S.baseline = text
   S.externalChange = false
@@ -1076,6 +1096,7 @@ async function createFileIn(dir) {
   if (await invoke('exists', { path: p })) return toast('A file with that name already exists', 2500)
   if (!(await confirmDiscard())) return
   await invoke('write_text', { path: p, content: '' })
+  cloudSaved(p)
   await openFile(p, { force: true })
   focusEditor()
 }
@@ -1093,6 +1114,7 @@ async function renameFile(p) {
   const target = P.join(P.dirname(p), name)
   try {
     await invoke('rename_path', { from: p, to: target })
+    cloudSaved(target)
     if (S.path && S.path.toLowerCase() === p.toLowerCase()) {
       S.path = target
       S.mtime = await invoke('mtime', { path: target })
@@ -2286,11 +2308,60 @@ function setTab(tab) {
   for (const p of document.querySelectorAll('.sb-pane')) p.classList.toggle('active', p.id === 'sb-' + tab)
   saveSettings()
   if (tab === 'search') setTimeout(() => $('#search-input').focus(), 0)
+  if (tab === 'cloud') loadCloud()
 }
 const showTab = (tab) => () => {
   if (settings.sidebar && settings.sidebarTab === tab && tab !== 'search') return setSidebar(false)
   setSidebar(true)
   setTab(tab)
+}
+
+// ════════════════════════════════════════ cloud sync (cloud.js, loaded once it is turned on)
+let cloudP = null
+function loadCloud() {
+  cloudP ||= import('./cloud.js').then((m) => {
+    m.initCloud({
+      settings,
+      saveSettings,
+      el,
+      toast,
+      dialog,
+      log,
+      customSelect,
+      showContextMenu,
+      openFile,
+      openPrefs,
+      currentPath: () => S.path,
+      currentRoot: () => S.root,
+      showCloudTab: showTab('cloud'),
+      cloudUiChanged: applyCloudUi,
+      // a sync downloaded or removed this file
+      fileChanged: (p) => {
+        if (S.path && p.toLowerCase() === S.path.toLowerCase()) checkExternal()
+        if (S.root && P.isInside(p, S.root)) renderTree()
+        quickCache = null
+      },
+    })
+    m.statusButton($('#st-cloud'))
+    m.renderPane($('#sb-cloud'))
+    return m
+  })
+  return cloudP
+}
+function cloudSaved(path) {
+  if (settings.cloudEnabled) loadCloud().then((m) => m.noteSaved(path))
+}
+async function cloudSyncNow() {
+  if (!settings.cloudEnabled) return openPrefs('cloud')
+  ;(await loadCloud()).sync()
+}
+/** Show the Cloud tab and status-bar button only while Cloud Sync is on. */
+function applyCloudUi() {
+  const on = settings.cloudEnabled
+  $('#tab-cloud').hidden = !on
+  $('#st-cloud').hidden = !on
+  if (on) loadCloud()
+  else if (settings.sidebarTab === 'cloud') setTab('files')
 }
 
 function applyReadonly() {
@@ -2498,6 +2569,7 @@ function openPrefs(section) {
       row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
       row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
     ]],
+    ['cloud', 'Cloud Sync', [cloudPrefs(row)]],
     ['export', 'Export', [
       row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
     ]],
@@ -2548,6 +2620,14 @@ function openPrefs(section) {
     buttons: [{ label: 'Done', value: true, primary: true, cancel: true }],
     onMount: (box) => box.classList.add('prefs-dialog'),
   })
+}
+
+/** Preferences → Cloud Sync: built by cloud.js, which loads the first time the page is needed. */
+function cloudPrefs(row) {
+  const box = el('div', {}, el('p', { class: 'about-note' }, 'Loading…'))
+  // loading it does nothing on the network: sync only starts once it is turned on and set up
+  loadCloud().then((m) => box.replaceWith(m.prefsPage(row)))
+  return box
 }
 
 /** Preferences → Keyboard: every menu command with its shortcut; click one and press new keys. */
@@ -2747,6 +2827,7 @@ const MENU = [
       k('Open…', 'Ctrl+O', openFileDialog),
       k('Open Folder…', 'Ctrl+Shift+O', openFolderDialog),
       k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
+      k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync' }),
       k('Quick Open…', 'Ctrl+P', () => quickOpen()),
       { label: 'Open Recent', sub: () => recentMenu() },
       '-',
@@ -2847,6 +2928,7 @@ const MENU = [
       k('Outline', 'Ctrl+Shift+1', showTab('outline')),
       k('Files', 'Ctrl+Shift+2', showTab('files')),
       k('Search', 'Ctrl+Shift+3', showTab('search')),
+      k('Cloud Files', 'Ctrl+Shift+4', () => (settings.cloudEnabled ? showTab('cloud')() : openPrefs('cloud'))),
       '-',
       k('Focus Mode', 'F8', toggle('focus'), { checked: () => settings.focus }),
       k('Typewriter Mode', 'F9', toggle('typewriter'), { checked: () => settings.typewriter }),
@@ -2900,6 +2982,7 @@ const MENU = [
       k('Check for Updates Automatically', null, toggle('updateCheck'), { checked: () => settings.updateCheck }),
       k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
       k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
+      k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled }),
       {
         label: 'Export / PDF Theme',
         sub: () =>
@@ -3713,6 +3796,7 @@ async function boot() {
   wireUi()
   wireTitlebar()
   applyTitlebar()
+  applyCloudUi()
   setTab(settings.sidebarTab)
 
   const args = await invoke('cli_args').catch(() => [])

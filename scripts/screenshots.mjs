@@ -79,7 +79,11 @@ function tauriStub({ files, dir, open }) {
     },
     unregisterCallback: (id) => delete callbacks[id],
     convertFileSrc: (p) => p,
-    invoke: async (cmd, a = {}) => (handlers[cmd] ? handlers[cmd](a) : null),
+    // window.__stubExtra: more commands from a scene's setup() (see --extra)
+    invoke: async (cmd, a = {}) => {
+      const h = window.__stubExtra?.[cmd] || handlers[cmd]
+      return h ? h(a) : null
+    },
   }
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} }
 }
@@ -238,6 +242,7 @@ try {
       localStorage.setItem('folio.settings', JSON.stringify({ reopenLast: false, ...s }))
       localStorage.setItem('folio.recent', '[]')
     }, scene.settings || {})
+    if (scene.setup) await scene.setup(page)
     await page.goto(url)
     await page.waitForSelector('#wysiwyg .ProseMirror, #source .cm-editor')
     await settle(page, 700)
