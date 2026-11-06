@@ -278,4 +278,159 @@ export const scenes = {
       summary()
     },
   },
+  'ai-panel': {
+    open: 'Welcome.md',
+    settings: AI({ aiProvider: 'custom', aiFixWhen: 'manual', aiRecWhen: 'manual', aiRecAspects: ['clarity', 'tone'], autocorrect: false, spellcheck: false }),
+    async setup(page) {
+      this.srv = await fakeAi((r) => {
+        const sys = r.body?.messages?.[0]?.content || ''
+        const text = (r.body?.messages?.at(-1)?.content || '').split('TEXT:').pop()
+        if (/Explain/i.test(sys)) return openaiAnswer('Because the sentence reads more smoothly that way.')
+        if (/TONEPARA/.test(text)) return openaiAnswer(JSON.stringify({ findings: [{ quote: 'TONEPARA', replacement: 'Tonepara', kind: 'tone', message: 'Too loud.' }] }))
+        const w = text.trim().split(/\s+/)[1] || 'x'
+        return { ...openaiAnswer(JSON.stringify({ findings: [{ quote: w, replacement: w.toUpperCase(), kind: 'clarity', message: 'Clearer.' }] })), delay: /SLOWPARA/.test(text) ? 3000 : 0 }
+      })
+      await stubBackend(page, aiBackend({}))
+      await page.addInitScript((u) => {
+        const st = JSON.parse(localStorage.getItem('folio.settings'))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.removeItem('folio.ai.usage')
+      }, this.srv.url + '/v1')
+    },
+    async run(page) {
+      const { srv } = this
+      const errors = []
+      page.on('pageerror', (e) => errors.push(e.message))
+      const sent = () => srv.seen.filter((r) => r.url.endsWith('/chat/completions'))
+      await page.click('#wysiwyg .ProseMirror h1')
+      await page.keyboard.press('Control+A')
+      await page.keyboard.press('Delete')
+      await page.keyboard.press('Control+0')
+      const words = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel', 'india', 'juliet', 'kilo']
+      for (const [i, w] of words.entries()) {
+        if (i) await page.keyboard.press('Enter')
+        await page.keyboard.type(`Paragraph ${w} is long enough to be worth an AI check.`)
+      }
+      await page.keyboard.press('Enter')
+      await page.keyboard.type('TONEPARA shouts a little too loudly at the reader here.')
+      await wait(1500)
+      check('manual mode: nothing sent while typing', sent().length === 0, `${sent().length}`)
+
+      await page.keyboard.press('F7')
+      await wait(400)
+      const tabs = await page.$$eval('#wc-panel .wc-tab', (xs) => xs.map((x) => x.textContent))
+      check('review panel has two tabs', tabs.length === 2 && /Spelling & Grammar/.test(tabs[0]) && /^AI/.test(tabs[1]), JSON.stringify(tabs))
+      await page.click('#wc-panel .wc-tab:nth-child(2)')
+      await wait(300)
+      await page.click('#wc-panel button:has-text("Check whole document")')
+      await wait(400)
+      const ask = await page.$eval('#modal', (m) => (m.hidden ? '' : m.textContent)).catch(() => '')
+      check('whole document asks first, with the request count', /12 requests/.test(ask) && sent().length === 0, ask.slice(0, 160))
+      await page.click('#modal button:has-text("Cancel")')
+      await wait(200)
+      await page.click('#wc-panel .wc-tab:nth-child(2)').catch(() => {})
+      await page.click('#wc-panel button:has-text("Check paragraph")')
+      await wait(1500)
+      check('Check paragraph sends one request', sent().length === 1, `${sent().length}`)
+      await page.click('#wc-panel button:has-text("Check whole document")')
+      await wait(400)
+      const ask2 = await page.$eval('#modal', (m) => (m.hidden ? '' : m.textContent)).catch(() => '')
+      check('cached paragraphs are not counted again', /11 requests/.test(ask2), ask2.slice(0, 160))
+      await page.click('#modal button.primary')
+      await wait(6000)
+      check('whole document: one request per paragraph', sent().length === 12, `${sent().length}`)
+      const panel = await page.$eval('#wc-panel', (p) => p.textContent)
+      check('AI tab lists AI findings and usage', /of 12|1 of/.test(panel) && /Today: 12 requests/.test(panel), panel.slice(0, 300))
+      await page.click('#wc-panel .wc-tab:nth-child(1)')
+      await wait(300)
+      const wcTab = await page.$eval('#wc-panel', (p) => p.textContent)
+      check('Spelling & Grammar tab does not list AI findings', !/AI ·/.test(wcTab) && !/Check paragraph/.test(wcTab), wcTab.slice(0, 160))
+      await page.click('#wc-panel .wc-tab:nth-child(2)')
+      await wait(300)
+
+      // right-click extras on an AI finding
+      const tone = await page.$$('#wysiwyg .wc-ai-rec')
+      let toneEl = null
+      for (const x of tone) if ((await x.textContent()) === 'TONEPARA') toneEl = x
+      const tb = await toneEl.boundingBox()
+      await page.mouse.click(tb.x + 4, tb.y + tb.height / 2, { button: 'right' })
+      await wait(300)
+      const items = await page.$$eval('#ctxmenu .menu-item', (xs) => xs.map((x) => x.textContent))
+      check('AI menu: Explain more and Ignore this kind', items.some((t) => /Explain more/.test(t)) && items.some((t) => /Ignore this kind/.test(t)), JSON.stringify(items))
+      const n0 = sent().length
+      await page.click('#ctxmenu .menu-item:has-text("Explain more")')
+      await wait(1500)
+      const expl = await page.$eval('#modal', (m) => (m.hidden ? '' : m.textContent)).catch(() => '')
+      check('Explain more: one request, shows the answer', sent().length === n0 + 1 && /reads more smoothly/.test(expl), expl.slice(0, 120))
+      await page.click('#modal button.primary').catch(() => {})
+      await wait(200)
+      await page.mouse.click(tb.x + 4, tb.y + tb.height / 2, { button: 'right' })
+      await wait(300)
+      await page.click('#ctxmenu .menu-item:has-text("Ignore this kind")')
+      await wait(300)
+      const aspects = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).aiRecAspects)
+      check('Ignore this kind turns that aspect off', JSON.stringify(aspects) === '["clarity"]', JSON.stringify(aspects))
+
+      // removing the extension while a request is on its way
+      await page.click('#wysiwyg .ProseMirror')
+      await page.keyboard.press('Control+End')
+      await page.keyboard.press('Enter')
+      await page.keyboard.type('SLOWPARA takes a while to come back from the server here.')
+      if (!(await page.$eval('#wc-panel', (p) => !p.hidden).catch(() => false))) await page.keyboard.press('F7')
+      await wait(300)
+      if (!(await page.$('#wc-panel button:has-text("Check paragraph")'))) await page.click('#wc-panel .wc-tab:nth-child(2)')
+      await page.click('#wc-panel button:has-text("Check paragraph")')
+      await wait(300)
+      await page.keyboard.press('Control+,')
+      await wait(300)
+      await page.click('.prefs-nav button:has-text("Extensions")')
+      await wait(200)
+      await page.click('.ext-card:nth-child(3) button.ext-act')
+      await wait(300)
+      await page.click('#modal button:has-text("Remove")')
+      await wait(4000)
+      const left = await page.evaluate(() => document.querySelectorAll('#wysiwyg .wc-ai-fix, #wysiwyg .wc-ai-rec').length)
+      check('removed mid-request: no AI underlines, no errors', left === 0 && !errors.length, `${left} ${errors.join('; ')}`)
+      srv.close()
+      summary()
+    },
+  },
+  'ai-limits': {
+    open: 'Welcome.md',
+    settings: AI({ aiProvider: 'custom', aiFixWhen: 'manual', aiRecWhen: 'manual', aiPerDay: 1, autocorrect: false, spellcheck: false }),
+    async setup(page) {
+      this.srv = await fakeAi(() => openaiAnswer('{"findings":[]}'))
+      await stubBackend(page, aiBackend({}))
+      await page.addInitScript((u) => {
+        const st = JSON.parse(localStorage.getItem('folio.settings'))
+        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrl: u }))
+        localStorage.removeItem('folio.ai.usage')
+      }, this.srv.url + '/v1')
+    },
+    async run(page) {
+      const sent = () => this.srv.seen.length
+      await page.click('#wysiwyg .ProseMirror h1')
+      await page.keyboard.press('Control+A')
+      await page.keyboard.press('Delete')
+      await page.keyboard.press('Control+0')
+      await page.keyboard.type('The first paragraph is long enough to be checked by the AI.')
+      await page.keyboard.press('Enter')
+      await page.keyboard.type('The second paragraph is long enough to be checked as well.')
+      await page.keyboard.press('F7')
+      await wait(300)
+      await page.click('#wc-panel .wc-tab:nth-child(2)')
+      await page.click('#wc-panel button:has-text("Check paragraph")')
+      await wait(1200)
+      await page.click('#wysiwyg >> text=The first paragraph') // the panel has focus: put the cursor in the first paragraph
+      await page.click('#wc-panel button:has-text("Check paragraph")')
+      await wait(1200)
+      const panel = await page.$eval('#wc-panel', (p) => p.textContent)
+      check('daily limit pauses checking and says so', sent() === 1 && /daily limit/i.test(panel), `${sent()} ${panel.slice(0, 200)}`)
+      await page.click('#wc-panel button:has-text("Check anyway")')
+      await wait(1200)
+      check('Check anyway sends exactly one request', sent() === 2, `${sent()}`)
+      this.srv.close()
+      summary()
+    },
+  },
 }

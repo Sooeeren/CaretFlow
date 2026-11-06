@@ -2420,7 +2420,7 @@ function migrateExtensions() {
 let aiP = null
 function loadAi() {
   aiP ||= import('./ai.js').then((m) => {
-    m.initAi({ settings, saveSettings, log, toast, installed: () => extOn('ai') })
+    m.initAi({ settings, saveSettings, log, toast, el, dialog, installed: () => extOn('ai'), openOptions: () => openPrefs('ai') })
     m.setOnChange(sourceChanged)
     registerSource(m.aiSource)
     return m

@@ -675,11 +675,15 @@ function showIssueMenu(ad, iss, x, y, viaKeyboard = false) {
   else m.append(el('div', { class: 'wc-none' }, 'No suggestions'))
   m.append(el('div', { class: 'menu-sep' }))
   item('Ignore', () => ignoreOnce(ad, iss))
-  item('Ignore All', () => ignoreAll(ad, iss))
-  if (iss.cat === 'spelling') item('Add to Dictionary', () => addToDictionary(ad, iss))
-  else if (iss.rule) item('Turn Off This Rule', () => disableRule(ad, iss))
+  const src = iss.source && sources.find((x) => iss.source === x.id || iss.source.startsWith(x.id + ':'))
+  if (src) for (const [label, fn] of src.menuExtras?.(iss) || []) item(label, () => (fn(), refresh(0)))
+  else {
+    item('Ignore All', () => ignoreAll(ad, iss))
+    if (iss.cat === 'spelling') item('Add to Dictionary', () => addToDictionary(ad, iss))
+    else if (iss.rule) item('Turn Off This Rule', () => disableRule(ad, iss))
+  }
   m.append(el('div', { class: 'menu-sep' }))
-  item('Spelling & Grammar…  F7', () => openPanel(iss.id))
+  item('Spelling & Grammar…  F7', () => ((tab = iss.source ? 'ai' : 'wc'), openPanel(iss.id)))
   item('Writing Check Options…', () => H.openOptions())
   m.hidden = false
   m.style.minWidth = '240px'
@@ -756,12 +760,24 @@ function publish() {
         : n
           ? `${n} spelling/grammar ${n === 1 ? 'issue' : 'issues'} — click or press F7 to review`
           : 'No spelling or grammar issues (F7)'
+    const extra = panelSource()?.statusText?.()
+    if (extra) statusEl.title += '\n' + extra
   }
   if (panel && !panel.hidden) renderPanel()
 }
 
 let panel = null
+let tab = 'wc' // review panel tab: 'wc' (spelling checker) | 'ai' (AI and MCP findings)
 export const panelOpen = () => !!panel && !panel.hidden
+/** A source with its own tab in the review panel (AI Writing Help), if it is on. */
+const panelSource = () => sources.find((src) => src.panel && src.active())
+const inTab = (x) => (tab === 'ai' ? !!x.source : !x.source)
+
+/** F7 panel on the AI tab. */
+export function openAiPanel() {
+  tab = 'ai'
+  panelOpen() ? renderPanel(true) : openPanel()
+}
 
 export function togglePanel() {
   panelOpen() ? closePanel(true) : openPanel()
@@ -779,7 +795,8 @@ function openPanel(id) {
   }
   panel.hidden = false
   const ad = adapter()
-  const list = ad?.issues() || []
+  if (!panelSource()) tab = 'wc'
+  const list = (ad?.issues() || []).filter(inTab)
   current = id || (list.find((x) => x.from >= (ad?.caret() ?? 0)) || list[0])?.id || null
   refresh(0)
   renderPanel(true)
@@ -798,7 +815,10 @@ let shownId = null
 function renderPanel(select = false) {
   const { el } = H
   const ad = adapter()
-  const list = ad?.issues() || []
+  const src = panelSource()
+  if (!src) tab = 'wc'
+  const all = ad?.issues() || []
+  const list = all.filter(inTab)
   let idx = list.findIndex((x) => x.id === current)
   if (idx < 0 && list.length) {
     // the shown issue was fixed: continue with the one that took its place
@@ -811,8 +831,29 @@ function renderPanel(select = false) {
   panel.innerHTML = ''
   const close = el('button', { class: 'wc-x', title: 'Close (Esc)' }, '✕')
   close.onclick = () => closePanel(true)
-  panel.append(el('div', { class: 'wc-head' }, el('b', {}, 'Spelling & Grammar'), el('span', { class: 'wc-count' }, list.length ? `${idx + 1} of ${list.length}` : ''), close))
+  const count = list.length ? `${idx + 1} of ${list.length}` : ''
+  if (src) {
+    const tabBtn = (id, label) => {
+      const n = all.filter((x) => (id === 'ai' ? !!x.source : !x.source)).length
+      const b2 = el('button', { class: 'wc-tab' + (tab === id ? ' on' : ''), title: id === 'ai' ? 'Corrections and suggestions from your AI' : 'The offline spelling & grammar check' }, label + (n ? ` (${n})` : ''))
+      b2.onclick = () => {
+        tab = id
+        current = null
+        renderPanel(true)
+        panel.focus()
+      }
+      return b2
+    }
+    panel.append(el('div', { class: 'wc-head' }, el('div', { class: 'wc-tabs' }, tabBtn('wc', 'Spelling & Grammar'), tabBtn('ai', 'AI')), close))
+    if (count) panel.append(el('div', { class: 'wc-count wc-count-row' }, count))
+  } else panel.append(el('div', { class: 'wc-head' }, el('b', {}, 'Spelling & Grammar'), el('span', { class: 'wc-count' }, count), close))
+  const aiBox = () => src.panel({ blocks: () => ad.blocks(), caretBlock: () => checkContext(ad, ad.blocks()).caretBlock })
 
+  if (!iss && tab === 'ai') {
+    panel.append(el('div', { class: 'wc-done' }, el('div', { class: 'wc-check' }, '✓'), el('p', {}, 'No AI suggestions here.')), aiBox())
+    shownId = null
+    return
+  }
   if (!iss) {
     const done = engineState === 'loading' ? 'Loading the checker…' : engineState === 'error' ? `The checker could not start: ${engineError}` : 'No spelling or grammar issues found.'
     panel.append(el('div', { class: 'wc-done' }, el('div', { class: 'wc-check' }, engineState === 'ready' ? '✓' : '…'), el('p', {}, done)))
@@ -858,11 +899,11 @@ function renderPanel(select = false) {
       { class: 'wc-actions' },
       iss.sugg.length ? btn('Change', 'Use the first suggestion (Enter)', () => change(0), 'primary') : null,
       btn('Ignore', 'Ignore this once (I)', () => act(ignoreOnce)),
-      btn('Ignore All', 'Ignore everywhere in this session (A)', () => act(ignoreAll)),
-      iss.cat === 'spelling' ? btn('Add to Dictionary', 'Never flag this word again (D)', () => act(addToDictionary)) : btn('Turn Off Rule', 'Stop checking for this (T)', () => act(disableRule)),
+      iss.source ? null : btn('Ignore All', 'Ignore everywhere in this session (A)', () => act(ignoreAll)),
+      iss.source ? null : iss.cat === 'spelling' ? btn('Add to Dictionary', 'Never flag this word again (D)', () => act(addToDictionary)) : btn('Turn Off Rule', 'Stop checking for this (T)', () => act(disableRule)),
     ),
     el('div', { class: 'wc-nav' }, btn('‹ Previous', 'Previous issue (←)', nav(-1)), btn('Next ›', 'Next issue (→)', nav(1))),
-    footer(),
+    tab === 'ai' ? aiBox() : footer(),
   )
   if (select || shownId !== iss.id) {
     ad.redraw()

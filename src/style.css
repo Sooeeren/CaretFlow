@@ -1284,3 +1284,26 @@ button { font: inherit; color: inherit; }
 .ext-page h5 { margin: 14px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .ext-adds { margin: 0; padding-left: 18px; line-height: 1.6; }
 .ext-net { margin: 0; }
+
+/* Review panel: Spelling & Grammar | AI tabs */
+#wc-panel .wc-tabs { display: flex; gap: 2px; flex: 1; min-width: 0; }
+#wc-panel .wc-tab { border: 0; background: none; padding: 4px 8px; border-radius: 6px; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+#wc-panel .wc-tab:hover { background: var(--chrome-2); color: var(--fg); }
+#wc-panel .wc-tab.on { background: var(--chrome-2); color: var(--fg-strong); }
+#wc-panel .wc-count-row { margin: -4px 0 6px; font-size: 12px; }
+.wc-ai-box { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.wc-ai-box .wc-actions { margin-top: 0; }
+.wc-ai-usage { color: var(--muted); font-size: 11.5px; line-height: 1.5; margin: 8px 0; }
+.wc-ai-paused { color: var(--wc-style); font-size: 12.5px; margin: 0 0 6px; }
+.wc-ai-note { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; }
+.wc-ai-note.err { color: var(--wc-spelling); }
+
+/* AI findings: violet; wavy for corrections, dotted for recommendations */
+:root { --wc-ai: #8a4fd8; }
+:root[data-theme='sepia'] { --wc-ai: #8b4fb8; }
+:root[data-theme='ink'], :root[data-theme='slate'] { --wc-ai: #b996ff; }
+.wc-ai-fix.wc-err { text-decoration-color: var(--wc-ai); }
+.wc-ai-rec.wc-err { text-decoration-color: var(--wc-ai); text-decoration-style: dotted; text-decoration-thickness: 2px; }
+.wc-tag.wc-ai-fix, .wc-tag.wc-ai-rec { background: var(--wc-ai); }
+#wc-panel .wc-ctx mark.wc-ai-fix { text-decoration-color: var(--wc-ai); }
+#wc-panel .wc-ctx mark.wc-ai-rec { text-decoration-color: var(--wc-ai); text-decoration-style: dotted; }

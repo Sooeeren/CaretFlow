@@ -431,3 +431,124 @@ function place(b, text) {
   }
   return out
 }
+
+// ════════════════════════════════════════ review panel (AI tab), right-click extras, status
+const allFeats = () => features().map((f) => f.id)
+const remaining = (text) => allFeats().filter((f) => !cache.has(keyOf(f, text)))
+const providerName = () => (PRESETS.find((p) => p[0] === s().aiProvider) || PRESETS[0])[1].replace(/ \(.*\)$/, '')
+const time = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+/** Check the paragraph with the cursor now, whatever "when to check" says. force = past the limits. */
+function checkCaret(h, force = false) {
+  const blocks = h.blocks()
+  const i = h.caretBlock()
+  if (i < 0) return ctx.toast('Put the cursor in a paragraph first')
+  const text = sendable(blocks[i])
+  if (text.replace(/\[code\]/g, '').trim().length < +s().aiMinChars) return ctx.toast('This paragraph is too short to check')
+  const feats = remaining(text)
+  if (!feats.length) return ctx.toast('This paragraph was checked already')
+  for (const f of feats) failed.delete(keyOf(f, text))
+  enqueue(text, s().aiContext ? (i > 0 ? sendable(blocks[i - 1]) : '') : '', feats, force)
+  pump()
+  onChange()
+}
+
+/** Every paragraph that has no answer yet; asks first, with the number of requests. */
+async function checkAll(h) {
+  const blocks = h.blocks()
+  const todo = []
+  blocks.forEach((b, i) => {
+    const text = sendable(b)
+    if (text.replace(/\[code\]/g, '').trim().length < +s().aiMinChars) return
+    const feats = remaining(text)
+    if (feats.length) todo.push({ text, prev: s().aiContext && i > 0 ? sendable(blocks[i - 1]) : '', feats })
+  })
+  if (!todo.length) return ctx.toast('Every paragraph was checked already')
+  // a rough estimate: ~4 characters per token, plus the instructions and the answer
+  const tokens = todo.reduce((n, j) => n + Math.ceil((j.text.length + j.prev.length) / 4) + 350 + +s().aiMaxOut, 0)
+  if (todo.length > 3) {
+    const ok = await ctx.dialog({
+      title: 'Check the whole document?',
+      body: `This sends ${todo.length} requests to ${providerName()}, about ${tokens.toLocaleString()} tokens at most. Your limits still apply.`,
+      buttons: [
+        { label: 'Cancel', value: false, cancel: true },
+        { label: `Check ${todo.length} paragraphs`, value: true, primary: true },
+      ],
+    })
+    if (!ok) return
+  }
+  for (const j of todo) {
+    for (const f of j.feats) failed.delete(keyOf(f, j.text))
+    enqueue(j.text, j.prev, j.feats)
+  }
+  pump()
+  onChange()
+}
+
+/** The AI tab's own controls: check buttons, limits, usage, provider. */
+function panel(h) {
+  const { el } = ctx
+  const u = usage()
+  const st = status()
+  const box = el('div', { class: 'wc-ai-box' })
+  const btn = (label, title, fn, cls = '') => el('button', { class: cls, title, onclick: fn }, label)
+  if (st.paused) {
+    const what = { hour: 'hourly limit', day: 'daily limit', tokens: 'daily token limit' }[st.paused.reason]
+    box.append(el('p', { class: 'wc-ai-paused' }, `Paused: ${what} reached (until ${time(st.paused.resetAt)}).`), btn('Check anyway', 'Send one request for this paragraph despite the limit', () => checkCaret(h, true)))
+  } else if (st.checking) box.append(el('p', { class: 'wc-ai-note' }, `Checking ${st.checking} paragraph${st.checking > 1 ? 's' : ''}…`))
+  else if (st.last && /failed|could not/.test(st.last)) box.append(el('p', { class: 'wc-ai-note err' }, st.last))
+  box.append(
+    el('div', { class: 'wc-actions' }, btn('Check paragraph', 'Check the paragraph with the cursor (Ctrl+Alt+K)', () => checkCaret(h), 'primary'), btn('Check whole document', 'Every paragraph that has no AI answer yet', () => checkAll(h))),
+    el('p', { class: 'wc-ai-usage' }, `Today: ${u.req} request${u.req === 1 ? '' : 's'}, ${u.tokens.toLocaleString()} tokens · limits ${s().aiPerHour}/hour, ${s().aiPerDay}/day, ${(+s().aiTokensDay).toLocaleString()} tokens/day`),
+    el('div', { class: 'wc-foot' }, el('span', {}, `${providerName()} · ${s().aiModel || 'no model chosen'}`), btn('Options…', 'Preferences → AI', () => ctx.openOptions?.(), 'wc-link')),
+  )
+  return box
+}
+
+const ASPECT_OF = { clarity: 'clarity', conciseness: 'concise', 'word choice': 'words', structure: 'structure', consistency: 'consistency', tone: 'tone' }
+
+function menuExtras(iss) {
+  const kind = iss.rule.replace(/^ai:/, '')
+  return [
+    [
+      'Ignore this kind of suggestion',
+      () => {
+        if (ASPECT_OF[kind]) s().aiRecAspects = (s().aiRecAspects || []).filter((a) => a !== ASPECT_OF[kind])
+        else s().wcDisabledRules = [...new Set([...(s().wcDisabledRules || []), iss.rule])]
+        ctx.saveSettings()
+        ctx.toast(`No more “${kind}” suggestions (Preferences → AI to change)`, 2600)
+        onChange()
+      },
+    ],
+    ['Explain more…', () => explain(iss)],
+  ]
+}
+
+/** One extra request, only when asked: why the AI suggests this. */
+async function explain(iss) {
+  const rep = iss.sugg[0]?.text ?? ''
+  ctx.toast('Asking…')
+  try {
+    const r = await complete({
+      system: 'Explain briefly, in two or three plain sentences, why the suggested change improves the text. No preamble.',
+      user: `TEXT:\n${iss.block}\n\nSuggested change: “${iss.problem}” → “${rep}”. (${iss.message})`,
+      maxTokens: +s().aiMaxOut,
+    })
+    record(r.inTokens, r.outTokens)
+    await ctx.dialog({ title: 'Why this suggestion', body: r.text.trim() || 'No answer.' })
+  } catch (e) {
+    record(0, 0)
+    ctx.toast('Could not ask: ' + (e.message || e), 4000)
+  }
+}
+
+function statusText() {
+  const st = status()
+  if (st.paused) return `AI paused: ${st.paused.reason === 'hour' ? 'hourly' : 'daily'} limit reached`
+  if (st.checking) return 'AI checking…'
+  return st.last ? 'AI: ' + st.last : ''
+}
+
+Object.assign(aiSource, { panel, menuExtras, statusText })
+/** Edit → AI: Check Paragraph / Check Document, for menus and shortcuts. */
+export const commands = { checkCaret, checkAll }
