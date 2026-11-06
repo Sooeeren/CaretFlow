@@ -109,6 +109,8 @@ const DEFAULTS = {
   cloudInterval: 15, // minutes, 0 = off
   cloudDeletes: true, // deletions reach the other side (local ones go to the sync trash)
   cloudConflict: 'both', // 'both' | 'local' | 'remote'
+  extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
+  extNoticeSeen: false, // the one-time "these are extensions now" notice after updating from 0.7.0
 }
 // No saved settings yet: CaretFlow's very first start (shows the welcome page)
 const FIRST_RUN = (() => {
@@ -2827,7 +2829,7 @@ const MENU = [
       k('Open…', 'Ctrl+O', openFileDialog),
       k('Open Folder…', 'Ctrl+Shift+O', openFolderDialog),
       k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
-      k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync' }),
+      k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync', ext: 'cloud' }),
       k('Quick Open…', 'Ctrl+P', () => quickOpen()),
       { label: 'Open Recent', sub: () => recentMenu() },
       '-',
@@ -2928,7 +2930,7 @@ const MENU = [
       k('Outline', 'Ctrl+Shift+1', showTab('outline')),
       k('Files', 'Ctrl+Shift+2', showTab('files')),
       k('Search', 'Ctrl+Shift+3', showTab('search')),
-      k('Cloud Files', 'Ctrl+Shift+4', () => (settings.cloudEnabled ? showTab('cloud')() : openPrefs('cloud'))),
+      k('Cloud Files', 'Ctrl+Shift+4', () => (settings.cloudEnabled ? showTab('cloud')() : openPrefs('cloud')), { ext: 'cloud' }),
       '-',
       k('Focus Mode', 'F8', toggle('focus'), { checked: () => settings.focus }),
       k('Typewriter Mode', 'F9', toggle('typewriter'), { checked: () => settings.typewriter }),
@@ -2943,7 +2945,7 @@ const MENU = [
       k('Full Screen', 'F11', toggleFullscreen),
       k('Page Preview', 'Ctrl+Alt+L', togglePagePreview, { checked: () => pagePreviewOpen() }),
       '-',
-      k('Typing Test…', 'Ctrl+Alt+T', typingTest),
+      k('Typing Test…', 'Ctrl+Alt+T', typingTest, { ext: 'typing' }),
       k('Typing Speed (WPM)', null, toggle('wpm'), { checked: () => settings.wpm }),
       k('Typing Cat', null, toggle('bongo'), { checked: () => settings.bongo }),
       '-',
@@ -2982,7 +2984,7 @@ const MENU = [
       k('Check for Updates Automatically', null, toggle('updateCheck'), { checked: () => settings.updateCheck }),
       k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
       k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
-      k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled }),
+      k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled, ext: 'cloud' }),
       {
         label: 'Export / PDF Theme',
         sub: () =>
