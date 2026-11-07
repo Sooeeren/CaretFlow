@@ -2,8 +2,17 @@
 
 export const isAbs = (p) => /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('/') || p.startsWith('\\\\')
 export const sepOf = (p) => (p && p.includes('\\') ? '\\' : '/')
-export const basename = (p) => (p || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop()
+/** A file another Android app handed over: a content:// link, not a path (no folder, no siblings) */
+export const isUri = (p) => typeof p === 'string' && p.startsWith('content://')
+export const basename = (p) => {
+  // content://…/document/primary%3ADocuments%2Fnote.md → note.md
+  if (isUri(p)) return decodeURIComponent(p.split('/').pop() || '').split(/[\\/:]/).pop() || 'Document'
+  return (p || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop()
+}
+/** file:// link for an absolute path (Android prints exports from plain files) */
+export const fileUrl = (p) => (isAbs(p) ? 'file://' + encodeURI(p.replace(/\\/g, '/')).replace(/#/g, '%23').replace(/\?/g, '%3F') : p)
 export const dirname = (p) => {
+  if (isUri(p)) return ''
   const s = (p || '').replace(/[\\/]+$/, '')
   const i = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'))
   if (i < 0) return ''

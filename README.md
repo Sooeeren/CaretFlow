@@ -2,7 +2,7 @@
 
 <img src="src-tauri/icons/128x128@2x.png" width="96" align="right" alt="">
 
-**A fast, quiet Markdown editor for Windows and Linux.** You write, CaretFlow renders it in place:
+**A fast, quiet Markdown editor for Windows, Linux and Android.** You write, CaretFlow renders it in place:
 no split preview, no clutter. Raw Markdown and Vim are one shortcut away, and a built-in spelling
 and grammar checker catches mistakes as you type.
 
@@ -30,8 +30,10 @@ Pick a file from the [latest release](https://github.com/Sooeeren/CaretFlow/rele
 | Debian / Ubuntu | `CaretFlow_*_amd64.deb` | `sudo apt install ./CaretFlow_*.deb` |
 | Fedora / RHEL / openSUSE | `caretflow-*.x86_64.rpm` | `sudo dnf install ./caretflow-*.rpm` |
 | Arch / Manjaro | `caretflow-bin-*-x86_64.pkg.tar.zst` | `sudo pacman -U ./caretflow-bin-*.pkg.tar.zst` |
+| Android 7+ | `CaretFlow-*.apk` | Open it on the phone; see [docs/ANDROID.md](docs/ANDROID.md) |
 
-The Windows installer, AppImage, `.deb` and `.rpm` update themselves from inside the app. To build
+The Windows installer, AppImage, `.deb` and `.rpm` update themselves from inside the app; on Android,
+CaretFlow offers the new APK. To build
 CaretFlow yourself, see [docs/BUILDING.md](docs/BUILDING.md).
 
 ## How is CaretFlow different?
@@ -51,7 +53,7 @@ Markdown is one shortcut away. The differences are in what it is built around.
 
 Other apps change over time, so check their sites for their current features.
 
-**Platforms:** Windows and Linux. There is no macOS build and none is planned right now, but it is
+**Platforms:** Windows, Linux and Android (phones and tablets, with a touch layout). There is no macOS build and none is planned right now, but it is
 not ruled out. Tauri supports macOS, so it depends on someone being able to build and test it.
 
 ## Highlights
@@ -65,7 +67,9 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
   command line.
 - **Files and folders**: sidebar with outline, file tree and folder search; quick open (`Ctrl+P`);
   command palette (`F1`).
-- **Four themes** (Paper, Sepia, Ink, Slate) plus custom CSS, focus, typewriter and zen modes.
+- **Four themes** (Paper, Sepia, Ink, Slate) plus custom CSS, focus, typewriter and zen modes, and an
+  optional **Material You style** (Themes menu) with colors made from one color, or from your
+  wallpaper on Android 12+.
 - **Extensions you add when you want them**: Cloud Sync with your own server, AI writing help with
   the AI you choose, and a typing test. Until installed they stay out of your menus.
 - **Optional extras**: a live WPM meter and a typing cat (View menu).
@@ -134,15 +138,11 @@ services you set up, and only once you turn them on.
 | [Extensions](docs/EXTENSIONS.md) | Installing and removing extensions, what each one adds |
 | [Cloud Sync](docs/CLOUD-SYNC.md) | Setting up WebDAV, S3 and rclone; how syncing works |
 | [AI Writing Help](docs/AI.md) · [MCP setup](docs/MCP.md) | Providers and keys, local models, every setting and limit; connecting your AI app |
+| [Android](docs/ANDROID.md) | Installing, files and folders, the touch layout, what differs from the desktop |
 | [Notes](docs/NOTES.md) | Privacy and network access, platform notes, where files are stored |
 | [Building](docs/BUILDING.md) · [Releasing](docs/RELEASING.md) | For developers |
 
 In the app, **Help → Markdown Guide** shows the Markdown syntax and **Shift+F1** all shortcuts.
-
-## Roadmap & Planned Features
-
-* **Native Android Client**  
-  A dedicated mobile app offering offline access, quick capture, and platform-native UI/UX.
 
 ## Made with AI
 

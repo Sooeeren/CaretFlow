@@ -6,8 +6,9 @@ dist/
 release/
 src-tauri/target/
 
-# Tauri-generated schemas (regenerated on every build)
-src-tauri/gen/
+# Tauri-generated schemas (regenerated on every build); the Android project is ours
+src-tauri/gen/*
+!src-tauri/gen/android/
 
 # Logs & caches
 *.log

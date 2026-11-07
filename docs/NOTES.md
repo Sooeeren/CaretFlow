@@ -24,6 +24,9 @@ CaretFlow sends nothing anywhere unless you turn something on. There is no telem
   `WEBKIT_DISABLE_DMABUF_RENDERER=1` (unless you set it yourself) to avoid WebKitGTK freezes on
   Wayland. CaretFlow draws the text cursor itself there, because WebKitGTK can leave stale copies of
   it behind (Preferences → Editing → Draw the text cursor).
+- **Android**: one full-screen window with a touch layout, CaretFlow's own file browser, and "All
+  files access" for folders (see [ANDROID.md](ANDROID.md)). Settings and drafts live in the app's
+  own storage and are removed when the app is uninstalled.
 - **macOS**: there is no build and none is planned right now, but it is not ruled out. Tauri supports
   macOS, so it depends on someone being able to build and test it.
 

@@ -15,8 +15,8 @@ import { toggleLinkCommand } from '@milkdown/kit/component/link-tooltip'
 import { invoke, convertFileSrc } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
-import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog'
-import { openUrl, openPath as osOpenPath, revealItemInDir } from '@tauri-apps/plugin-opener'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { IS_ANDROID, pickFile, pickFolder, pickSave, pickImage, openPath as osOpenPath, reveal as revealItemInDir, canReveal } from './platform.js'
 
 import * as P from './paths.js'
 import { underline as underlinePlugin, toggleUnderlineCommand, underlineSchema } from './underline.js'
@@ -30,6 +30,7 @@ import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChan
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
 import { isInstalled, setInstalled, EXTENSIONS } from './extensions.js'
+import { applyMaterial, SEEDS as MATERIAL_SEEDS, ripples } from './material.js'
 import aiStats from './ai-stats.json'
 import { version as APP_VERSION } from '../package.json'
 
@@ -47,13 +48,16 @@ const win = getCurrentWindow()
 const IS_LINUX = /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent)
 const DEFAULTS = {
   theme: 'paper',
+  material: false, // Material You style over the theme (material.js)
+  materialSeed: '#6750a4', // its seed color
+  materialSystem: true, // Android 12+: the seed comes from the wallpaper colors
   font: 'auto',
   fontSize: 16,
   lineHeight: 1.7,
   headingSpacing: 1, // multiplies the space above/below headings (editor and exports)
   width: 860,
   wide: false,
-  autoSave: false,
+  autoSave: IS_ANDROID, // Android may close a background app at any moment
   spellcheck: true, // CaretFlow's own spelling & grammar check (writing.js)
   wcGrammar: true,
   wcStyle: false,
@@ -141,6 +145,7 @@ const DEFAULTS = {
   mcpPort: 38457,
   extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
   extNoticeSeen: false, // the one-time "these are extensions now" notice after updating from 0.7.0
+  androidStorageAsked: false, // Android: asked once for "All files access" (android.js)
 }
 // No saved settings yet: CaretFlow's very first start (shows the welcome page)
 const FIRST_RUN = (() => {
@@ -631,7 +636,8 @@ async function openFile(p, { force = false } = {}) {
     S.mtime = await invoke('mtime', { path: p }).catch(() => 0)
     S.readonly = settings.readonlyDefault
     hideNotice()
-    if (!S.root || !P.isInside(p, S.root)) S.root = P.dirname(p)
+    // a file another Android app handed over (content://) has no folder to show
+    if (!P.isUri(p) && (!S.root || !P.isInside(p, S.root))) S.root = P.dirname(p)
     await loadText(normalizeEol(raw))
     addRecent(p)
     renderTree()
@@ -674,9 +680,7 @@ async function newFile() {
 }
 
 async function openFileDialog() {
-  const p = await openDialog({
-    multiple: false,
-    directory: false,
+  const p = await pickFile({
     defaultPath: S.path ? P.dirname(S.path) : S.root || undefined,
     filters: [
       { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd', 'mkdn', 'mdx', 'txt'] },
@@ -687,7 +691,7 @@ async function openFileDialog() {
 }
 
 async function openFolderDialog() {
-  const p = await openDialog({ directory: true, defaultPath: S.root || undefined })
+  const p = await pickFolder({ defaultPath: S.root || undefined })
   if (p) setRoot(p, true)
 }
 
@@ -732,7 +736,7 @@ async function writeDoc(path, text) {
 async function saveAs(target) {
   const suggested = S.path || P.join(S.root || '', (firstHeading() || 'Untitled').replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) + '.md')
   const p =
-    typeof target === 'string' ? target : await saveDialog({ defaultPath: suggested, filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] })
+    typeof target === 'string' ? target : await pickSave({ defaultPath: suggested, filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] })
   if (!p) return false
   const text = currentText()
   const oldDir = S.path ? P.dirname(S.path) : null
@@ -744,7 +748,7 @@ async function saveAs(target) {
     return false
   }
   addRecent(p)
-  if (!S.root || !P.isInside(p, S.root)) S.root = P.dirname(p)
+  if (!P.isUri(p) && (!S.root || !P.isInside(p, S.root))) S.root = P.dirname(p)
   renderTree()
   if (oldDir !== P.dirname(p) && S.mode === 'wysiwyg') {
     // re-render so relative images resolve against the new location
@@ -858,7 +862,7 @@ function insertImage(src, alt = '', pos) {
 }
 
 async function insertImageDialog() {
-  const p = await openDialog({ multiple: false, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif'] }] })
+  const p = await pickImage()
   if (p) insertImage(await srcForDroppedImage(p), P.stem(p))
 }
 
@@ -1100,18 +1104,18 @@ async function renderDir(dir, parent, open, depth) {
             ['New File Here…', () => createFileIn(e.path)],
             ['Set as Root Folder', () => setRoot(e.path)],
             '-',
-            ['Reveal in Explorer', () => revealItemInDir(e.path)],
+            canReveal && ['Reveal in Explorer', () => revealItemInDir(e.path)],
             ['Copy Path', () => navigator.clipboard.writeText(e.path)],
           ]
         : [
             ['Open', () => openFile(e.path)],
-            ['Open in New Window', () => invoke('new_window', { path: e.path })],
+            !IS_ANDROID && ['Open in New Window', () => invoke('new_window', { path: e.path })],
             '-',
             ['Rename…', () => renameFile(e.path)],
-            ['Reveal in Explorer', () => revealItemInDir(e.path)],
+            canReveal && ['Reveal in Explorer', () => revealItemInDir(e.path)],
             ['Copy Path', () => navigator.clipboard.writeText(e.path)],
           ]
-      showContextMenu(ev.clientX, ev.clientY, items)
+      showContextMenu(ev.clientX, ev.clientY, items.filter(Boolean))
     }
   }
 }
@@ -1770,7 +1774,7 @@ function themeVars(theme = exportThemeName()) {
 }
 
 async function exportHtml() {
-  const target = await saveDialog({
+  const target = await pickSave({
     defaultPath: S.path ? S.path.replace(/\.[^.\\/]+$/, '') + '.html' : 'document.html',
     filters: [{ name: 'HTML', extensions: ['html'] }],
   })
@@ -1844,7 +1848,7 @@ async function exportPdfTo(out, options) {
   const htmlDoc = await toHtml(currentText(), {
     title: options.title || docTitle(),
     docDir: S.path && P.dirname(S.path),
-    resolveForView: convertFileSrc,
+    resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,
     themeVars: themeVars(),
     dark: DARK_THEMES.includes(exportThemeName()),
     inlineKatex: true,
@@ -1853,7 +1857,7 @@ async function exportPdfTo(out, options) {
   const tmp = out.replace(/\.pdf$/i, '') + '.folio-tmp.html'
   await invoke('write_text', { path: tmp, content: htmlDoc })
   try {
-    await invoke('export_pdf', { url: convertFileSrc(tmp), out, options })
+    await invoke('export_pdf', { url: convertFileSrc(tmp), out, options, html: tmp })
   } finally {
     invoke('remove_temp', { path: tmp }).catch(() => {})
   }
@@ -1933,7 +1937,7 @@ async function exportPdfDialog(settingsOnly = false) {
   saveSettings()
   if (pagePreviewOpen()) schedulePreview(0)
   if (settingsOnly) return
-  const out = await saveDialog({
+  const out = await pickSave({
     defaultPath: S.path ? S.path.replace(/\.[^.\\/]+$/, '') + '.pdf' : (title.value || 'document').replace(/[\\/:*?"<>|]+/g, '') + '.pdf',
     filters: [{ name: 'PDF', extensions: ['pdf'] }],
   })
@@ -2163,6 +2167,8 @@ function showAbout() {
 
 // ── updates (lazy, see updater.js). Automatic checks only after the user agreed once.
 async function checkUpdates(manual) {
+  // Android: a new APK on GitHub, installed by Android itself
+  if (IS_ANDROID) return (await import('./android.js')).checkForUpdates({ manual })
   const { checkForUpdates } = await import('./updater.js')
   const ctx = { el, dialog, toast, settings, saveSettings, confirmDiscard, openUrl, version: APP_VERSION }
   return checkForUpdates(ctx, { manual })
@@ -2212,14 +2218,17 @@ function autoCheck() {
 async function printDoc() {
   toast('Preparing…')
   const { toHtml, printHtml } = await import('./export.js')
+  const title = S.path ? P.stem(S.path) : firstHeading() || 'Document'
   const out = await toHtml(currentText(), {
-    title: S.path ? P.stem(S.path) : firstHeading() || 'Document',
+    title,
     docDir: S.path && P.dirname(S.path),
-    resolveForView: convertFileSrc,
+    resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,
     themeVars: themeVars(),
     dark: DARK_THEMES.includes(exportThemeName()),
     inlineKatex: true,
   })
+  // Android's WebView has no window.print(): its own print dialog takes the page instead
+  if (IS_ANDROID) return (await import('./android.js')).printHtml(out, title)
   await printHtml(out)
 }
 
@@ -2241,6 +2250,7 @@ function applySettings() {
   let t = settings.theme
   if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'ink' : 'paper'
   html.dataset.theme = t
+  applyMaterial(settings.material, materialSeed(), DARK_THEMES.includes(t))
   const st = html.style
   st.setProperty('--doc-size', settings.fontSize + 'px')
   st.setProperty('--doc-lh', settings.lineHeight)
@@ -2268,6 +2278,35 @@ function applySettings() {
   css.textContent = settings.customCSS || ''
   updateFlags()
   saveSettings()
+}
+
+// Android 12+ wallpaper color (android_system_color), for the Material You style
+let systemSeed = null
+const materialSeed = () => (settings.materialSystem && systemSeed) || settings.materialSeed
+
+/** Preferences → Appearance: the Material You seed color */
+function materialColors() {
+  const box = el('span', { class: 'm-seeds' })
+  const draw = () => {
+    box.innerHTML = ''
+    if (systemSeed)
+      box.append(
+        el('button', { type: 'button', class: 'm-seed wall' + (settings.materialSystem ? ' on' : ''), title: 'Wallpaper colors', style: `--c:${systemSeed}`, onclick: () => pick(null) }),
+      )
+    for (const c of MATERIAL_SEEDS)
+      box.append(el('button', { type: 'button', class: 'm-seed' + (!(settings.materialSystem && systemSeed) && settings.materialSeed === c ? ' on' : ''), title: c, style: `--c:${c}`, onclick: () => pick(c) }))
+    const hex = el('input', { type: 'text', value: settings.materialSeed, spellcheck: 'false', maxlength: 7, class: 'm-hex', title: 'Any color as #rrggbb' })
+    hex.onchange = () => /^#[0-9a-f]{6}$/i.test(hex.value.trim()) && pick(hex.value.trim().toLowerCase())
+    box.append(hex)
+  }
+  const pick = (c) => {
+    settings.materialSystem = !c
+    if (c) settings.materialSeed = c
+    applySettings()
+    draw()
+  }
+  draw()
+  return box
 }
 
 function updateFlags() {
@@ -2539,7 +2578,7 @@ function toggleZen() {
 
 // ── custom title bar: menus share one row with the window buttons (default on every OS).
 //    The decorations themselves are chosen by Rust when the window is created.
-const OS = IS_LINUX ? 'linux' : /Windows/i.test(navigator.userAgent) ? 'windows' : 'mac'
+const OS = IS_ANDROID ? 'android' : IS_LINUX ? 'linux' : /Windows/i.test(navigator.userAgent) ? 'windows' : 'mac'
 // Fluent glyphs on Windows (Segoe Fluent Icons / MDL2), SVG elsewhere
 const WIN_GLYPHS = { min: '', max: '', restore: '', close: '' }
 function applyTitlebar() {
@@ -2604,11 +2643,12 @@ async function toggleNativeTitlebar() {
 
 function updateTitle() {
   const name = S.path ? P.basename(S.path) : 'Untitled'
-  $('#tb-title').textContent = `${name}${S.dirty ? ' •' : ''} — CaretFlow`
+  // phones: the app bar has room for the file name only
+  $('#tb-title').textContent = `${name}${S.dirty ? ' •' : ''}${IS_ANDROID ? '' : ' — CaretFlow'}`
   win.setTitle(`${name}${S.dirty ? ' •' : ''} — CaretFlow`).catch(() => {})
   const sp = $('#st-path')
   sp.textContent = (S.dirty ? '● ' : '') + (S.path || 'Untitled — not saved yet')
-  sp.title = S.path ? 'Click to reveal in Explorer' : ''
+  sp.title = S.path && canReveal ? 'Click to reveal in Explorer' : ''
 }
 
 function focusEditor() {
@@ -2655,7 +2695,10 @@ function openPrefs(section) {
     const wrap = el('span', {})
     const out = el('span', { style: 'min-width:48px;display:inline-block;text-align:right;color:var(--muted)' })
     const r = el('input', { type: 'range', min, max, step, value: settings[key] })
-    const show = () => (out.textContent = settings[key] + unit)
+    const show = () => {
+      out.textContent = settings[key] + unit
+      r.style.setProperty('--fill', ((settings[key] - min) / (max - min)) * 100 + '%')
+    }
     r.oninput = () => {
       settings[key] = +r.value
       show()
@@ -2688,11 +2731,13 @@ function openPrefs(section) {
       el('p', { class: 'about-note ext-hint' }, 'More features (Cloud Sync, AI writing help, a typing test): ', el('button', { type: 'button', class: 'wc-link', onclick: () => show('extensions') }, 'Extensions…')),
       row('Reopen last file on startup', null, chk('reopenLast')),
       row('Check for updates automatically', 'On startup, ask GitHub whether a new version is out. Only the version file is downloaded; nothing is sent', chk('updateCheck')),
-      row('Use system title bar', 'Off = CaretFlow draws its own title bar matching the theme', titlebar),
+      IS_ANDROID ? null : row('Use system title bar', 'Off = CaretFlow draws its own title bar matching the theme', titlebar),
     ]],
     ['extensions', 'Extensions', [extensionsPage()]],
     ['appearance', 'Appearance', [
       row('Theme', null, sel('theme', [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ['system', 'Follow system']], setTheme)),
+      row('Material You style', 'Rounded shapes and colors made from one color, in the light or dark of the theme above', chk('material')),
+      row('Material color', systemSeed ? 'The first one follows your wallpaper' : null, materialColors()),
       row('Document font', null, sel('font', [['auto', 'Theme default'], ['sans', 'Sans-serif'], ['serif', 'Serif'], ['mono', 'Monospace']])),
       row('Font size', 'Ctrl+Shift+= / Ctrl+Shift+-', num('fontSize', 11, 28, 1, 'px')),
       row('Line height', null, num('lineHeight', 1.3, 2.2, 0.05, '')),
@@ -3105,6 +3150,7 @@ const MENU = [
       k('Export as HTML…', null, exportHtml),
       k('Export as PDF…', 'Ctrl+Alt+E', exportPdfDialog),
       k('Print…', 'Ctrl+Alt+P', printDoc),
+      k('Share…', null, () => import('./android.js').then((m) => m.shareDoc()), { android: true }),
       '-',
       k('Reveal in Explorer', null, () => S.path && revealItemInDir(S.path), { enabled: () => !!S.path }),
       k('Copy File Path', null, () => S.path && navigator.clipboard.writeText(S.path).then(() => toast('Path copied')), { enabled: () => !!S.path }),
@@ -3227,7 +3273,9 @@ const MENU = [
       ['ink', 'Ink'],
       ['slate', 'Slate'],
       ['system', 'Follow System'],
-    ].map(([id, l]) => k(l, null, () => setTheme(id), { checked: () => settings.theme === id })),
+    ]
+      .map(([id, l]) => k(l, null, () => setTheme(id), { checked: () => settings.theme === id }))
+      .concat(['-', k('Material You Style', null, toggle('material'), { checked: () => settings.material, hint: 'Colors and color choice: Preferences → Appearance' })]),
   },
   {
     label: 'Settings',
@@ -3317,6 +3365,11 @@ function recentMenu() {
     }),
   ]
 }
+
+// Windows and title bars belong to the desktop; Share… to Android (one full-screen window there)
+const DESKTOP_ONLY = ['New Window', 'Close Window', 'Reveal in Explorer', 'Always on Top', 'Full Screen', 'Use System Title Bar', 'Copy Dropped Images into Folder']
+for (const m of MENU)
+  m.items = m.items.filter((it) => typeof it !== 'object' || (IS_ANDROID ? !DESKTOP_ONLY.includes(it.label) : !it.android))
 
 // collect all actions for keyboard & palette. The menu items themselves, so a changed shortcut
 // shows up in the menus, the palette and the shortcut list alike.
@@ -3876,7 +3929,7 @@ function wireUi() {
   $('#btn-newfile').onclick = () => createFileIn()
   $('#search-input').addEventListener('input', runFolderSearch)
   $('#st-mode').onclick = toggleSource
-  $('#st-path').onclick = () => S.path && revealItemInDir(S.path)
+  $('#st-path').onclick = () => S.path && canReveal && revealItemInDir(S.path)
 
   // sidebar resize
   const rz = $('#resizer')
@@ -4046,10 +4099,54 @@ async function runCliExport(args) {
   }
 }
 
+// ════════════════════════════════════════ Android (android.js: touch layout, files, back button)
+let androidMod = null
+async function bootAndroid() {
+  androidMod = await import('./android.js')
+  await androidMod.initAndroid({
+    el,
+    dialog,
+    toast,
+    log,
+    settings,
+    saveSettings,
+    S,
+    menu: MENU,
+    extOn,
+    version: APP_VERSION,
+    openUrl,
+    showContextMenu,
+    runAction: (id) => ACTIONS.find((a) => a.id === id)?.fn(),
+    setSidebar,
+    setRoot,
+    renderTree,
+    openFile,
+    save,
+    confirmDiscard,
+    syncDirty,
+    currentText,
+    docTitle,
+    /** Show `text` as unsaved changes (a restored draft, shared text), keeping `path` as the file */
+    loadUnsaved: async (text, path) => {
+      if (!path) {
+        S.path = null
+        S.mtime = 0
+      }
+      await loadText(text)
+      S.baseline = null
+      setDirty(true)
+      updateTitle()
+    },
+  })
+}
+
 async function boot() {
-  try {
-    settings.nativeTitlebar = await invoke('native_titlebar')
-  } catch {}
+  if (!IS_ANDROID)
+    try {
+      settings.nativeTitlebar = await invoke('native_titlebar')
+    } catch {}
+  if (IS_ANDROID) systemSeed = await invoke('android_system_color').catch(() => null)
+  ripples()
   applySettings()
   buildMenubar()
   initWriting({
@@ -4068,8 +4165,14 @@ async function boot() {
   initCompanion({ settings, el, isTypingKey })
   bindKeys()
   wireUi()
-  wireTitlebar()
-  applyTitlebar()
+  if (IS_ANDROID) {
+    settings.nativeTitlebar = false
+    document.body.classList.add('os-android')
+    await bootAndroid()
+  } else {
+    wireTitlebar()
+    applyTitlebar()
+  }
   applyCloudUi()
   applyAi()
   applyMcp()
@@ -4106,8 +4209,9 @@ async function boot() {
   if (settings.vim && settings.lastMode === 'source' && S.mode !== 'source') await enterSource()
   renderTree()
   updateTitle()
-  await win.show()
-  focusEditor()
+  await win.show().catch(() => {}) // phones: the one window is always shown
+  if (androidMod) await androidMod.afterBoot({ opened }).catch((e) => log('android start:', e))
+  else focusEditor() // not on Android: the keyboard would pop up on every start
   if (args.includes('--preview')) {
     PV.debug = true // logs one line once the first page is drawn (used by tests)
     openPagePreview() // `folio --preview file.md`
@@ -4120,5 +4224,5 @@ async function boot() {
 
 boot().catch((e) => {
   console.error(e)
-  win.show()
+  win.show().catch(() => {})
 })

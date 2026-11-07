@@ -16,7 +16,6 @@ tauri = { version = "2", features = ["protocol-asset"] }
 # xdg-portal: native GNOME/KDE file pickers on Linux instead of the old GTK3 dialog
 tauri-plugin-dialog = { version = "2", default-features = false, features = ["xdg-portal"] }
 tauri-plugin-opener = "2"
-tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 lopdf = "0.46"
@@ -36,6 +35,7 @@ webkit2gtk = "2.0"
 gtk = "0.18"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-window-state = "2"
 tauri-plugin-process = "2.4.0"
 tauri-plugin-updater = "2.14.1"
 

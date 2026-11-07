@@ -1,9 +1,11 @@
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 use tauri::Manager;
 
+#[cfg(target_os = "android")]
+mod android;
 mod cloud;
 mod mcp;
 mod pdf;
@@ -35,8 +37,13 @@ fn mtime_of(path: &Path) -> Result<u64, String> {
     Ok(t.duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0))
 }
 
+// The file commands are async: on Android a content:// file is read through the Kotlin
+// plugin, which must not be waited for on the main thread.
 #[tauri::command]
-fn read_text(path: String) -> Result<String, String> {
+async fn read_text(path: String) -> Result<String, String> {
+    #[cfg(target_os = "android")]
+    let bytes = if android::is_uri(&path) { android::read_uri(&path)? } else { fs::read(&path).map_err(|e| e.to_string())? };
+    #[cfg(not(target_os = "android"))]
     let bytes = fs::read(&path).map_err(|e| e.to_string())?;
     let s = String::from_utf8_lossy(&bytes);
     Ok(s.trim_start_matches('\u{feff}').to_string())
@@ -44,7 +51,12 @@ fn read_text(path: String) -> Result<String, String> {
 
 /// Atomic write: write to a temp file next to the target, then rename over it.
 #[tauri::command]
-fn write_text(path: String, content: String) -> Result<u64, String> {
+async fn write_text(path: String, content: String) -> Result<u64, String> {
+    #[cfg(target_os = "android")]
+    if android::is_uri(&path) {
+        android::write_uri(&path, content.as_bytes())?;
+        return Ok(android::uri_info(&path)["mtime"].as_u64().unwrap_or(0));
+    }
     let p = PathBuf::from(&path);
     if let Some(dir) = p.parent() {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
@@ -79,6 +91,12 @@ fn copy_file(from: String, to: String) -> Result<(), String> {
     fs::copy(&from, &p).map(|_| ()).map_err(|e| e.to_string())
 }
 
+/// A new folder (Android's file browser → New folder)
+#[tauri::command]
+fn make_dir(path: String) -> Result<(), String> {
+    fs::create_dir_all(&path).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn rename_path(from: String, to: String) -> Result<(), String> {
     if Path::new(&to).exists() {
@@ -88,12 +106,20 @@ fn rename_path(from: String, to: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn mtime(path: String) -> Result<u64, String> {
+async fn mtime(path: String) -> Result<u64, String> {
+    #[cfg(target_os = "android")]
+    if android::is_uri(&path) {
+        return android::uri_info(&path)["mtime"].as_u64().ok_or_else(|| "no modification time".into());
+    }
     mtime_of(Path::new(&path))
 }
 
 #[tauri::command]
-fn exists(path: String) -> bool {
+async fn exists(path: String) -> bool {
+    #[cfg(target_os = "android")]
+    if android::is_uri(&path) {
+        return android::uri_info(&path)["exists"].as_bool().unwrap_or(false);
+    }
     Path::new(&path).exists()
 }
 
@@ -227,6 +253,7 @@ fn cli_args() -> Vec<String> {
     std::env::args().skip(1).collect()
 }
 
+#[cfg(desktop)]
 fn is_cli_export() -> bool {
     std::env::args().any(|a| a == "--export-pdf" || a == "--export-html")
 }
@@ -303,9 +330,20 @@ fn exit_app(app: tauri::AppHandle, code: i32) {
     app.exit(code);
 }
 
+/// `html` is the file behind `url`. Android prints it in a WebView of its own: mobile apps
+/// have a single window, so the hidden export window used on the desktop can't be made there.
 #[tauri::command]
-async fn export_pdf(app: tauri::AppHandle, url: String, out: String, options: pdf::PdfOptions) -> Result<(), String> {
-    pdf::export(app, url, out, options).await
+async fn export_pdf(app: tauri::AppHandle, url: String, out: String, options: pdf::PdfOptions, html: Option<String>) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        let _ = (app, url);
+        pdf::export_android(html.ok_or("no HTML file to print")?, out, options).await
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = html;
+        pdf::export(app, url, out, options).await
+    }
 }
 
 /// How this copy of CaretFlow was installed, so the updater knows whether it can replace it:
@@ -365,6 +403,28 @@ fn exe_path() -> String {
     std::env::current_exe().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|_| "caretflow".into())
 }
 
+#[cfg(desktop)]
+fn desktop_window(app: &mut tauri::App) -> tauri::Result<()> {
+    let native = read_ui_config(app.handle()).native_titlebar.unwrap_or(false);
+    let win = tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
+        .title("CaretFlow")
+        .inner_size(1120.0, 780.0)
+        .min_inner_size(420.0, 320.0)
+        .center()
+        .visible(false)
+        .decorations(native)
+        .build()?;
+    // Safety net: the frontend shows the window once the first paint is ready.
+    // If anything goes wrong there, show it anyway (not in headless CLI export mode).
+    if !is_cli_export() {
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(1500));
+            let _ = win.show();
+        });
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // `caretflow --mcp`: a stdin/stdout MCP bridge to the running app, no window
@@ -372,9 +432,11 @@ pub fn run() {
         mcp::bridge();
         return;
     }
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::init());
+    #[cfg(desktop)]
+    let builder = builder
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(
@@ -386,25 +448,16 @@ pub fn run() {
                 )
                 .with_filter(|label| label == "main")
                 .build(),
-        )
+        );
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(android::init());
+    builder
         .setup(|app| {
-            let native = read_ui_config(app.handle()).native_titlebar.unwrap_or(false);
-            let win = tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
-                .title("CaretFlow")
-                .inner_size(1120.0, 780.0)
-                .min_inner_size(420.0, 320.0)
-                .center()
-                .visible(false)
-                .decorations(native)
-                .build()?;
-            // Safety net: the frontend shows the window once the first paint is ready.
-            // If anything goes wrong there, show it anyway (not in headless CLI export mode).
-            if !is_cli_export() {
-                std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_millis(1500));
-                    let _ = win.show();
-                });
-            }
+            // phones and tablets: one full-screen window, no title bar or size to choose
+            #[cfg(mobile)]
+            tauri::WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into())).build()?;
+            #[cfg(desktop)]
+            desktop_window(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -413,6 +466,7 @@ pub fn run() {
             write_bytes,
             copy_file,
             rename_path,
+            make_dir,
             mtime,
             exists,
             is_dir,
@@ -443,7 +497,29 @@ pub fn run() {
             mcp::mcp_stop,
             mcp::mcp_reply,
             mcp::mcp_status,
-            exe_path
+            exe_path,
+            #[cfg(target_os = "android")]
+            android::android_storage,
+            #[cfg(target_os = "android")]
+            android::android_request_storage,
+            #[cfg(target_os = "android")]
+            android::android_resolve,
+            #[cfg(target_os = "android")]
+            android::android_copy_uri,
+            #[cfg(target_os = "android")]
+            android::android_take_intent,
+            #[cfg(target_os = "android")]
+            android::android_share,
+            #[cfg(target_os = "android")]
+            android::android_open_path,
+            #[cfg(target_os = "android")]
+            android::android_print,
+            #[cfg(target_os = "android")]
+            android::android_bar_color,
+            #[cfg(target_os = "android")]
+            android::android_dirs,
+            #[cfg(target_os = "android")]
+            android::android_system_color
         ])
         .run(tauri::generate_context!())
         .expect("error while running CaretFlow");

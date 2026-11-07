@@ -27,6 +27,24 @@ npm run screenshots       # regenerate docs/screenshots (needs Chrome or Edge)
 | Linux | `caretflow-bin-*-x86_64.pkg.tar.zst` (releases only) | Arch/Manjaro: `sudo pacman -U ./caretflow-bin-*.pkg.tar.zst` |
 | Linux | `release/linux/caretflow` | raw binary, needs `libwebkit2gtk-4.1` installed |
 
+## Android
+
+Needs Android Studio (for the SDK, NDK and its Java), Rust with the Android targets
+(`rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android`) and
+`ANDROID_HOME`, `NDK_HOME` and `JAVA_HOME` set (`JAVA_HOME` = Android Studio's `jbr` folder).
+
+```sh
+npx tauri android dev                                    # on a connected phone or a running emulator
+npx tauri android build --debug --apk --target x86_64    # a debug APK for the emulator
+npx tauri android build --apk --aab                      # release files (signing: RELEASING.md)
+```
+
+The Android project is `src-tauri/gen/android` (committed): `CaretFlowPlugin.kt` is CaretFlow's
+native side (files from other apps, storage permission, sharing, printing, PDF), called through
+`src-tauri/src/android.rs`. The touch layout is `src/android.js`. On Windows, Rust also needs a C
+toolchain for its host build scripts: Visual Studio Build Tools, or the `x86_64-pc-windows-gnullvm`
+toolchain with [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) on the `PATH`.
+
 ## Linux prerequisites (one time)
 
 From Windows, the Linux build runs inside WSL (default distro `Ubuntu`; pass `-Distro <name>` to

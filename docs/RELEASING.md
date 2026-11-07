@@ -30,6 +30,21 @@ Never commit the private key.
   the app reads `releases/latest/download/latest.json`). Write the release notes before tagging, or
   run the workflow again from the Actions tab afterwards, so the update popup can show them.
 
+## Android signing
+
+Android installs an update only when it is signed with the same key as the installed app, so the
+Android key must never change or get lost. Keep it outside the repository with a backup.
+
+1. Make it once: `keytool -genkeypair -v -keystore caretflow.jks -alias caretflow -keyalg RSA -keysize 4096 -validity 36500`
+2. Store it in GitHub: `base64 -w0 caretflow.jks | gh secret set ANDROID_KEYSTORE`, then
+   `gh secret set ANDROID_KEYSTORE_PASSWORD`, `gh secret set ANDROID_KEY_ALIAS` (`caretflow`) and,
+   if it differs from the store password, `gh secret set ANDROID_KEY_PASSWORD`.
+
+The `android` job in `release.yml` then adds `CaretFlow-X.Y.Z.apk` (and an `.aab` for app stores) to the
+release. Without the secret it skips the Android files with a warning instead of shipping an APK
+that later versions couldn't update. For a local signed build, put a `keystore.properties`
+(`storeFile`, `storePassword`, `keyAlias`, `keyPassword`) in `src-tauri/gen/android/`; it is ignored by git.
+
 ## Release checklist
 
 1. Bump the version in `package.json` (+ `package-lock.json`), `src-tauri/tauri.conf.json` and

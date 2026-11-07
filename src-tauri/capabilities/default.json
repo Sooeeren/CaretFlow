@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "CaretFlow main window",
   "windows": ["main"],
+  "platforms": ["windows", "linux", "macOS"],
   "permissions": [
     "core:default",
     "core:window:allow-show",

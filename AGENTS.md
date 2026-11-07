@@ -11,7 +11,7 @@ identifier `app.folio.markdown` (settings, recent files and window state live un
 `folio.*` localStorage keys and temp file names, and the GitHub repository `Sooeeren/folio`.
 
 
-CaretFlow is a desktop Markdown reader and editor for Windows and Linux, in the spirit of Typora:
+CaretFlow is a Markdown reader and editor for Windows, Linux and Android, in the spirit of Typora:
 documents are edited in their rendered form (WYSIWYG), with the raw Markdown one shortcut away.
 It is a Tauri 2 app: a Rust backend for file access and PDF stamping, and a plain JavaScript
 frontend (no framework) built with Vite.
@@ -32,8 +32,10 @@ These decide most design questions:
    existing conventions (`<u>`, `> [!NOTE]`, `<div style="page-break-after: always;">`).
 4. **Keyboard first.** Every feature is a menu item with a shortcut and shows up in the command
    palette (`F1`).
-5. **Windows and Linux are equal.** Test both mentally: WebView2 on Windows, WebKitGTK on Linux
-   (no native `<select>` popups, see `customSelect`; Wayland quirks).
+5. **Windows and Linux are equal**, and Android gets every feature it can run. Test them mentally:
+   WebView2 on Windows, WebKitGTK on Linux (no native `<select>` popups, see `customSelect`; Wayland
+   quirks), Android's WebView with touch and one window (`IS_ANDROID` in `platform.js`; dialogs that
+   need files go through `pickFile`/`pickFolder`/`pickSave`, never the dialog plugin directly).
 6. **Word-processor quality writing tools**, on the level people know from Word: the spelling and
    grammar checker is the most important feature after editing itself.
 7. **Optional extras stay optional.** Playful or intrusive features (WPM meter, typing cat) are off
@@ -50,6 +52,7 @@ These decide most design questions:
 | `src/typingtest.js` | Typing test overlay (lazy) |
 | `src/companion.js` | WPM meter and typing cat |
 | `src/source.js` | Source mode + Vim (lazy) |
+| `src/material.js` | Material You style: a Material 3 color scheme from one seed color (OKLCH tonal palettes), laid over the theme; shapes in `style.css` under `body.material` |
 | `src/codestyle.js` | Syntax colors shared by code blocks, source mode and exports (`--tok-*` per theme) |
 | `src/export.js` | HTML export and print-to-PDF (lazy) |
 | `src/updater.js` | In-app updates (lazy): check, signed download, install, restart |
@@ -61,15 +64,18 @@ These decide most design questions:
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
 | `src/welcome.md` | Welcome page, shown on the very first start and from Help → Welcome Page |
+| `src/platform.js` | What differs between desktop and Android: `IS_ANDROID`, file/folder/save pickers, opening files in other apps |
+| `src/android.js` | Android only (lazy): app bar, menu and sidebar drawers, formatting bar, back button, CaretFlow's file browser, "Open with"/"Share", drafts, print, APK update check |
 | `src/linenumbers.js` | Every-fifth-line numbers in the rendered view, measured from the text layout |
 | `src/caret.js` | The text cursor CaretFlow draws itself in the rendered view (Linux default; WebKitGTK leaves stale carets) |
 | `src-tauri/windows/installer-hooks.nsh` | Windows installer hooks: remove an old Folio install, recreate its shortcuts |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
 | `src-tauri/src/cloud.rs` | Cloud Sync commands: HTTP (reqwest, also used by AI), folder scan, sync trash, `secrets.json`, running rclone |
+| `src-tauri/src/android.rs`, `src-tauri/gen/android` | Android: bridge to `CaretFlowPlugin.kt` (content:// files, storage permission, share, print, PDF via `PdfPrint.java`); the Gradle project with manifest, icons and signing |
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP) |
-| `.github/workflows/check.yml` | Compiles the app on Windows and Linux for every push and pull request |
-| `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
+| `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
+| `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
 | `packaging/rpm/caretflow.spec`, `scripts/rpm-repackage.sh`, `scripts/deb-repackage.sh` | The `.rpm` and `.deb`, rebuilt from Tauri's as `caretflow`, replacing the old Folio packages |
 | `packaging/arch/PKGBUILD` | Arch package (`caretflow-bin`) made from the release `.deb`; built by release.yml |
@@ -143,3 +149,5 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-06 | Dependabot PRs #11–#18 checked and merged (lopdf, pdfjs-dist, playwright-core, Actions); windows-core/webview2-com pinned to Tauri |
 | Claude Opus 5.5 | Claude Code | 2026-11-06 | Cloud Sync (WebDAV, S3, rclone for Google Drive / Proton Drive), Cloud sidebar tab, build-check workflow, README split into docs/ |
 | Claude Opus 5.5 | Claude Code | 2026-11-06 | Extensions (Preferences tab; Cloud Sync and Typing Test moved there), AI Writing Help (API key / local models, live checking, AI review tab, limits), MCP server and `--mcp` bridge, UI checks in scripts/checks |
+| Claude Opus 5.5 | Claude Code | 2026-11-07 | Material You style (all platforms; wallpaper colors on Android 12+), scripts/checks/material.mjs |
+| Claude Opus 5.5 | Claude Code | 2026-11-07 | Android version: touch layout, file browser and all-files access, Open with/Share, PDF export and printing via Android, drafts, APK builds in CI and releases |

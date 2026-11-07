@@ -11,8 +11,7 @@
 // changed. Both changed = conflict; by default both versions are kept. Files deleted on this
 // computer by a sync go to CaretFlow's sync trash, never straight to oblivion.
 import { invoke } from '@tauri-apps/api/core'
-import { open as openDialog } from '@tauri-apps/plugin-dialog'
-import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener'
+import { IS_ANDROID, pickFolder, openPath, reveal as revealItemInDir, canReveal } from './platform.js'
 import * as P from './paths.js'
 
 let ctx // { settings, saveSettings, el, toast, dialog, log, customSelect, showContextMenu, openFile, openPrefs, fileChanged, showCloudTab }
@@ -22,7 +21,8 @@ const OPEN_DIRS_KEY = 'folio.cloud.openDirs'
 export const PROVIDERS = [
   ['webdav', 'WebDAV (Nextcloud, ownCloud, NAS, …)'],
   ['s3', 'S3-compatible (AWS, B2, R2, MinIO, …)'],
-  ['rclone', 'rclone (Google Drive, Proton Drive, OneDrive, …)'],
+  // an Android app can't run other programs, so rclone is desktop-only
+  ...(IS_ANDROID ? [] : [['rclone', 'rclone (Google Drive, Proton Drive, OneDrive, …)']]),
 ]
 
 // ════════════════════════════════════════ small helpers
@@ -900,7 +900,7 @@ function fileRow(e, depth, showDir) {
   row.oncontextmenu = (ev) => {
     ev.preventDefault()
     const items = [['Open', () => openEntry(e)]]
-    if (e.L) items.push(['Reveal in Explorer', () => revealItemInDir(absPath)])
+    if (e.L && canReveal) items.push(['Reveal in Explorer', () => revealItemInDir(absPath)])
     if (e.L && e.R) items.push(['Replace with Cloud Version…', () => replaceWithCloud(e)])
     items.push('-', ['Copy Path in Cloud', () => navigator.clipboard.writeText(e.rel).then(() => ctx.toast('Copied'))])
     ctx.showContextMenu(ev.clientX, ev.clientY, items)
@@ -1039,7 +1039,7 @@ export function prefsPage(row) {
   const localOut = el('span', { class: 'cl-path' }, st.cloudLocal || 'Not chosen')
   const chooseLocal = el('button', { type: 'button', class: 'fsel' }, 'Choose…')
   chooseLocal.onclick = async () => {
-    const p = await openDialog({ directory: true, defaultPath: st.cloudLocal || ctx.currentRoot() || undefined })
+    const p = await pickFolder({ defaultPath: st.cloudLocal || ctx.currentRoot() || undefined, title: 'Folder to sync' })
     if (!p) return
     st.cloudLocal = p
     localOut.textContent = p

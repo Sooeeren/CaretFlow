@@ -5,8 +5,11 @@
 use lopdf::{dictionary, Dictionary, Document, Object, ObjectId, Stream, StringFormat};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
+#[cfg(not(target_os = "android"))]
 use std::sync::atomic::{AtomicU32, Ordering};
+#[cfg(not(target_os = "android"))]
 use std::time::Duration;
+#[cfg(not(target_os = "android"))]
 use tauri::{AppHandle, WebviewUrl, WebviewWindowBuilder};
 
 #[derive(Deserialize, Clone, Debug)]
@@ -28,9 +31,11 @@ pub struct PdfOptions {
     pub keywords: String,
 }
 
+#[cfg(not(target_os = "android"))]
 static COUNTER: AtomicU32 = AtomicU32::new(0);
 
 /// Export `url` (an asset:// URL of a self-contained HTML file) to `out`.
+#[cfg(not(target_os = "android"))]
 pub async fn export(app: AppHandle, url: String, out: String, opts: PdfOptions) -> Result<(), String> {
     let label = format!("pdf-export-{}", COUNTER.fetch_add(1, Ordering::SeqCst));
     let (tx, rx) = tokio::sync::oneshot::channel::<()>();
@@ -66,6 +71,22 @@ pub async fn export(app: AppHandle, url: String, out: String, opts: PdfOptions) 
     .await;
     let _ = win.destroy();
     result
+}
+
+/// Android: the export HTML file is printed by Android's own engine (CaretFlowPlugin.kt
+/// printPdf), then gets the same page numbers, header/footer and properties as on the desktop.
+#[cfg(target_os = "android")]
+pub async fn export_android(html: String, out: String, opts: PdfOptions) -> Result<(), String> {
+    let raw = tmp_path(&out);
+    let (w, h) = page_mm(&opts);
+    let raw_s = raw.to_string_lossy().to_string();
+    let margin = opts.margin_mm;
+    tauri::async_runtime::spawn_blocking(move || crate::android::print_pdf(&html, &raw_s, w, h, margin))
+        .await
+        .map_err(|e| e.to_string())??;
+    let r = postprocess(&raw, Path::new(&out), &opts);
+    let _ = std::fs::remove_file(&raw);
+    r
 }
 
 fn tmp_path(out: &str) -> PathBuf {
@@ -210,7 +231,7 @@ async fn print_to_pdf(win: &tauri::WebviewWindow, path: &Path, o: &PdfOptions) -
     Err("the PDF file was not written".into())
 }
 
-#[cfg(not(any(windows, target_os = "linux")))]
+#[cfg(not(any(windows, target_os = "linux", target_os = "android")))]
 async fn print_to_pdf(_win: &tauri::WebviewWindow, _path: &Path, _o: &PdfOptions) -> Result<(), String> {
     Err("PDF export is not supported on this platform".into())
 }

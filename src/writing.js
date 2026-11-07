@@ -470,6 +470,12 @@ export const writingPlugin = () =>
           const p = view.posAtCoords({ left: e.clientX, top: e.clientY })
           return p ? openIssueMenu(e, p.pos) : false
         },
+        // touch screens have no right-click: tapping an underlined word opens its suggestions
+        click: (view, e) => {
+          if (e.pointerType !== 'touch') return false
+          const p = view.posAtCoords({ left: e.clientX, top: e.clientY })
+          return p ? openIssueMenu(e, p.pos) : false
+        },
       },
     },
     view: (v) => {
@@ -577,6 +583,11 @@ export function writingSourceExtension() {
     ),
     CMView.domEventHandlers({
       contextmenu(e, view) {
+        const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
+        return pos != null ? openIssueMenu(e, pos) : false
+      },
+      click(e, view) {
+        if (e.pointerType !== 'touch') return false
         const pos = view.posAtCoords({ x: e.clientX, y: e.clientY })
         return pos != null ? openIssueMenu(e, pos) : false
       },

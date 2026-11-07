@@ -67,6 +67,15 @@ accuracy, raw speed, consistency and a per-second chart, and personal bests are 
 While writing, **View → Typing Speed (WPM)** shows your speed in the status bar and
 **View → Typing Cat** adds a small companion that taps along. Both are off by default.
 
+## Material You style
+
+**Themes → Material You Style** (off by default) gives CaretFlow the look of Material 3: rounded
+dialogs and menus, pill-shaped buttons and tabs, and a color scheme made from one color. The theme
+still decides light or dark (Paper and Sepia are light, Ink and Slate dark, Follow System follows
+the system) and the document font. Pick the color in **Preferences → Appearance → Material color**:
+eight swatches or any `#rrggbb`. On Android 12 and newer the first swatch follows your wallpaper,
+like other Material You apps. Exports with the "Same as editor" theme use the Material colors too.
+
 ## Updates
 
 CaretFlow can check GitHub for a new version when it starts (it asks once; Preferences → Check for

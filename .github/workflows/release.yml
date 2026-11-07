@@ -1,4 +1,4 @@
-# Builds CaretFlow for Windows and Linux and attaches the files to a GitHub release.
+# Builds CaretFlow for Windows, Linux and Android and attaches the files to a GitHub release.
 # Runs when a version tag (v1.2.3) is pushed, or by hand from the Actions tab.
 # The release is created as a draft if it doesn't exist yet; publish it after checking the files.
 name: Release
@@ -137,8 +137,71 @@ jobs:
           name: arch
           path: out/*
 
+  android:
+    # APK (install directly, or through Obtainium) and AAB (Play Store), signed with the release key.
+    # The key must stay the same forever: Android only installs an update signed with the same key.
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: NDK
+        run: |
+          sdkmanager --install "ndk;30.0.14904198" >/dev/null
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/30.0.14904198" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci --no-audit --no-fund
+      - name: Signing key
+        if: env.ANDROID_KEYSTORE != ''
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE" | base64 -d > "$RUNNER_TEMP/caretflow.jks"
+          cat > src-tauri/gen/android/keystore.properties <<EOP
+          storeFile=$RUNNER_TEMP/caretflow.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}
+          EOP
+      - name: Build
+        run: |
+          if [ -z "$ANDROID_KEYSTORE" ]; then
+            echo "::warning::ANDROID_KEYSTORE not set: no Android files in this release (an APK signed with another key could never be updated)"
+            exit 0
+          fi
+          npx tauri android build --apk --aab --target aarch64 armv7 x86_64
+          V="${TAG#v}"
+          mkdir -p out
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk "out/CaretFlow-${V}.apk"
+          cp src-tauri/gen/android/app/build/outputs/bundle/universalRelease/*.aab "out/CaretFlow-${V}.aab"
+          ls -lh out
+      - uses: actions/upload-artifact@v7
+        if: env.ANDROID_KEYSTORE != ''
+        with:
+          name: android
+          path: out/*
+
   publish:
-    needs: [windows, linux, arch]
+    needs: [windows, linux, arch, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
