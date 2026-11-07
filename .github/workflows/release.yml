@@ -156,11 +156,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
       - name: NDK
+        # the runner image has the Android SDK already (setup-android fails on the retired 'tools' package)
         run: |
-          sdkmanager --install "ndk;30.0.14904198" >/dev/null
-          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/30.0.14904198" >> "$GITHUB_ENV"
+          SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          yes | "$SDKM" --install "ndk;30.0.14904198" "platforms;android-37" "build-tools;37.0.0" >/dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/30.0.14904198" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
