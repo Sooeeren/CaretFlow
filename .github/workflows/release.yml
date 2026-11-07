@@ -160,7 +160,8 @@ jobs:
         # the runner image has the Android SDK already (setup-android fails on the retired 'tools' package)
         run: |
           SDKM=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
-          yes | "$SDKM" --install "ndk;30.0.14904198" "platforms;android-37" "build-tools;37.0.0" >/dev/null
+          yes | "$SDKM" --licenses >/dev/null # Gradle fetches the platform and build tools it needs itself
+          yes | "$SDKM" --install "ndk;30.0.14904198" >/dev/null
           echo "NDK_HOME=$ANDROID_HOME/ndk/30.0.14904198" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
