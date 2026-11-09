@@ -451,6 +451,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "tokio",
  "webkit2gtk",
+ "webpki-root-certs",
  "webview2-com",
  "windows-core",
 ]

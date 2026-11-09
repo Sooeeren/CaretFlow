@@ -49,11 +49,19 @@ fn client() -> Result<&'static reqwest::Client, String> {
     if rustls::crypto::CryptoProvider::get_default().is_none() {
         let _ = rustls::crypto::ring::default_provider().install_default();
     }
-    let c = reqwest::Client::builder()
+    let b = reqwest::Client::builder()
         .user_agent(concat!("CaretFlow/", env!("CARGO_PKG_VERSION")))
-        .connect_timeout(Duration::from_secs(15))
-        .build()
-        .map_err(|e| e.to_string())?;
+        .connect_timeout(Duration::from_secs(15));
+    // Android: reqwest's default verifier (rustls-platform-verifier) panics there unless it was
+    // set up from Java first, and the release build aborts on a panic: the app closed on its
+    // first HTTPS request (the update check, 2.5 s after start). Mozilla's roots instead.
+    #[cfg(target_os = "android")]
+    let b = {
+        let mut roots = rustls::RootCertStore::empty();
+        roots.add_parsable_certificates(webpki_root_certs::TLS_SERVER_ROOT_CERTS.iter().cloned());
+        b.tls_backend_preconfigured(rustls::ClientConfig::builder().with_root_certificates(roots).with_no_client_auth())
+    };
+    let c = b.build().map_err(|e| e.to_string())?;
     Ok(CLIENT.get_or_init(|| c))
 }
 
