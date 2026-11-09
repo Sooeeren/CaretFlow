@@ -585,10 +585,22 @@ async function runSync(st, summary, auto) {
   }
   const toTrash = (rel) => invoke('cloud_trash', { root, rel, stamp: trashStamp })
 
+  // saved (or created) here after the scan, e.g. by auto-save: overwriting or trashing it now
+  // would lose that save; the next sync sees the change and decides again
+  const changedSinceScan = async (rel, L) => {
+    const m = await invoke('mtime', { path: abs(rel) }).catch(() => null)
+    return L ? m !== L.mtime : m !== null
+  }
+  const touchesLocal = (kind) => kind === 'down' || kind === 'del-local' || ((kind === 'conflict' || kind === 'compare') && s().cloudConflict === 'remote')
+
   let done = 0
   const step = async ({ rel, kind }) => {
     const L = local.get(rel)
     const R = remote.get(rel)
+    if (touchesLocal(kind) && (await changedSinceScan(rel, L))) {
+      again = true
+      return
+    }
     if (kind === 'compare') {
       // the same file on both sides before the first sync: only a real difference is a conflict
       const same = L.size === R.size && sameBytes(new Uint8Array(await invoke('read_bytes', { path: abs(rel) })), await be.bytes(rel))
@@ -892,7 +904,7 @@ function fileRow(e, depth, showDir) {
   const absPath = P.join(s().cloudLocal, e.rel)
   const row = el(
     'div',
-    { class: `tree-row cl-file k-${e.kind}` + (cur && cur.toLowerCase() === absPath.toLowerCase() ? ' current' : ''), title: `${e.rel}\n${info.join('\n')}` },
+    { class: `tree-row cl-file k-${e.kind}` + (P.samePath(cur, absPath) ? ' current' : ''), title: `${e.rel}\n${info.join('\n')}` },
     el('span', { class: 'cl-st' }, icon),
     el('span', { class: 'nm' }, name.replace(/\.(md|markdown)$/i, ''), showDir && dir ? el('small', { class: 'cl-dir' }, dir) : null),
   )

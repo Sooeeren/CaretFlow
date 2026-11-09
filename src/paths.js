@@ -75,12 +75,18 @@ export function join(dir, rel) {
   return normalize(dir.replace(/[\\/]+$/, '') + sep + rel.replace(/\//g, sep))
 }
 
-const eq = (a, b) => a.toLowerCase() === b.toLowerCase()
+// Windows paths ignore case; Linux and Android paths don't (Notes/ and notes/ are two folders)
+const isWinPath = (p) => /^[a-zA-Z]:|\\/.test(p || '')
+/** A path as compared with others: lower case on Windows only */
+export const pathKey = (p) => (isWinPath(p) ? (p || '').toLowerCase() : p || '')
+/** Two paths name the same file */
+export const samePath = (a, b) => !!a && !!b && pathKey(a) === pathKey(b)
 
 /** Relative path from directory `from` to `to`, using forward slashes. Returns null if on different roots. */
 export function relative(from, to) {
   const a = normalize(from).split(/[\\/]+/).filter(Boolean)
   const b = normalize(to).split(/[\\/]+/).filter(Boolean)
+  const eq = isWinPath(from) || isWinPath(to) ? (x, y) => x.toLowerCase() === y.toLowerCase() : (x, y) => x === y
   if (!a.length || !b.length || !eq(a[0], b[0])) return null
   let i = 0
   while (i < a.length && i < b.length && eq(a[i], b[i])) i++
@@ -89,8 +95,8 @@ export function relative(from, to) {
 
 export const isInside = (p, root) => {
   if (!p || !root) return false
-  const r = normalize(root).toLowerCase().replace(/[\\/]+$/, '')
-  const n = normalize(p).toLowerCase()
+  const r = pathKey(normalize(root)).replace(/[\\/]+$/, '')
+  const n = isWinPath(root) ? normalize(p).toLowerCase() : normalize(p)
   return n === r || n.startsWith(r + '\\') || n.startsWith(r + '/')
 }
 

@@ -741,11 +741,15 @@ async function saveAs(target) {
     typeof target === 'string' ? target : await pickSave({ defaultPath: suggested, filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] })
   if (!p) return false
   const text = currentText()
+  const oldPath = S.path
   const oldDir = S.path ? P.dirname(S.path) : null
   S.path = p
   try {
     await writeDoc(p, text)
   } catch (e) {
+    // still the old file: Save and auto-save must not go on writing to the place that failed
+    S.path = oldPath
+    updateTitle()
     await dialog({ title: 'Save failed', body: String(e) })
     return false
   }
@@ -775,7 +779,7 @@ async function reloadFromDisk() {
 
 function addRecent(p) {
   if (S.cli) return // headless exports must not touch the user's recent files
-  recent = [p, ...recent.filter((r) => r.toLowerCase() !== p.toLowerCase())].slice(0, 20)
+  recent = [p, ...recent.filter((r) => !P.samePath(r, p))].slice(0, 20)
   try {
     localStorage.setItem('folio.recent', JSON.stringify(recent))
   } catch {}
@@ -1068,7 +1072,7 @@ async function renderDir(dir, parent, open, depth) {
   } catch {}
   if (!entries.length && depth === 0) parent.append(el('div', { class: 'tree-empty' }, 'No markdown files in this folder.'))
   for (const e of entries) {
-    const isCur = S.path && e.path.toLowerCase() === S.path.toLowerCase()
+    const isCur = P.samePath(S.path, e.path)
     const row = el(
       'div',
       { class: 'tree-row' + (e.dir ? ' dir' : '') + (isCur ? ' current' : ''), title: e.path },
@@ -1157,7 +1161,7 @@ async function renameFile(p) {
   try {
     await invoke('rename_path', { from: p, to: target })
     cloudSaved(target)
-    if (S.path && S.path.toLowerCase() === p.toLowerCase()) {
+    if (P.samePath(S.path, p)) {
       S.path = target
       S.mtime = await invoke('mtime', { path: target })
       addRecent(target)
@@ -1192,7 +1196,7 @@ const runFolderSearch = debounce(async () => {
     if (i >= 0) item.append(h.text.slice(0, i), el('b', {}, h.text.slice(i, i + q.length)), h.text.slice(i + q.length))
     else item.append(h.text)
     item.onclick = async () => {
-      if (S.path?.toLowerCase() !== h.path.toLowerCase() && !(await openFile(h.path))) return
+      if (!P.samePath(S.path, h.path) && !(await openFile(h.path))) return
       openFind(false, q)
     }
     box.append(item)
@@ -2414,7 +2418,7 @@ function loadCloud() {
       cloudUiChanged: applyCloudUi,
       // a sync downloaded or removed this file
       fileChanged: (p) => {
-        if (S.path && p.toLowerCase() === S.path.toLowerCase()) checkExternal()
+        if (P.samePath(S.path, p)) checkExternal()
         if (S.root && P.isInside(p, S.root)) renderTree()
         quickCache = null
       },
@@ -3829,10 +3833,10 @@ function renderPalette() {
     const seen = new Set()
     const pool = []
     for (const r of recent) {
-      seen.add(r.toLowerCase())
+      seen.add(P.pathKey(r))
       pool.push({ path: r, recent: true })
     }
-    for (const f of quickCache || []) if (!seen.has(f.toLowerCase())) pool.push({ path: f })
+    for (const f of quickCache || []) if (!seen.has(P.pathKey(f))) pool.push({ path: f })
     for (const it of pool) {
       const name = P.basename(it.path)
       const rel = root ? P.relative(root, it.path) : it.path
