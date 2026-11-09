@@ -4,7 +4,32 @@ export const isAbs = (p) => /^[a-zA-Z]:[\\/]/.test(p) || p.startsWith('/') || p.
 export const sepOf = (p) => (p && p.includes('\\') ? '\\' : '/')
 /** A file another Android app handed over: a content:// link, not a path (no folder, no siblings) */
 export const isUri = (p) => typeof p === 'string' && p.startsWith('content://')
+// The names Android reports for content:// links. The link itself often ends in an ID
+// (Downloads: msf:1000012345, Drive: an encoded key), so the name has to come from Android.
+// Kept across restarts for the Recent list.
+const URI_NAMES_KEY = 'folio.uriNames'
+let uriNames = null
+const names = () => {
+  if (!uriNames)
+    try {
+      uriNames = new Map(JSON.parse(localStorage.getItem(URI_NAMES_KEY)) || [])
+    } catch {
+      uriNames = new Map()
+    }
+  return uriNames
+}
+export function setUriName(uri, name) {
+  if (!isUri(uri) || !name || names().get(uri) === name) return
+  names().delete(uri)
+  names().set(uri, name)
+  while (names().size > 100) names().delete(names().keys().next().value)
+  try {
+    localStorage.setItem(URI_NAMES_KEY, JSON.stringify([...names()]))
+  } catch {}
+}
+
 export const basename = (p) => {
+  if (isUri(p) && names().has(p)) return names().get(p)
   // content://…/document/primary%3ADocuments%2Fnote.md → note.md
   if (isUri(p)) return decodeURIComponent(p.split('/').pop() || '').split(/[\\/:]/).pop() || 'Document'
   return (p || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop()

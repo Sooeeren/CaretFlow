@@ -77,12 +77,19 @@ pub async fn export(app: AppHandle, url: String, out: String, opts: PdfOptions) 
 /// printPdf), then gets the same page numbers, header/footer and properties as on the desktop.
 #[cfg(target_os = "android")]
 pub async fn export_android(html: String, out: String, opts: PdfOptions) -> Result<(), String> {
+    // the WebView would print its "page not found" page instead
+    if !Path::new(&html).is_file() {
+        return Err(format!("the export page is missing: {html}"));
+    }
     let raw = tmp_path(&out);
     let (w, h) = page_mm(&opts);
     let raw_s = raw.to_string_lossy().to_string();
     let margin = opts.margin_mm;
-    tauri::async_runtime::spawn_blocking(move || crate::android::print_pdf(&html, &raw_s, w, h, margin))
+    // the plugin gives up on its own after a minute; this is the backstop if it never answers
+    let job = tauri::async_runtime::spawn_blocking(move || crate::android::print_pdf(&html, &raw_s, w, h, margin));
+    tokio::time::timeout(std::time::Duration::from_secs(90), job)
         .await
+        .map_err(|_| "Android did not finish the PDF in time".to_string())?
         .map_err(|e| e.to_string())??;
     let r = postprocess(&raw, Path::new(&out), &opts);
     let _ = std::fs::remove_file(&raw);

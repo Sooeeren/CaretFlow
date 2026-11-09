@@ -23,7 +23,7 @@ to it. You can turn access on later in Android's settings, or from any Open or S
   Download are one tap away, and **Other apps…** opens a file from Google Drive or another app.
 - **Documents/CaretFlow** is the default folder.
 - **Open with CaretFlow**: in a file manager, open a `.md` file and pick CaretFlow. Text that another
-  app shares to CaretFlow becomes a new document.
+  app shares to CaretFlow becomes a new document. Sharing several files opens the first one.
 - **Saving**: auto-save is on by default on Android, because Android may close apps in the
   background at any time. When CaretFlow goes to the background, it saves the file; an unsaved new
   document is kept and comes back the next time you open CaretFlow.

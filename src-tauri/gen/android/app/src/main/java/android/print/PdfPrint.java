@@ -45,6 +45,7 @@ public class PdfPrint {
           @Override
           public void onWriteCancelled() {
             close(fd);
+            adapter.onFinish();
             cb.done("PDF export was cancelled");
           }
         });
@@ -52,11 +53,13 @@ public class PdfPrint {
 
       @Override
       public void onLayoutFailed(CharSequence error) {
+        adapter.onFinish();
         cb.done("page layout failed: " + error);
       }
 
       @Override
       public void onLayoutCancelled() {
+        adapter.onFinish();
         cb.done("PDF export was cancelled");
       }
     }, null);

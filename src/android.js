@@ -32,9 +32,12 @@ export async function initAndroid(c) {
 }
 
 /** After the first document is on screen: draft, file from another app, storage, default folder */
-export async function afterBoot({ opened }) {
-  const intent = await takeIntent()
-  if (!intent && !opened) await restoreDraft()
+export async function afterBoot() {
+  // the draft first, even when the last file was reopened: otherwise it is never shown and the
+  // next trip to the background deletes it. A file from another app comes after it and asks
+  // about the draft like about any unsaved change.
+  await restoreDraft()
+  await takeIntent()
   const st = await storage()
   if (!st.granted && !ctx.settings.androidStorageAsked) await askStorage()
   else if (!ctx.S.root) await openDefaultFolder()
@@ -88,6 +91,7 @@ async function takeIntent() {
   const r = await invoke('android_take_intent').catch(() => null)
   if (r?.uri) {
     const p = await resolve(r.uri)
+    if (r.more) ctx.toast(`CaretFlow opens one file at a time: the first of ${r.more + 1}`, 3500)
     if (p) return (await ctx.openFile(p)) || true
   } else if (r?.text) {
     // shared text becomes a new, unsaved document
@@ -102,7 +106,10 @@ async function resolve(uri) {
   if (!uri) return null
   if (!uri.startsWith('content://')) return uri.replace(/^file:\/\//, '')
   const r = await invoke('android_resolve', { uri }).catch(() => null)
-  return r?.path || uri
+  if (r?.path) return r.path
+  // no path: keep Android's name for the link, so the title and Save As don't show an ID
+  P.setUriName(uri, r?.name)
+  return uri
 }
 
 export async function pickImage() {
@@ -449,7 +456,7 @@ function wireSidebarDrawer() {
   for (const id of ['#tree', '#outline', '#search-results', '#sb-cloud'])
     document.querySelector(id)?.addEventListener('click', (e) => {
       if (!narrow()) return
-      const row = e.target.closest('.tree-row, .ol-item, .outline-item, .sr-hit, .search-hit, [data-line], [data-pos]')
+      const row = e.target.closest('.tree-row, .ol-item, .sr-item')
       if (row && !row.classList.contains('dir')) setTimeout(() => ctx.setSidebar(false), 150)
     })
 }
@@ -550,7 +557,11 @@ async function back() {
   if (ctx.S.mode === 'source' && !ctx.settings.vim) return ctx.runAction('View/Source Code Mode')
   // leaving CaretFlow: save first (or keep the draft), like Android apps do
   await saveOrKeepDraft()
-  if (ctx.syncDirty() && !(await ctx.confirmDiscard())) return
+  if (ctx.syncDirty()) {
+    if (!(await ctx.confirmDiscard())) return
+    // "Don't Save" means it: the kept draft must not come back on the next start
+    if (ctx.syncDirty()) localStorage.removeItem(DRAFT_KEY)
+  }
   invoke('exit_app', { code: 0 })
 }
 
@@ -578,10 +589,12 @@ async function saveOrKeepDraft() {
   const { S, settings } = ctx
   try {
     if (!ctx.syncDirty()) return localStorage.removeItem(DRAFT_KEY)
-    if (S.path && settings.autoSave && !S.externalChange && !S.readonly) {
-      if (await ctx.save()) return localStorage.removeItem(DRAFT_KEY)
-    }
+    // the draft first: Android may end the app while the save is still running
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ path: S.path, text: ctx.currentText(), at: Date.now() }))
+    // quiet: no "changed on disk" or "save failed" dialog nobody can see; the draft stays then
+    if (S.path && settings.autoSave && !S.externalChange && !S.readonly) {
+      if (await ctx.save({ quiet: true })) localStorage.removeItem(DRAFT_KEY)
+    }
   } catch (e) {
     ctx.log('keeping the draft failed:', e)
   }

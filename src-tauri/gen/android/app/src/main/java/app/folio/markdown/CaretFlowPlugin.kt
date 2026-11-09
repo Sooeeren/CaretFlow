@@ -6,7 +6,6 @@ package app.folio.markdown
 // the OS: storage permission, "Open with", sharing, printing and PDF export.
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -14,11 +13,16 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelFileDescriptor
+import android.print.PageRange
 import android.print.PdfPrint
 import android.print.PrintAttributes
+import android.print.PrintDocumentAdapter
 import android.print.PrintManager
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
@@ -37,9 +41,15 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import java.io.File
+import java.io.FileOutputStream
 
 @TauriPlugin
 class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
+  companion object {
+    // set on an intent once its file went to the frontend (see remember)
+    private const val HANDLED = "app.folio.markdown.handled"
+  }
+
   private val main = Handler(Looper.getMainLooper())
   // the file another app asked us to open, until the frontend picks it up
   private var pending: JSObject? = null
@@ -57,6 +67,11 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
 
   private fun remember(intent: Intent?) {
     if (intent == null) return
+    // Reopened from the recent apps after Android ended CaretFlow, the activity gets the intent
+    // that first started it again; and a recreated activity (display size changed) keeps it.
+    // Both are handled already: opening the file again would replace the restored draft.
+    if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+    if (intent.getBooleanExtra(HANDLED, false)) return
     val r = JSObject()
     when (intent.action) {
       Intent.ACTION_VIEW, Intent.ACTION_EDIT -> intent.data?.let { r.put("uri", it.toString()) }
@@ -66,8 +81,20 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
         if (stream != null) r.put("uri", stream.toString())
         else intent.getStringExtra(Intent.EXTRA_TEXT)?.let { r.put("text", it) }
       }
+      // several files: CaretFlow shows one document at a time, so it opens the first
+      Intent.ACTION_SEND_MULTIPLE -> {
+        @Suppress("DEPRECATION")
+        val streams = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+        streams?.firstOrNull()?.let {
+          r.put("uri", it.toString())
+          r.put("more", streams.size - 1)
+        }
+      }
     }
-    if (r.length() > 0) pending = r
+    if (r.length() > 0) {
+      pending = r
+      intent.putExtra(HANDLED, true)
+    }
   }
 
   /** File work off the UI thread; errors go back to the caller as the message. */
@@ -176,10 +203,15 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
   fun resolveUri(invoke: Invoke) {
     val uri = Uri.parse(invoke.getArgs().getString("uri"))
     bg(invoke) {
-      // keep access across restarts where the provider allows it (recent files)
-      try {
-        activity.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-      } catch (e: Exception) {
+      // keep access across restarts where the provider allows it (recent files). Asking for
+      // read + write fails as a whole when only reading was granted, so read alone after that.
+      val rw = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+      for (flags in intArrayOf(rw, Intent.FLAG_GRANT_READ_URI_PERMISSION)) {
+        try {
+          activity.contentResolver.takePersistableUriPermission(uri, flags)
+          break
+        } catch (e: Exception) {
+        }
       }
       val r = JSObject()
       r.put("path", pathOf(uri) ?: org.json.JSONObject.NULL)
@@ -205,13 +237,25 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
     val uri = Uri.parse(args.getString("uri"))
     val bytes = Base64.decode(args.getString("data"), Base64.DEFAULT)
     bg(invoke) {
-      // "wt" truncates; some providers only know "w"
-      val out = try {
-        activity.contentResolver.openOutputStream(uri, "wt")
+      val cr = activity.contentResolver
+      // "wt" truncates. Plain "w" doesn't on some providers, which leaves the end of the old,
+      // longer text in the file, so the next try is "rw" with an explicit truncate.
+      val done = try {
+        cr.openOutputStream(uri, "wt")?.use { it.write(bytes) } != null
       } catch (e: Exception) {
-        activity.contentResolver.openOutputStream(uri, "w")
-      } ?: throw Exception("could not write the file")
-      out.use { it.write(bytes) }
+        false
+      } || try {
+        cr.openFileDescriptor(uri, "rw")?.use { pfd ->
+          FileOutputStream(pfd.fileDescriptor).use { out ->
+            out.channel.truncate(0)
+            out.write(bytes)
+          }
+        } != null
+      } catch (e: Exception) {
+        false
+      }
+      // last resort for providers that only know "w" (they replace the file on "w")
+      if (!done) (cr.openOutputStream(uri, "w") ?: throw Exception("could not write the file")).use { it.write(bytes) }
       invoke.resolve()
     }
   }
@@ -298,12 +342,15 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
 
   // ── printing and PDF
 
-  /** Load an HTML file in a WebView of its own (not on screen), then hand it to `ready`. */
-  @SuppressLint("SetJavaScriptEnabled")
-  private fun withPage(html: String, ready: (WebView) -> Unit) {
+  /**
+   * Load an HTML file in a WebView of its own (not on screen), then hand it to `ready`; `failed`
+   * when it doesn't load within 30 seconds (the desktop export waits as long).
+   */
+  private fun withPage(html: String, ready: (WebView) -> Unit, failed: (String) -> Unit) {
     val wv = WebView(activity)
     printing.add(wv)
-    wv.settings.javaScriptEnabled = true
+    // the export page is finished HTML: no scripts (the document's own HTML is in it)
+    wv.settings.javaScriptEnabled = false
     wv.settings.allowFileAccess = true
     var done = false
     wv.webViewClient = object : WebViewClient() {
@@ -314,6 +361,13 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
         main.postDelayed({ ready(view) }, 500)
       }
     }
+    main.postDelayed({
+      if (!done) {
+        done = true
+        release(wv)
+        failed("the document did not load in time")
+      }
+    }, 30_000)
     wv.loadUrl(Uri.fromFile(File(html)).toString())
   }
 
@@ -331,15 +385,32 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
     val title = args.optString("title").ifEmpty { "CaretFlow" }
     main.post {
       try {
-        withPage(html) { wv ->
+        withPage(html, { wv ->
           val pm = activity.getSystemService(Activity.PRINT_SERVICE) as PrintManager
-          pm.print(title, wv.createPrintDocumentAdapter(title), null)
-          release(wv)
-        }
-        invoke.resolve()
+          // the dialog draws its preview and prints from this WebView for as long as it is open:
+          // it may only go once Android says the print job is finished
+          pm.print(title, keepUntilFinished(wv.createPrintDocumentAdapter(title), wv), null)
+          invoke.resolve()
+        }, { invoke.reject(it) })
       } catch (e: Exception) {
         invoke.reject(e.message ?: e.toString())
       }
+    }
+  }
+
+  /** Hands everything to `inner`, and lets the WebView go when printing is over. */
+  private fun keepUntilFinished(inner: PrintDocumentAdapter, wv: WebView) = object : PrintDocumentAdapter() {
+    override fun onStart() = inner.onStart()
+
+    override fun onLayout(old: PrintAttributes?, new: PrintAttributes, cancel: CancellationSignal?, cb: LayoutResultCallback, extras: Bundle?) =
+      inner.onLayout(old, new, cancel, cb, extras)
+
+    override fun onWrite(pages: Array<out PageRange>, fd: ParcelFileDescriptor, cancel: CancellationSignal?, cb: WriteResultCallback) =
+      inner.onWrite(pages, fd, cancel, cb)
+
+    override fun onFinish() {
+      inner.onFinish()
+      release(wv)
     }
   }
 
@@ -358,21 +429,32 @@ class CaretFlowPlugin(private val activity: Activity) : Plugin(activity) {
       .setMinMargins(PrintAttributes.Margins(m, m, m, m))
       .setColorMode(PrintAttributes.COLOR_MODE_COLOR)
       .build()
+    // answered once: by the print engine, or by the time limit if it never calls back
+    var settled = false
+    val finish = { err: String? ->
+      if (!settled) {
+        settled = true
+        if (err == null) invoke.resolve() else invoke.reject(err)
+      }
+    }
     main.post {
       try {
-        withPage(html) { wv ->
+        withPage(html, { wv ->
+          main.postDelayed({ if (!settled) release(wv); finish("Android did not finish the PDF in time") }, 60_000)
           try {
             PdfPrint.print(wv.createPrintDocumentAdapter("CaretFlow"), attrs, out) { err ->
-              release(wv)
-              if (err == null) invoke.resolve() else invoke.reject(err)
+              main.post {
+                if (!settled) release(wv)
+                finish(err)
+              }
             }
           } catch (e: Throwable) {
             release(wv)
-            invoke.reject("Android could not print the PDF: " + (e.message ?: e.toString()))
+            finish("Android could not print the PDF: " + (e.message ?: e.toString()))
           }
-        }
+        }, { finish(it) })
       } catch (e: Exception) {
-        invoke.reject(e.message ?: e.toString())
+        finish(e.message ?: e.toString())
       }
     }
   }

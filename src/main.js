@@ -695,12 +695,14 @@ async function openFolderDialog() {
   if (p) setRoot(p, true)
 }
 
-async function save() {
-  if (!S.path) return saveAs()
+/** quiet: no dialogs (saving while Android puts the app in the background); false when not saved */
+async function save({ quiet = false } = {}) {
+  if (!S.path) return quiet ? false : saveAs()
   const text = currentText()
   try {
     const m = await invoke('mtime', { path: S.path }).catch(() => 0)
     if (S.mtime && m && m !== S.mtime) {
+      if (quiet) return false
       const r = await dialog({
         title: 'File changed on disk',
         body: `“${P.basename(S.path)}” was modified by another program since it was opened. Overwrite it?`,
@@ -716,7 +718,7 @@ async function save() {
     return true
   } catch (e) {
     log('save failed:', e)
-    await dialog({ title: 'Save failed', body: String(e) })
+    if (!quiet) await dialog({ title: 'Save failed', body: String(e) })
     return false
   }
 }
@@ -4210,7 +4212,7 @@ async function boot() {
   renderTree()
   updateTitle()
   await win.show().catch(() => {}) // phones: the one window is always shown
-  if (androidMod) await androidMod.afterBoot({ opened }).catch((e) => log('android start:', e))
+  if (androidMod) await androidMod.afterBoot().catch((e) => log('android start:', e))
   else focusEditor() // not on Android: the keyboard would pop up on every start
   if (args.includes('--preview')) {
     PV.debug = true // logs one line once the first page is drawn (used by tests)
