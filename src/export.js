@@ -1,5 +1,6 @@
 // HTML export / print (lazy-loaded)
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import katex from 'katex'
 import katexCss from 'katex/dist/katex.min.css?inline'
 import { languages } from '@codemirror/language-data'
@@ -122,7 +123,9 @@ export async function toHtml(md, o) {
   md = md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
   // Math code fences → display math
   md = md.replace(/^```(?:math|latex|tex|katex)\s*\n([\s\S]*?)\n```/gm, (_, s) => `$$\n${s}\n$$`)
-  let html = marked.parse(md)
+  // the document's own HTML is kept, minus scripts and event handlers: the export page is
+  // loaded by CaretFlow (print, PDF export, page preview), where a script could reach its commands
+  let html = DOMPurify.sanitize(marked.parse(md))
   html = await renderMermaidBlocks(html, o.dark)
   html = await highlightBlocks(html)
   html = renderCallouts(html)
@@ -182,6 +185,9 @@ export function printHtml(html) {
   return new Promise((resolve) => {
     const f = document.createElement('iframe')
     f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden'
+    // the page holds the document's own HTML, unfiltered: no scripts, so a file with
+    // <img onerror=…> can't reach CaretFlow's commands (same origin, for print() from here)
+    f.sandbox = 'allow-same-origin allow-modals'
     document.body.appendChild(f)
     f.onload = () => {
       setTimeout(() => {
