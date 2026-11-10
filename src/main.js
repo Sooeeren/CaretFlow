@@ -3432,7 +3432,7 @@ function collectActions(items, menu, path, group) {
 }
 for (const m of MENU) collectActions(m.items, m.label, m.label, m.label)
 
-/** Custom shortcuts are saved by menu path; when a command moved to another menu (0.9.2 sorted
+/** Custom shortcuts are saved by menu path; when a command moved to another menu (0.10.0 sorted
  *  the menus), its shortcut follows it to the command with the same name. */
 function migrateKeybindings(kb) {
   let moved = false
