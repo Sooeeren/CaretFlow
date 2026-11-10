@@ -881,6 +881,57 @@ button { font: inherit; color: inherit; }
 #wysiwyg .folio-page-break.ProseMirror-selectednode { border-top-color: var(--accent); }
 #wysiwyg .folio-page-break.ProseMirror-selectednode span { color: var(--accent); border-color: var(--accent); }
 
+/* HTML in Markdown (html.js): rendered, contained so it can't cover the app, click to edit */
+#wysiwyg .folio-html {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: baseline;
+  contain: layout paint;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: normal; /* ProseMirror keeps every space; HTML collapses them */
+}
+#wysiwyg .folio-html.block { display: block; }
+#wysiwyg .folio-html > :first-child { margin-top: 0; }
+#wysiwyg .folio-html > :last-child { margin-bottom: 0; }
+#wysiwyg .folio-html img { max-width: 100%; }
+#wysiwyg .folio-html:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+#wysiwyg .folio-html.ProseMirror-selectednode { box-shadow: 0 0 0 2px var(--accent); }
+#wysiwyg .folio-html.raw {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+#wysiwyg .folio-html.editing { cursor: text; box-shadow: none; contain: none; }
+#wysiwyg .folio-html-src {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  outline: none;
+}
+#wysiwyg .folio-html:not(.block) .folio-html-src { display: inline-block; vertical-align: middle; }
+#wysiwyg kbd {
+  font: 0.85em var(--font-mono);
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--code-bg);
+}
+
 /* ───────────── Callouts ( > [!NOTE] … ) ───────────── */
 #wysiwyg .milkdown .ProseMirror blockquote.callout {
   --c: #2f74d0;

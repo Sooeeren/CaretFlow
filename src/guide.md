@@ -89,6 +89,10 @@ graph LR
   B -- no --> A
 ```
 
+## HTML
+
+HTML in a document is shown rendered, the way GitHub shows a README: press <kbd>Ctrl</kbd>+<kbd>S</kbd>, H<sub>2</sub>O, centered headers. Click it (or press `Enter` when it is selected) to edit the HTML; `Ctrl+Enter` or clicking elsewhere finishes, `Escape` cancels. Scripts and forms are never run or shown, and the file keeps the HTML exactly as written.
+
 ## Images
 
 Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies it into an `assets` folder next to your document and links it relatively (configurable in Preferences).

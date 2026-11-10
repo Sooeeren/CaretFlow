@@ -24,6 +24,7 @@ import { syntaxHighlighting } from '@codemirror/language'
 import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
+import { htmlRendering } from './html.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
@@ -144,7 +145,6 @@ const DEFAULTS = {
   mcpEnabled: false, // the local MCP server (mcp.js / mcp.rs)
   mcpPort: 38457,
   extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
-  extNoticeSeen: false, // the one-time "these are extensions now" notice after updating from 0.7.0
   androidStorageAsked: false, // Android: asked once for "All files access" (android.js)
 }
 // No saved settings yet: CaretFlow's very first start (shows the welcome page)
@@ -476,7 +476,7 @@ async function createEditor(markdown) {
       },
     },
   })
-  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
+  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(htmlRendering({ resolveSrc })).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -2448,20 +2448,16 @@ function applyCloudUi() {
   }
 }
 
-/** After installing or removing an extension: shortcuts, tabs and background work follow. */
 /**
  * Updating from 0.7.0, which had no extensions: Cloud Sync stays installed if it was on; the typing
- * test doesn't (its personal bests stay saved). A one-time notice says where they went.
+ * test doesn't (its personal bests stay saved). There used to be a notice about this; by now
+ * everyone has seen it.
  */
 function migrateExtensions() {
-  if (FIRST_RUN || 'extensions' in SAVED || settings.extNoticeSeen) return
+  if (FIRST_RUN || 'extensions' in SAVED) return
   settings.extensions = settings.cloudEnabled ? ['cloud'] : []
-  settings.extNoticeSeen = true
+  saveSettings()
   applyExtensions()
-  showNotice('Typing Test and Cloud Sync are now extensions: Tools → Extensions…', [
-    { label: 'Open Extensions', fn: () => (hideNotice(), openPrefs('extensions')) },
-    { label: 'OK', fn: () => hideNotice() },
-  ])
 }
 
 // ════════════════════════════════════════ AI Writing Help (ai.js, loaded once installed and turned on)

@@ -155,7 +155,7 @@ export const scenes = {
       const st = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')))
       const notice = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
       check('update keeps Cloud Sync installed (it was on)', JSON.stringify(st.extensions) === '["cloud"]', JSON.stringify(st.extensions))
-      check('one-time notice', /Tools → Extensions/.test(notice) && st.extNoticeSeen === true, notice)
+      check('no notice about it anymore', !notice, notice)
       await page.evaluate(() => {
         const s = JSON.parse(localStorage.getItem('folio.settings'))
         sessionStorage.setItem('test.override', JSON.stringify(s))
@@ -163,8 +163,8 @@ export const scenes = {
       await page.reload()
       await page.waitForSelector('#wysiwyg .ProseMirror')
       await wait(800)
-      const again = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
-      check('notice shows only once', !/Extensions/.test(again), again)
+      const again = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).extensions)
+      check('Cloud Sync still installed after a restart', JSON.stringify(again) === '["cloud"]', JSON.stringify(again))
       summary()
     },
   },

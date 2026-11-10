@@ -51,6 +51,10 @@ View → Line Numbers), and CaretFlow starts in source mode again when you quit 
   grow it.
 - **Mermaid**: Insert → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
 - **Math** is rendered with KaTeX, inline (`Ctrl+Shift+E`) or as a block (`Ctrl+Shift+M`).
+- **HTML** (README headers, `<kbd>`, `<sub>`, `<details>`, `<img width=…>`) is shown rendered. Click
+  it, or press `Enter` when it is selected, to edit the HTML; `Ctrl+Enter` or clicking elsewhere
+  finishes, `Escape` cancels. Scripts, event handlers, forms and frames are removed before showing,
+  and the file keeps the HTML exactly as written.
 
 ## Files and folders
 
