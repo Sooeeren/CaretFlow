@@ -74,6 +74,8 @@ export function renderHtml(raw, resolveSrc = (s) => s) {
     )
   // links open with Ctrl+click like Markdown links; the webview never navigates
   for (const a of f.querySelectorAll('a[target]')) a.removeAttribute('target')
+  // nothing may pin itself over the app (block HTML isn't contained, so floats can flow on)
+  for (const e of f.querySelectorAll('[style]')) if (/fixed|sticky/i.test(e.style.position)) e.style.position = 'static'
   // a lone tag or a comment shows nothing: keep it visible as source instead
   const shows = f.textContent.trim() || f.querySelector('img, hr, br, svg, video, audio, table, picture, details')
   return shows ? f : null

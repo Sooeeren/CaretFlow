@@ -15,6 +15,8 @@ Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save, H<sub>2</sub>O, and <u>underline</u>
 
 <!-- a comment -->
 
+<div style="position: fixed; top: 0; left: 0">pinned</div>
+
 <details>
 <summary>More</summary>
 Hidden text
@@ -52,6 +54,12 @@ export const scenes = {
           safe: pm.textContent.includes('safe text'),
           comment: nodes.some((n) => n.classList.contains('raw') && n.textContent.includes('<!-- a comment -->')),
           details: !!pm.querySelector('.folio-html details summary'),
+          pinned: [...pm.querySelectorAll('.folio-html div')].find((d) => d.textContent === 'pinned')?.style.position,
+          // the paragraph around block HTML is exactly as tall as the HTML: no empty lines, no margins
+          gap: (() => {
+            const h = pm.querySelector('.folio-html.block p[align]').closest('.folio-html')
+            return Math.round(h.parentElement.getBoundingClientRect().height - h.getBoundingClientRect().height) + '/' + getComputedStyle(h.querySelector('p')).marginTop
+          })(),
           rawTags: /<p align|<kbd>|<b>/.test(pm.textContent),
           pwned: window.__pwned,
         }
@@ -65,6 +73,8 @@ export const scenes = {
       check('the safe part still shows', r.safe)
       check('comments stay visible as source', r.comment)
       check('<details> renders', r.details)
+      check('position: fixed cannot pin anything over the app', r.pinned === 'static', r.pinned)
+      check('no empty lines or margins around block HTML', r.gap === '0/0px', r.gap)
 
       const untouched = await md(page)
       const htmlParts = DOC.match(/<p align[\s\S]*?<\/p>|<kbd>Ctrl<\/kbd>|<sub>2<\/sub>|<details>[\s\S]*?<\/details>|<!-- a comment -->/g)

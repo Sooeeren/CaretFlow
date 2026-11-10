@@ -891,9 +891,12 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
   white-space: normal; /* ProseMirror keeps every space; HTML collapses them */
 }
-#wysiwyg .folio-html.block { display: block; }
-#wysiwyg .folio-html > :first-child { margin-top: 0; }
-#wysiwyg .folio-html > :last-child { margin-bottom: 0; }
+#wysiwyg .folio-html.block { display: block; contain: none; position: relative; } /* lets align="right" images float beside the next paragraph, like GitHub; html.js drops fixed/sticky positions */
+/* the surrounding paragraph already spaces the block: no margins of its own at the edges
+   (beats Crepe's paragraph margins), and no empty lines for ProseMirror's separators and trailing <br> (its CSS forces them inline) */
+#wysiwyg .ProseMirror .folio-html > :first-child { margin-top: 0; }
+#wysiwyg .ProseMirror .folio-html > :last-child { margin-bottom: 0; }
+#wysiwyg .ProseMirror p:has(> .folio-html.block) > :is(br.ProseMirror-trailingBreak, img.ProseMirror-separator) { display: none !important; }
 #wysiwyg .folio-html img { max-width: 100%; }
 #wysiwyg .folio-html:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
 #wysiwyg .folio-html.ProseMirror-selectednode { box-shadow: 0 0 0 2px var(--accent); }
