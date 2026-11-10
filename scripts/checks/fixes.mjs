@@ -23,7 +23,7 @@ export const scenes = {
     open: 'Welcome.md',
     settings: AI({ aiFixWhen: 'manual', aiRecWhen: 'manual' }),
     async setup(page) {
-      this.srv = await fakeAi(() => ({ ...openaiAnswer('{"findings":[]}'), delay: 1500 }))
+      this.srv = await fakeAi(() => ({ ...openaiAnswer('{"findings":[]}'), delay: 4000 })) // slow, so AI is off before the first answer arrives
       await stubBackend(page, aiBackend({}))
       await useServer(page, this.srv.url + '/v1')
     },
