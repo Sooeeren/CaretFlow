@@ -152,3 +152,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-07 | Material You style (all platforms; wallpaper colors on Android 12+), scripts/checks/material.mjs |
 | Claude Opus 5.5 | Claude Code | 2026-11-07 | Android version: touch layout, file browser and all-files access, Open with/Share, PDF export and printing via Android, drafts, APK builds in CI and releases |
 | Claude Opus 5.5 | Claude Code | 2026-11-09 | Android fixes: crash on the first HTTPS request, drafts lost after a restart, print dialog, PDF export time limit, replayed intents, content:// names and access; scripts removed from exports; case-sensitive paths on Linux/Android; Cloud Sync race |
+| Claude Opus 5.5 | Claude Code | 2026-11-10 | Menus sorted: new Insert and Tools menus, themes and Vim under View, the Settings menu split up; custom shortcuts follow moved commands |

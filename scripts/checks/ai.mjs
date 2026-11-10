@@ -502,9 +502,9 @@ export const scenes = {
         const items = await page.$$eval('.menu-pop .menu-item', (xs) => xs.map((x) => x.textContent))
         return items
       }
-      const edit = await menu('Edit')
+      const edit = await menu('Tools')
       await page.mouse.click(700, 500)
-      check('Edit menu has the AI commands', edit.some((t) => /AI: Check Paragraph.*Ctrl\+Alt\+K/.test(t)) && edit.some((t) => /AI: Check Document/.test(t)) && edit.some((t) => /AI: Next Suggestion.*Shift\+Alt\+F7/.test(t)), JSON.stringify(edit))
+      check('Tools menu has the AI commands', edit.some((t) => /AI: Check Paragraph.*Ctrl\+Alt\+K/.test(t)) && edit.some((t) => /AI: Check Document/.test(t)) && edit.some((t) => /AI: Next Suggestion.*Shift\+Alt\+F7/.test(t)), JSON.stringify(edit))
       await menu('Help')
       await page.click('.menu-pop .menu-item:has-text("AI Setup Guide")')
       await wait(1000)

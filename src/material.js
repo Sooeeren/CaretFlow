@@ -1,4 +1,4 @@
-// Material You style (Settings → Material You Style, off by default): a Material 3 color scheme
+// Material You style (View → Theme → Material You Style, off by default): a Material 3 color scheme
 // made from one seed color, laid over the current theme (which still decides light or dark and
 // the document font). The tonal palettes are built in OKLCH, which keeps them close to Material's
 // HCT tones without its full color science. Shapes live in style.css under body.material.

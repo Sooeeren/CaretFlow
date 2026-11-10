@@ -68,7 +68,7 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
 - **Files and folders**: sidebar with outline, file tree and folder search; quick open (`Ctrl+P`);
   command palette (`F1`).
 - **Four themes** (Paper, Sepia, Ink, Slate) plus custom CSS, focus, typewriter and zen modes, and an
-  optional **Material You style** (Themes menu) with colors made from one color, or from your
+  optional **Material You style** (View → Theme) with colors made from one color, or from your
   wallpaper on Android 12+.
 - **Extensions you add when you want them**: Cloud Sync with your own server, AI writing help with
   the AI you choose, and a typing test. Until installed they stay out of your menus.
@@ -107,7 +107,7 @@ extension adds corrections and suggestions from the AI you choose. More in
 
 ## Typing cat and WPM meter
 
-**View → Typing Speed (WPM)** shows your speed in the status bar and **View → Typing Cat** adds a
+**Tools → Typing Speed (WPM)** shows your speed in the status bar and **Tools → Typing Cat** adds a
 small companion that taps along while you write. Both are off by default.
 
 ![The typing cat in the corner and the WPM meter in the status bar](docs/screenshots/bongo.png)
@@ -115,7 +115,7 @@ small companion that taps along while you write. Both are off by default.
 ## Extensions
 
 Bigger features come as extensions: they ship with CaretFlow, and you install them with one click
-in **Preferences → Extensions** (Settings → Extensions…). Until then they add no menus, tabs or
+in **Preferences → Extensions** (Tools → Extensions…). Until then they add no menus, tabs or
 settings, and their code never loads. Removing one keeps its settings.
 
 ![Preferences → Extensions](docs/screenshots/extensions.png)

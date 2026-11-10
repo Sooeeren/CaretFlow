@@ -235,6 +235,8 @@ button { font: inherit; color: inherit; }
 .menu-item.has-sub::after { content: '›'; position: absolute; right: 10px; }
 .menu-sep { height: 1px; margin: 5px 6px; background: var(--border); }
 .menu-pop .menu-pop { top: -6px; left: 100%; }
+.menu-pop.tight > .menu-item { padding-top: 2px; padding-bottom: 2px; }
+.menu-pop.tight > .menu-sep { margin: 3px 6px; }
 .menu-empty { padding: 6px 12px; color: var(--muted); }
 
 #main { flex: 1; display: flex; min-height: 0; }

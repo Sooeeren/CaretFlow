@@ -25,6 +25,6 @@ Hi, and thanks for trying CaretFlow! It's a quiet place to write Markdown: what 
 
 **Preferences** (`Ctrl+,`) has themes, fonts, spacing, line numbers and more. **Help → Markdown Guide** shows everything CaretFlow can format, and **Help → Welcome Page** brings this page back.
 
-Want more? **Settings → Extensions…** adds Cloud Sync with your own server, AI writing help with the AI you choose, and a typing test, each with one click.
+Want more? **Tools → Extensions…** adds Cloud Sync with your own server, AI writing help with the AI you choose, and a typing test, each with one click.
 
 Happy writing!

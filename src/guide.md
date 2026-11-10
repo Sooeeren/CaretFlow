@@ -10,7 +10,7 @@ CaretFlow is a **seamless** Markdown reader and editor: what you type is rendere
 - `F8` focus mode, `F9` typewriter mode, `Ctrl+Shift+J` zen mode
 - `Ctrl+Shift+R` read-only mode — `Ctrl+Click` (or just click, when read-only) opens links
 - Type `/` on an empty line for the block menu
-- Prefer Vim? **Settings → Vim Keybindings** (`Ctrl+Alt+V`) — works in source mode, with `:w`, `:q`, `:wq`; line numbers (also relative) under **Settings → Line Numbers**
+- Prefer Vim? **View → Vim Keybindings** (`Ctrl+Alt+V`) — works in source mode, with `:w`, `:q`, `:wq`; line numbers (also relative) under **View → Line Numbers**
 - Change any shortcut in **Preferences → Keyboard** (**Help → Customize Shortcuts…**): click it, press the new keys
 - **File → Close File** (`Ctrl+F4`) and **File → Close Folder** start over with an empty document or file tree; **Preferences** (`Ctrl+,`) has fonts, heading spacing, line numbers and more, sorted by topic
 - **Help → Check for Updates…** finds a new version; **Update & Restart** installs it and opens CaretFlow again
@@ -23,15 +23,15 @@ The default checker (Harper) runs entirely on your computer. For German, French,
 
 ## Extensions
 
-Bigger optional features are extensions: **Settings → Extensions…** installs them with one click, and until then they stay out of your menus. **Cloud Sync** keeps a folder in sync with your own server, **AI Writing Help** adds suggestions from the AI you choose (or your AI app over MCP: **Help → AI Setup Guide**), and the **Typing Test** measures your speed.
+Bigger optional features are extensions: **Tools → Extensions…** installs them with one click, and until then they stay out of your menus. **Cloud Sync** keeps a folder in sync with your own server, **AI Writing Help** adds suggestions from the AI you choose (or your AI app over MCP: **Help → AI Setup Guide**), and the **Typing Test** measures your speed.
 
 ## Typing test
 
-With the Typing Test extension installed, `Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **View → Typing Speed (WPM)** shows your speed while you write, and **View → Typing Cat** adds a small companion.
+With the Typing Test extension installed, `Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **Tools → Typing Speed (WPM)** shows your speed while you write, and **Tools → Typing Cat** adds a small companion.
 
 ## Cloud Sync
 
-Keep a folder in sync between your computers with your own server or storage: WebDAV (Nextcloud, ownCloud, a NAS), S3-compatible storage (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through rclone. Install it in **Settings → Extensions…**, then turn it on in **Preferences → Cloud Sync**; CaretFlow has no servers of its own. `Ctrl+Alt+S` syncs now, and the **Cloud** tab in the sidebar (`Ctrl+Shift+4`) shows every file in the cloud with its sync state. When a file changed on both sides, both versions are kept.
+Keep a folder in sync between your computers with your own server or storage: WebDAV (Nextcloud, ownCloud, a NAS), S3-compatible storage (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through rclone. Install it in **Tools → Extensions…**, then turn it on in **Preferences → Cloud Sync**; CaretFlow has no servers of its own. `Ctrl+Alt+S` syncs now, and the **Cloud** tab in the sidebar (`Ctrl+Shift+4`) shows every file in the cloud with its sync state. When a file changed on both sides, both versions are kept.
 
 ## Inline formatting
 
@@ -95,4 +95,4 @@ Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies
 
 ---
 
-Check page layout with **View → Page Preview** (`Ctrl+Alt+L`), add page breaks with `Ctrl+Enter`, and export with **File → Export as PDF** or **File → Export as HTML**.
+Check page layout with **File → Page Preview** (`Ctrl+Alt+L`), add page breaks with `Ctrl+Enter`, and export with **File → Export as PDF** or **File → Export as HTML**.

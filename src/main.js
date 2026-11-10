@@ -2249,7 +2249,7 @@ async function copyHtml() {
 }
 
 // ════════════════════════════════════════ view settings
-// Word-style line numbers in the rendered view (Settings → Line Numbers → Every Fifth Line)
+// Word-style line numbers in the rendered view (View → Line Numbers → Every Fifth Line)
 const wvLines = createLineNumbers($('#wysiwyg'), $('#scroller'))
 
 function applySettings() {
@@ -2458,7 +2458,7 @@ function migrateExtensions() {
   settings.extensions = settings.cloudEnabled ? ['cloud'] : []
   settings.extNoticeSeen = true
   applyExtensions()
-  showNotice('Typing Test and Cloud Sync are now extensions: Settings → Extensions…', [
+  showNotice('Typing Test and Cloud Sync are now extensions: Tools → Extensions…', [
     { label: 'Open Extensions', fn: () => (hideNotice(), openPrefs('extensions')) },
     { label: 'OK', fn: () => hideNotice() },
   ])
@@ -2487,7 +2487,7 @@ function loadAi() {
   })
   return aiP
 }
-/** Edit → AI commands: they need AI Writing Help turned on and set up. */
+/** Tools → AI commands: they need AI Writing Help turned on and set up. */
 const aiCmd = (fn) => async () => {
   if (!settings.aiEnabled) {
     toast('Turn on AI writing help first (Preferences → AI)', 2600)
@@ -3141,20 +3141,44 @@ const MENU = [
       k('New File in Folder…', null, () => createFileIn()),
       '-',
       k('Open…', 'Ctrl+O', openFileDialog),
-      k('Open Folder…', 'Ctrl+Shift+O', openFolderDialog),
-      k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
-      k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync', ext: 'cloud' }),
       k('Quick Open…', 'Ctrl+P', () => quickOpen()),
       { label: 'Open Recent', sub: () => recentMenu() },
+      k('Open Folder…', 'Ctrl+Shift+O', openFolderDialog),
+      k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
+      {
+        label: 'When Opening Files',
+        sub: [
+          k('Open Files in Source Mode', null, toggle('startInSource'), { checked: () => settings.startInSource }),
+          k('Open Files Read-only', null, toggle('readonlyDefault'), { checked: () => settings.readonlyDefault }),
+          k('Reopen Last File on Startup', null, toggle('reopenLast'), { checked: () => settings.reopenLast }),
+        ],
+      },
       '-',
       k('Save', 'Ctrl+S', save),
       k('Save As…', 'Ctrl+Shift+S', saveAs),
-      k('Close File', 'Ctrl+F4', closeFile, { enabled: () => !!S.path || S.dirty }),
-      k('Reload from Disk', null, reloadFromDisk, { enabled: () => !!S.path }),
+      k('Auto-save', null, toggle('autoSave'), { checked: () => settings.autoSave }),
       k('Rename…', null, () => S.path && renameFile(S.path), { enabled: () => !!S.path }),
+      k('Reload from Disk', null, reloadFromDisk, { enabled: () => !!S.path }),
+      k('Close File', 'Ctrl+F4', closeFile, { enabled: () => !!S.path || S.dirty }),
+      k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync', ext: 'cloud' }),
       '-',
       k('Export as HTML…', null, exportHtml),
       k('Export as PDF…', 'Ctrl+Alt+E', exportPdfDialog),
+      {
+        label: 'Export / PDF Theme',
+        sub: [
+          ['paper', 'Paper (light, recommended for print)'],
+          ['sepia', 'Sepia'],
+          ['current', 'Same as Editor'],
+        ].map(([id, l]) =>
+          k(l, null, () => {
+            settings.exportTheme = id
+            saveSettings()
+            toast('Export theme: ' + l.replace(/ \(.*/, ''))
+          }, { checked: () => settings.exportTheme === id }),
+        ),
+      },
+      k('Page Preview', 'Ctrl+Alt+L', togglePagePreview, { checked: () => pagePreviewOpen() }),
       k('Print…', 'Ctrl+Alt+P', printDoc),
       k('Share…', null, () => import('./android.js').then((m) => m.shareDoc()), { android: true }),
       '-',
@@ -3188,17 +3212,11 @@ const MENU = [
         }
       }),
       '-',
-      k('Spelling & Grammar…', 'F7', toggleWritingPanel),
-      k('Next Spelling or Grammar Issue', 'Alt+F7', () => nextIssueMenu()),
-      k('AI: Check Paragraph', 'Ctrl+Alt+K', aiCmd((m, h) => m.commands.checkCaret(h)), { ext: 'ai' }),
-      k('AI: Check Document', null, aiCmd((m, h) => m.commands.checkAll(h)), { ext: 'ai' }),
-      k('AI: Next Suggestion', 'Shift+Alt+F7', aiCmd(() => nextIssueMenu(true)), { ext: 'ai' }),
-      k('AI: Review Panel', null, aiCmd(() => openAiPanel()), { ext: 'ai' }),
-      '-',
       k('Read-only Mode', 'Ctrl+Shift+R', toggleReadonly, { checked: () => S.readonly }),
     ],
   },
   {
+    // what kind of block the current paragraph is
     label: 'Paragraph',
     items: [
       ...[1, 2, 3, 4, 5, 6].map((n) => k(`Heading ${n}`, `Ctrl+${n}`, () => heading(n))),
@@ -3206,19 +3224,26 @@ const MENU = [
       k('Promote Heading', 'Ctrl+=', () => headingStep(-1)),
       k('Demote Heading', 'Ctrl+-', () => headingStep(1)),
       '-',
+      k('Ordered List', 'Ctrl+Shift+[', () => list('ol')),
+      k('Bullet List', 'Ctrl+Shift+]', () => list('ul')),
+      k('Task List', 'Ctrl+Shift+X', () => list('task')),
+      '-',
+      k('Quote', 'Ctrl+Shift+Q', blockquote),
+      { label: 'Callout', sub: Object.entries(CALLOUTS).map(([kind, label]) => k(label, null, () => callout(kind))) },
+    ],
+  },
+  {
+    // new things placed at the cursor
+    label: 'Insert',
+    items: [
+      k('Link', 'Ctrl+K', link),
+      k('Image…', 'Ctrl+Shift+I', insertImageDialog),
+      k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
+      '-',
       k('Table', 'Ctrl+T', table),
       k('Code Block', 'Ctrl+Shift+K', () => codeBlock()),
       k('Math Block', 'Ctrl+Shift+M', mathBlock),
       k('Mermaid Diagram…', 'Ctrl+Shift+D', mermaidGallery),
-      k('Quote', 'Ctrl+Shift+Q', blockquote),
-      {
-        label: 'Callout',
-        sub: () => Object.entries(CALLOUTS).map(([kind, label]) => k(label, null, () => callout(kind))),
-      },
-      '-',
-      k('Ordered List', 'Ctrl+Shift+[', () => list('ol')),
-      k('Bullet List', 'Ctrl+Shift+]', () => list('ul')),
-      k('Task List', 'Ctrl+Shift+X', () => list('task')),
       '-',
       k('Horizontal Rule', 'Ctrl+Shift+H', hr),
       k('Page Break', 'Ctrl+Enter', pageBreak),
@@ -3231,11 +3256,9 @@ const MENU = [
       k('Italic', 'Ctrl+I', mark(cmk.toggleEmphasisCommand, ['*'])),
       k('Underline', 'Ctrl+U', mark(toggleUnderlineCommand, ['<u>', '</u>'])),
       k('Strikethrough', 'Alt+Shift+5', mark(gfm.toggleStrikethroughCommand, ['~~'])),
+      '-',
       k('Inline Code', 'Ctrl+Shift+`', mark(cmk.toggleInlineCodeCommand, ['`'])),
       k('Inline Math', 'Ctrl+Shift+E', inlineMath),
-      '-',
-      k('Link', 'Ctrl+K', link),
-      k('Image…', 'Ctrl+Shift+I', insertImageDialog),
       '-',
       k('Clear Formatting', 'Ctrl+\\', clearFormat),
     ],
@@ -3244,6 +3267,15 @@ const MENU = [
     label: 'View',
     items: [
       k('Source Code Mode', 'Ctrl+/', toggleSource, { checked: () => S.mode === 'source' }),
+      k('Vim Keybindings', 'Ctrl+Alt+V', toggleVim, { checked: () => settings.vim, hint: 'Vim keys in source-code mode' }),
+      {
+        label: 'Line Numbers',
+        sub: [
+          k('In Vim Mode', null, toggle('vimLineNumbers'), { checked: () => settings.vimLineNumbers }),
+          k('Relative (Vim Mode)', null, toggle('relativeLineNumbers'), { checked: () => settings.relativeLineNumbers }),
+          k('Every Fifth Line', null, toggle('fifthLineNumbers'), { checked: () => settings.fifthLineNumbers, hint: 'Rendered view, and source mode without Vim' }),
+        ],
+      },
       '-',
       k('Sidebar', 'Ctrl+Shift+L', () => setSidebar(), { checked: () => settings.sidebar }),
       k('Outline', 'Ctrl+Shift+1', showTab('outline')),
@@ -3251,78 +3283,53 @@ const MENU = [
       k('Search', 'Ctrl+Shift+3', showTab('search')),
       k('Cloud Files', 'Ctrl+Shift+4', () => (settings.cloudEnabled ? showTab('cloud')() : openPrefs('cloud')), { ext: 'cloud' }),
       '-',
-      k('Focus Mode', 'F8', toggle('focus'), { checked: () => settings.focus }),
-      k('Typewriter Mode', 'F9', toggle('typewriter'), { checked: () => settings.typewriter }),
-      k('Zen Mode (hide chrome)', 'Ctrl+Shift+J', toggleZen),
-      '-',
+      {
+        label: 'Theme',
+        sub: [
+          ['paper', 'Paper'],
+          ['sepia', 'Sepia'],
+          ['ink', 'Ink'],
+          ['slate', 'Slate'],
+          ['system', 'Follow System'],
+        ]
+          .map(([id, l]) => k(l, null, () => setTheme(id), { checked: () => settings.theme === id }))
+          .concat(['-', k('Material You Style', null, toggle('material'), { checked: () => settings.material, hint: 'Colors and color choice: Preferences → Appearance' })]),
+      },
+      k('Full-width Content', null, toggle('wide'), { checked: () => settings.wide }),
       k('Zoom In', 'Ctrl+Shift+=', () => zoom(1)),
       k('Zoom Out', 'Ctrl+Shift+-', () => zoom(-1)),
       k('Actual Size', 'Ctrl+Shift+9', () => zoom(0)),
-      k('Full-width Content', null, toggle('wide'), { checked: () => settings.wide }),
+      '-',
+      k('Focus Mode', 'F8', toggle('focus'), { checked: () => settings.focus }),
+      k('Typewriter Mode', 'F9', toggle('typewriter'), { checked: () => settings.typewriter }),
+      k('Zen Mode (hide chrome)', 'Ctrl+Shift+J', toggleZen),
+      k('Full Screen', 'F11', toggleFullscreen),
       '-',
       k('Always on Top', null, toggleOnTop, { checked: () => onTop }),
-      k('Full Screen', 'F11', toggleFullscreen),
-      k('Page Preview', 'Ctrl+Alt+L', togglePagePreview, { checked: () => pagePreviewOpen() }),
-      '-',
-      k('Typing Test…', 'Ctrl+Alt+T', typingTest, { ext: 'typing' }),
-      k('Typing Speed (WPM)', null, toggle('wpm'), { checked: () => settings.wpm }),
-      k('Typing Cat', null, toggle('bongo'), { checked: () => settings.bongo }),
+      k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
       '-',
       k('Command Palette…', 'Ctrl+Shift+P', () => commandPalette()),
     ],
   },
   {
-    label: 'Themes',
+    label: 'Tools',
     items: [
-      ['paper', 'Paper'],
-      ['sepia', 'Sepia'],
-      ['ink', 'Ink'],
-      ['slate', 'Slate'],
-      ['system', 'Follow System'],
-    ]
-      .map(([id, l]) => k(l, null, () => setTheme(id), { checked: () => settings.theme === id }))
-      .concat(['-', k('Material You Style', null, toggle('material'), { checked: () => settings.material, hint: 'Colors and color choice: Preferences → Appearance' })]),
-  },
-  {
-    label: 'Settings',
-    items: [
-      k('Vim Keybindings', 'Ctrl+Alt+V', toggleVim, { checked: () => settings.vim, hint: 'Vim keys in source-code mode' }),
-      {
-        label: 'Line Numbers',
-        sub: () => [
-          k('In Vim Mode', null, toggle('vimLineNumbers'), { checked: () => settings.vimLineNumbers }),
-          k('Relative (Vim Mode)', null, toggle('relativeLineNumbers'), { checked: () => settings.relativeLineNumbers }),
-          k('Every Fifth Line', null, toggle('fifthLineNumbers'), { checked: () => settings.fifthLineNumbers, hint: 'Rendered view, and source mode without Vim' }),
-        ],
-      },
-      k('Open Files in Source Mode', null, toggle('startInSource'), { checked: () => settings.startInSource }),
-      '-',
-      k('Auto-save', null, toggle('autoSave'), { checked: () => settings.autoSave }),
-      k('Check Spelling & Grammar', null, toggle('spellcheck'), { checked: () => settings.spellcheck }),
+      k('Spelling & Grammar…', 'F7', toggleWritingPanel),
+      k('Next Spelling or Grammar Issue', 'Alt+F7', () => nextIssueMenu()),
+      k('Check Spelling & Grammar', null, toggle('spellcheck'), { checked: () => settings.spellcheck, hint: 'Underline issues as you type' }),
       k('AutoCorrect While Typing', null, toggle('autocorrect'), { checked: () => settings.autocorrect }),
-      k('Open Files Read-only', null, toggle('readonlyDefault'), { checked: () => settings.readonlyDefault }),
-      k('Reopen Last File on Startup', null, toggle('reopenLast'), { checked: () => settings.reopenLast }),
-      k('Check for Updates Automatically', null, toggle('updateCheck'), { checked: () => settings.updateCheck }),
-      k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
-      k('Use System Title Bar', null, toggleNativeTitlebar, { checked: () => settings.nativeTitlebar }),
+      '-',
+      k('AI: Check Paragraph', 'Ctrl+Alt+K', aiCmd((m, h) => m.commands.checkCaret(h)), { ext: 'ai' }),
+      k('AI: Check Document', null, aiCmd((m, h) => m.commands.checkAll(h)), { ext: 'ai' }),
+      k('AI: Next Suggestion', 'Shift+Alt+F7', aiCmd(() => nextIssueMenu(true)), { ext: 'ai' }),
+      k('AI: Review Panel', null, aiCmd(() => openAiPanel()), { ext: 'ai' }),
+      '-',
+      k('Typing Test…', 'Ctrl+Alt+T', typingTest, { ext: 'typing' }),
+      k('Typing Speed (WPM)', null, toggle('wpm'), { checked: () => settings.wpm }),
+      k('Typing Cat', null, toggle('bongo'), { checked: () => settings.bongo }),
+      '-',
       k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled, ext: 'cloud' }),
       k('Extensions…', null, () => openPrefs('extensions')),
-      {
-        label: 'Export / PDF Theme',
-        sub: () =>
-          [
-            ['paper', 'Paper (light, recommended for print)'],
-            ['sepia', 'Sepia'],
-            ['current', 'Same as Editor'],
-          ].map(([id, l]) =>
-            k(l, null, () => {
-              settings.exportTheme = id
-              saveSettings()
-              toast('Export theme: ' + l.replace(/ \(.*/, ''))
-            }, { checked: () => settings.exportTheme === id }),
-          ),
-      },
-      '-',
       k('Preferences…', 'Ctrl+,', openPrefs),
     ],
   },
@@ -3331,12 +3338,14 @@ const MENU = [
     items: [
       k('Welcome Page', null, openWelcome),
       k('Markdown Guide', null, openGuide),
+      k('AI Setup Guide', null, () => loadAi().then((m) => m.openSetupGuide()), { ext: 'ai' }),
+      '-',
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       k('Customize Shortcuts…', null, () => openPrefs('keys')),
-      k('AI Setup Guide', null, () => loadAi().then((m) => m.openSetupGuide()), { ext: 'ai' }),
       '-',
       k('Check for Updates…', null, () => checkUpdates(true)),
+      k('Check for Updates Automatically', null, toggle('updateCheck'), { checked: () => settings.updateCheck }),
       k('About CaretFlow', null, showAbout),
     ],
   },
@@ -3374,19 +3383,66 @@ function recentMenu() {
 
 // Windows and title bars belong to the desktop; Share… to Android (one full-screen window there)
 const DESKTOP_ONLY = ['New Window', 'Close Window', 'Reveal in Explorer', 'Always on Top', 'Full Screen', 'Use System Title Bar', 'Copy Dropped Images into Folder']
-for (const m of MENU)
-  m.items = m.items.filter((it) => typeof it !== 'object' || (IS_ANDROID ? !DESKTOP_ONLY.includes(it.label) : !it.android))
+const forPlatform = (items) =>
+  items
+    .filter((it) => typeof it !== 'object' || (IS_ANDROID ? !DESKTOP_ONLY.includes(it.label) : !it.android))
+    .map((it) => (Array.isArray(it.sub) ? { ...it, sub: forPlatform(it.sub) } : it))
+for (const m of MENU) m.items = forPlatform(m.items)
+
+/** The items a menu shows now: extensions that aren't installed left out, and no separator
+ *  at either end or twice in a row (what's left when every item between two is hidden). */
+function menuItems(list) {
+  const out = []
+  for (const it of typeof list === 'function' ? list() : list) {
+    if (it !== '-' && it.ext && !extOn(it.ext)) continue
+    if (it === '-' && (!out.length || out.at(-1) === '-')) continue
+    out.push(it)
+  }
+  if (out.at(-1) === '-') out.pop()
+  return out
+}
 
 // collect all actions for keyboard & palette. The menu items themselves, so a changed shortcut
-// shows up in the menus, the palette and the shortcut list alike.
-for (const m of MENU)
-  for (const it of m.items)
-    if (typeof it === 'object' && it.fn) {
-      it.group = m.label
-      it.id = `${m.label}/${it.label}`
-      it.defaultKeys = it.keys
-      ACTIONS.push(it)
+// shows up in the menus, the palette and the shortcut list alike. Fixed submenus (themes, line
+// numbers) count too; their group reads "View › Theme".
+function collectActions(items, menu, path, group) {
+  for (const it of items) {
+    if (typeof it !== 'object' || !it.fn) continue
+    it.menu = menu
+    it.group = group
+    it.id = `${path}/${it.label}`
+    it.defaultKeys = it.keys
+    ACTIONS.push(it)
+  }
+  // submenus after the menu's own items, so each group is listed once (Preferences → Keyboard)
+  for (const it of items)
+    if (Array.isArray(it.sub)) collectActions(it.sub, menu, `${path}/${it.label}`, `${group} › ${it.label}`)
+}
+for (const m of MENU) collectActions(m.items, m.label, m.label, m.label)
+
+/** Custom shortcuts are saved by menu path; when a command moved to another menu (0.9.2 sorted
+ *  the menus), its shortcut follows it to the command with the same name. */
+function migrateKeybindings(kb) {
+  let moved = false
+  for (const old of Object.keys(kb)) {
+    // Sepia is also an export theme, so the theme commands move by path
+    const id = old.replace(/^Themes\//, 'View/Theme/')
+    if (id !== old) {
+      if (!(id in kb)) kb[id] = kb[old]
+      delete kb[old]
+      moved = true
     }
+    if (ACTIONS.some((a) => a.id === id)) continue
+    const label = id.slice(id.lastIndexOf('/') + 1)
+    const to = ACTIONS.find((a) => a.label === label)
+    if (to && !(to.id in kb)) kb[to.id] = kb[id]
+    if (to) {
+      delete kb[id]
+      moved = true
+    }
+  }
+  return moved
+}
 
 // ── menubar rendering
 let openMenu = null
@@ -3411,8 +3467,7 @@ function buildMenubar() {
 
 function buildPop(items) {
   const pop = el('div', { class: 'menu-pop' })
-  for (const it of typeof items === 'function' ? items() : items) {
-    if (it.ext && !extOn(it.ext)) continue
+  for (const it of menuItems(items)) {
     if (it === '-') {
       pop.append(el('div', { class: 'menu-sep' }))
       continue
@@ -3432,6 +3487,7 @@ function buildPop(items) {
         sp.style.top = b.offsetTop - 6 + 'px'
         b.classList.add('sub-open')
         pop.append(sp)
+        fitPop(sp)
       }
     } else {
       b.onmouseenter = () => {
@@ -3453,7 +3509,13 @@ function showMenu(root, items) {
   closeMenus()
   openMenu = root
   root.classList.add('open')
-  root.append(buildPop(items))
+  const pop = buildPop(items)
+  root.append(pop)
+  fitPop(pop)
+}
+/** A menu taller than the window (File on a small screen) gets tighter rows. */
+function fitPop(pop) {
+  if (pop.getBoundingClientRect().bottom > innerHeight) pop.classList.add('tight')
 }
 function closeMenus() {
   if (!openMenu) return
@@ -3586,6 +3648,7 @@ const VIM_PASSTHROUGH = new Set(
 /** Apply the user's shortcuts (settings.keybindings) on top of the defaults and rebuild KEYMAP. */
 function applyKeybindings() {
   const kb = settings.keybindings || {}
+  if (migrateKeybindings(kb)) saveSettings()
   for (const a of ACTIONS) a.keys = a.id in kb ? kb[a.id] || null : a.defaultKeys
   KEYMAP.clear()
   // Undo/Redo are left to the editors unless the user gave them other keys
@@ -3745,7 +3808,7 @@ function wireLanguagePicker() {
 function showShortcuts() {
   const grid = el('div', { class: 'keys-grid' })
   for (const m of MENU) {
-    const acts = m.items.filter((i) => typeof i === 'object' && i.keys && extOn(i.ext))
+    const acts = ACTIONS.filter((a) => a.menu === m.label && a.keys && extOn(a.ext))
     if (!acts.length) continue
     grid.append(el('h4', {}, m.label))
     for (const a of acts) grid.append(el('span', {}, a.label), el('kbd', {}, a.keys))
@@ -4118,6 +4181,7 @@ async function bootAndroid() {
     saveSettings,
     S,
     menu: MENU,
+    menuItems,
     extOn,
     version: APP_VERSION,
     openUrl,

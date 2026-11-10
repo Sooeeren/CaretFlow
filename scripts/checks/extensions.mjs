@@ -12,7 +12,7 @@ async function surface(page) {
     await page.mouse.click(700, 500)
     return items
   }
-  const out = { file: await menu('File'), view: await menu('View') }
+  const out = { file: await menu('File'), view: await menu('View'), tools: await menu('Tools') }
   await page.keyboard.press('Control+Shift+P')
   await page.keyboard.type('typing test')
   await wait(200)
@@ -73,7 +73,7 @@ export const scenes = {
     async run(page) {
       let u = await surface(page)
       check('no Sync Now in File', !u.file.includes('Sync Now'), u.file.join('|'))
-      check('no Typing Test / Cloud Files in View', !u.view.some((l) => /Typing Test|Cloud Files/.test(l)), u.view.join('|'))
+      check('no Typing Test in Tools, no Cloud Files in View', !u.tools.includes('Typing Test…') && !u.view.includes('Cloud Files'), u.tools.join('|') + ' / ' + u.view.join('|'))
       check('palette has no Typing Test', !u.palette.some((t) => t.includes('Typing Test')), u.palette.join('|'))
       check('Cloud tab and status button hidden', !u.cloudTab && !u.cloudBtn)
       check('shortcut list has no Typing Test / Sync Now', !/Typing Test|Sync Now/.test(u.shortcuts))
@@ -81,7 +81,7 @@ export const scenes = {
       check('custom key does nothing while removed', !(await typingOpens(page, 'Control+Alt+Y')))
       check('default key does nothing while removed', !(await typingOpens(page, 'Control+Alt+T')))
       const kb = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).keybindings)
-      check('custom shortcut is kept', kb?.['View/Typing Test…'] === 'Ctrl+Alt+Y', JSON.stringify(kb))
+      check('custom shortcut is kept (moved from View to Tools)', kb?.['Tools/Typing Test…'] === 'Ctrl+Alt+Y', JSON.stringify(kb))
 
       await page.evaluate(() => sessionStorage.setItem('test.override', JSON.stringify({ extensions: ['cloud', 'typing'] })))
       await page.reload()
@@ -89,7 +89,7 @@ export const scenes = {
       await wait(800)
       u = await surface(page)
       check('installed: Sync Now in File', u.file.includes('Sync Now'))
-      check('installed: Typing Test in View', u.view.includes('Typing Test…'))
+      check('installed: Typing Test in Tools', u.tools.includes('Typing Test…'))
       check('installed: Cloud tab shown', u.cloudTab && u.cloudBtn)
       check('installed: Cloud Sync page', u.prefs.includes('Cloud Sync'))
       check('installed: custom key opens the test', await typingOpens(page, 'Control+Alt+Y'))
@@ -126,10 +126,10 @@ export const scenes = {
       check('install Typing Test', typing.ext.includes('typing') && typing.btn === 'Remove', JSON.stringify(typing))
       await page.keyboard.press('Escape')
       await wait(200)
-      await page.click('#menus .menu-root > button:has-text("View")')
+      await page.click('#menus .menu-root > button:has-text("Tools")')
       const view = await page.$$eval('.menu-pop .menu-item .lbl', (xs) => xs.map((x) => x.textContent))
       await page.mouse.click(700, 500)
-      check('Typing Test in View right after install', view.includes('Typing Test…'))
+      check('Typing Test in Tools right after install', view.includes('Typing Test…'))
 
       // remove Cloud Sync while a sync is running
       page.evaluate(() => import('/src/cloud.js').then((m) => m.sync())).catch(() => {}) // never finishes
@@ -155,7 +155,7 @@ export const scenes = {
       const st = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')))
       const notice = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
       check('update keeps Cloud Sync installed (it was on)', JSON.stringify(st.extensions) === '["cloud"]', JSON.stringify(st.extensions))
-      check('one-time notice', /Settings → Extensions/.test(notice) && st.extNoticeSeen === true, notice)
+      check('one-time notice', /Tools → Extensions/.test(notice) && st.extNoticeSeen === true, notice)
       await page.evaluate(() => {
         const s = JSON.parse(localStorage.getItem('folio.settings'))
         sessionStorage.setItem('test.override', JSON.stringify(s))

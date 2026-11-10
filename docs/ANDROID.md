@@ -40,7 +40,7 @@ to it. You can turn access on later in Android's settings, or from any Open or S
 | Tap an underlined word | Spelling and grammar suggestions (on the desktop: right-click) |
 | Back button | Closes menus, dialogs, drawers and the find bar first; then saves and leaves CaretFlow |
 
-**Themes → Material You Style** matches CaretFlow to the rest of your phone: on Android 12 and newer
+**View → Theme → Material You Style** matches CaretFlow to the rest of your phone: on Android 12 and newer
 it takes its colors from your wallpaper.
 
 A hardware keyboard works with all the usual shortcuts (`Ctrl+S`, `Ctrl+/`, `F7`, Vim in source mode).

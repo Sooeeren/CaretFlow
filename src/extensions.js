@@ -30,7 +30,7 @@ export const EXTENSIONS = [
     tagline: 'Measure your typing speed and accuracy',
     description:
       'A minimal speed test: 15 to 120 seconds or 10 to 100 words, with optional punctuation and numbers, or on the text of the document you have open. Results show words per minute, accuracy, consistency and a per-second chart, and your personal bests are kept.',
-    adds: ['View → Typing Test… (Ctrl+Alt+T)'],
+    adds: ['Tools → Typing Test… (Ctrl+Alt+T)'],
     network: 'None.',
     shots: [shot('typing-1.webp'), shot('typing-2.webp')],
   },
@@ -44,7 +44,7 @@ export const EXTENSIONS = [
     adds: [
       'Preferences → AI with providers, limits and an MCP setup guide',
       'An AI tab in the review panel (F7) and AI underlines in the editor',
-      'Edit → AI: Check Paragraph (Ctrl+Alt+K), AI: Check Document, AI: Next Suggestion',
+      'Tools → AI: Check Paragraph (Ctrl+Alt+K), AI: Check Document, AI: Next Suggestion',
       'A local MCP server for your AI app (off until you turn it on)',
     ],
     network: 'Only to the AI provider you choose, or to AI apps on this computer over MCP.',

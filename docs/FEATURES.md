@@ -27,7 +27,7 @@ modes, motions, operators, registers, marks, macros, `/` search, `:s`, and comma
 `:e` and `:pre` (back to the rendered view). `Ctrl+A` / `Ctrl+X` and `g Ctrl+A` work on selections.
 Turn on **Open Files in Source Mode** to always edit that way. Vim mode shows line numbers
 (optionally relative, like `:set relativenumber`; without Vim, every fifth line can be numbered:
-Settings → Line Numbers), and CaretFlow starts in source mode again when you quit there.
+View → Line Numbers), and CaretFlow starts in source mode again when you quit there.
 
 ## PDF export and page preview
 
@@ -49,7 +49,7 @@ Settings → Line Numbers), and CaretFlow starts in source mode again when you q
   underline syntax.
 - **Tables**: inserting asks for the size; press `Enter` in the last row or use the **+** buttons to
   grow it.
-- **Mermaid**: Paragraph → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
+- **Mermaid**: Insert → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
 - **Math** is rendered with KaTeX, inline (`Ctrl+Shift+E`) or as a block (`Ctrl+Shift+M`).
 
 ## Files and folders
@@ -64,12 +64,12 @@ The typing test is an extension: install it in Preferences → Extensions. Then 
 punctuation and numbers, or practice on the text of the document you have open. Results show WPM,
 accuracy, raw speed, consistency and a per-second chart, and personal bests are kept.
 
-While writing, **View → Typing Speed (WPM)** shows your speed in the status bar and
-**View → Typing Cat** adds a small companion that taps along. Both are off by default.
+While writing, **Tools → Typing Speed (WPM)** shows your speed in the status bar and
+**Tools → Typing Cat** adds a small companion that taps along. Both are off by default.
 
 ## Material You style
 
-**Themes → Material You Style** (off by default) gives CaretFlow the look of Material 3: rounded
+**View → Theme → Material You Style** (off by default) gives CaretFlow the look of Material 3: rounded
 dialogs and menus, pill-shaped buttons and tabs, and a color scheme made from one color. The theme
 still decides light or dark (Paper and Sepia are light, Ink and Slate dark, Follow System follows
 the system) and the document font. Pick the color in **Preferences → Appearance → Material color**:

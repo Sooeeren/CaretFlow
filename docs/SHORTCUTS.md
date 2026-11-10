@@ -18,6 +18,7 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Close file | `Ctrl+F4` |
 | Sync now *(Cloud Sync extension)* | `Ctrl+Alt+S` |
 | Export as PDF… | `Ctrl+Alt+E` |
+| Page preview | `Ctrl+Alt+L` |
 | Print… | `Ctrl+Alt+P` |
 | Preferences… | `Ctrl+,` |
 | Close window | `Ctrl+W` |
@@ -31,10 +32,6 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Find / replace | `Ctrl+F` / `Ctrl+H` |
 | Find next / previous | `F3` / `Shift+F3` |
 | Find in folder | `Ctrl+Shift+F` |
-| Spelling & grammar review | `F7` |
-| Next spelling or grammar issue | `Alt+F7` |
-| AI: check paragraph *(AI Writing Help extension)* | `Ctrl+Alt+K` |
-| AI: next suggestion *(AI Writing Help extension)* | `Shift+Alt+F7` |
 | Read-only mode | `Ctrl+Shift+R` |
 
 ## Paragraph
@@ -44,12 +41,19 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Heading 1–6 | `Ctrl+1` … `Ctrl+6` |
 | Paragraph | `Ctrl+0` |
 | Promote / demote heading | `Ctrl+=` / `Ctrl+-` |
+| Ordered / bullet / task list | `Ctrl+Shift+[` / `Ctrl+Shift+]` / `Ctrl+Shift+X` |
+| Quote | `Ctrl+Shift+Q` |
+
+## Insert
+
+| Action | Keys |
+| --- | --- |
+| Link | `Ctrl+K` |
+| Image… | `Ctrl+Shift+I` |
 | Table | `Ctrl+T` |
 | Code block | `Ctrl+Shift+K` |
 | Math block | `Ctrl+Shift+M` |
 | Mermaid diagram… | `Ctrl+Shift+D` |
-| Quote | `Ctrl+Shift+Q` |
-| Ordered / bullet / task list | `Ctrl+Shift+[` / `Ctrl+Shift+]` / `Ctrl+Shift+X` |
 | Horizontal rule | `Ctrl+Shift+H` |
 | Page break | `Ctrl+Enter` |
 
@@ -61,8 +65,6 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Strikethrough | `Alt+Shift+5` |
 | Inline code | ``Ctrl+Shift+` `` |
 | Inline math | `Ctrl+Shift+E` |
-| Link | `Ctrl+K` |
-| Image… | `Ctrl+Shift+I` |
 | Clear formatting | `Ctrl+\` |
 
 ## View
@@ -70,22 +72,30 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Action | Keys |
 | --- | --- |
 | Source mode (raw Markdown) | `Ctrl+/` |
+| Vim keybindings (in source mode) | `Ctrl+Alt+V` |
 | Sidebar | `Ctrl+Shift+L` |
 | Outline / Files / Search / Cloud tab *(Cloud Sync extension)* | `Ctrl+Shift+1` / `2` / `3` / `4` |
 | Focus mode / typewriter mode | `F8` / `F9` |
 | Zen mode (hide everything but the text) | `Ctrl+Shift+J` |
 | Zoom in / out / actual size | `Ctrl+Shift+=` / `Ctrl+Shift+-` / `Ctrl+Shift+9` |
 | Full screen | `F11` |
-| Page preview | `Ctrl+Alt+L` |
-| Typing test *(extension)* | `Ctrl+Alt+T` |
 | Command palette | `F1` or `Ctrl+Shift+P` |
-| Keyboard shortcuts | `Shift+F1` |
 
-## Settings
+## Tools
 
 | Action | Keys |
 | --- | --- |
-| Vim keybindings (in source mode) | `Ctrl+Alt+V` |
+| Spelling & grammar review | `F7` |
+| Next spelling or grammar issue | `Alt+F7` |
+| AI: check paragraph *(AI Writing Help extension)* | `Ctrl+Alt+K` |
+| AI: next suggestion *(AI Writing Help extension)* | `Shift+Alt+F7` |
+| Typing test *(extension)* | `Ctrl+Alt+T` |
+
+## Help
+
+| Action | Keys |
+| --- | --- |
+| Keyboard shortcuts | `Shift+F1` |
 
 ## In the editor
 

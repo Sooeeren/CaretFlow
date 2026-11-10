@@ -5,7 +5,8 @@ import { check, summary, run, wait } from './lib.mjs'
 const accent = (page) => run(page, () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())
 const isOn = (page) => run(page, () => document.body.classList.contains('material'))
 const toggleInMenu = async (page) => {
-  await page.click('#menus .menu-root > button:has-text("Themes")')
+  await page.click('#menus .menu-root > button:has-text("View")')
+  await page.hover('.menu-pop .menu-item:has-text("Theme") >> nth=0')
   await page.click('.menu-pop .menu-item:has-text("Material You Style")')
   await wait(150)
 }
@@ -26,7 +27,7 @@ export const scenes = {
       await page.keyboard.press('Escape')
       await wait(200)
       await toggleInMenu(page)
-      check('Themes → Material You Style turns it on', await isOn(page))
+      check('View → Theme → Material You Style turns it on', await isOn(page))
       check('…in the color picked before (blue)', (await accent(page)) !== '#4178c8' && (await accent(page)) !== '#634ca0', await accent(page))
       await page.keyboard.press('Control+,')
       await wait(300)

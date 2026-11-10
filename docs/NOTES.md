@@ -19,7 +19,7 @@ CaretFlow sends nothing anywhere unless you turn something on. There is no telem
 ## Platforms
 
 - **Title bar**: CaretFlow draws its own (menus and window buttons in one row) on Windows and Linux.
-  Settings → Use System Title Bar switches back (on Linux this applies after a restart).
+  View → Use System Title Bar switches back (on Linux this applies after a restart).
 - **Linux**: uses the desktop's native (xdg-portal) file dialogs, and sets
   `WEBKIT_DISABLE_DMABUF_RENDERER=1` (unless you set it yourself) to avoid WebKitGTK freezes on
   Wayland. CaretFlow draws the text cursor itself there, because WebKitGTK can leave stale copies of

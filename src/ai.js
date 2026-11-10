@@ -574,7 +574,7 @@ function statusBadge() {
 }
 
 Object.assign(aiSource, { panel, menuExtras, statusText, statusBadge, wantsCaret: () => waitingLeave })
-/** Edit → AI: Check Paragraph / Check Document, for menus and shortcuts. */
+/** Tools → AI: Check Paragraph / Check Document, for menus and shortcuts. */
 export const commands = { checkCaret, checkAll }
 
 // ════════════════════════════════════════ MCP setup guide

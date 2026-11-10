@@ -6,7 +6,7 @@ CaretFlow has no servers or accounts of its own, and nothing leaves your compute
 on and choose where it goes.
 
 Cloud Sync is an extension: install it in **Preferences → Extensions**, then turn it on in
-**Preferences → Cloud Sync** (also Settings → Cloud Sync…).
+**Preferences → Cloud Sync** (also Tools → Cloud Sync…).
 
 ## Services
 

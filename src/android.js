@@ -394,17 +394,16 @@ function syncScrim() {
 
 let openGroup = null
 function renderDrawer() {
-  const { el, menu, extOn, version } = ctx
+  const { el, menu, menuItems, version } = ctx
   drawer.innerHTML = ''
   drawer.append(el('div', { class: 'm-head' }, el('b', {}, 'CaretFlow'), el('span', {}, version)))
   const items = (list, depth) => {
     const box = el('div', { class: 'm-items' + (depth ? ' sub' : '') })
-    for (const it of typeof list === 'function' ? list() : list) {
+    for (const it of menuItems(list)) {
       if (it === '-') {
         box.append(el('div', { class: 'menu-sep' }))
         continue
       }
-      if (it.ext && !extOn(it.ext)) continue
       const enabled = it.enabled ? it.enabled() : true
       const b = el(
         'button',
@@ -470,11 +469,11 @@ const FORMAT = [
   ['1.', 'Numbered list', 'Paragraph/Ordered List'],
   ['☐', 'Task list', 'Paragraph/Task List'],
   ['❝', 'Quote', 'Paragraph/Quote'],
-  ['🔗', 'Link', 'Format/Link'],
+  ['🔗', 'Link', 'Insert/Link'],
   ['`', 'Inline code', 'Format/Inline Code'],
-  ['{ }', 'Code block', 'Paragraph/Code Block'],
-  ['▦', 'Table', 'Paragraph/Table'],
-  ['🖼', 'Image', 'Format/Image…'],
+  ['{ }', 'Code block', 'Insert/Code Block'],
+  ['▦', 'Table', 'Insert/Table'],
+  ['🖼', 'Image', 'Insert/Image…'],
   ['</>', 'Source mode', 'View/Source Code Mode'],
   ['⌄', 'Hide keyboard', 'hide'],
 ]
