@@ -438,6 +438,22 @@ function view() {
   return crepe ? crepe.editor.ctx.get(editorViewCtx) : null
 }
 
+// Crepe gives each image a fixed pixel height, measured once when it loads, so a narrower window
+// crops it instead of scaling it. Turn that height into an aspect ratio: the image keeps its
+// shape (also one the user dragged taller or shorter) at any width.
+function scaleImagesWithWidth(root) {
+  const fit = (img) => {
+    const h = parseFloat(img.style.height)
+    const origin = parseFloat(img.dataset.origin)
+    if (!h || !origin || !img.naturalWidth) return
+    img.style.aspectRatio = String(((img.naturalWidth / img.naturalHeight) * origin) / h)
+    img.style.height = ''
+  }
+  new MutationObserver((muts) => {
+    for (const m of muts) if (m.target.matches?.('.milkdown-image-block img')) fit(m.target)
+  }).observe(root, { subtree: true, attributes: true, attributeFilter: ['style'] })
+}
+
 // ── writing check (spelling, grammar, AutoCorrect)
 const writingProse = $prose(() => writingPlugin())
 const caretProse = $prose(() => drawnCaretPlugin(scroller, () => settings.drawnCaret))
@@ -4213,6 +4229,7 @@ async function boot() {
     } catch {}
   if (IS_ANDROID) systemSeed = await invoke('android_system_color').catch(() => null)
   ripples()
+  scaleImagesWithWidth($('#wysiwyg'))
   applySettings()
   buildMenubar()
   initWriting({

@@ -94,4 +94,25 @@ export const scenes = {
       summary()
     },
   },
+  // not HTML, but rendering too: Markdown images scale with the window instead of being cropped
+  'image-scale': {
+    open: 'Welcome.md',
+    settings: { theme: 'paper', sidebar: false },
+    setup: (page) => {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="400"><rect width="1600" height="400" fill="#639"/></svg>`
+      return stubBackend(page, { read_text: () => `# Image\n\n![wide](data:image/svg+xml,${encodeURIComponent(svg)})\n` })
+    },
+    async run(page) {
+      await wait(800)
+      const ratio = () => page.$eval('.milkdown-image-block img', (i) => i.getBoundingClientRect().width / i.getBoundingClientRect().height)
+      const wide = await ratio()
+      check('a 4:1 image shows as 4:1', Math.abs(wide - 4) < 0.1, wide.toFixed(2))
+      await page.setViewportSize({ width: 700, height: 900 })
+      await wait(500)
+      const narrow = await ratio()
+      const w = await page.$eval('.milkdown-image-block img', (i) => i.getBoundingClientRect().width)
+      check('in a narrow window it scales down, still 4:1 (not cropped)', Math.abs(narrow - 4) < 0.1 && w < 650, `${narrow.toFixed(2)}, ${Math.round(w)}px wide`)
+      summary()
+    },
+  },
 }
