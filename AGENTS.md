@@ -74,7 +74,7 @@ These decide most design questions:
 | `src-tauri/src/android.rs`, `src-tauri/gen/android` | Android: bridge to `CaretFlowPlugin.kt` (content:// files, storage permission, share, print, PDF via `PdfPrint.java`); the Gradle project with manifest, icons and signing |
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, right-click) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -154,3 +154,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-07 | Android version: touch layout, file browser and all-files access, Open with/Share, PDF export and printing via Android, drafts, APK builds in CI and releases |
 | Claude Opus 5.5 | Claude Code | 2026-11-09 | Android fixes: crash on the first HTTPS request, drafts lost after a restart, print dialog, PDF export time limit, replayed intents, content:// names and access; scripts removed from exports; case-sensitive paths on Linux/Android; Cloud Sync race |
 | Claude Opus 5.5 | Claude Code | 2026-11-10 | Menus sorted: new Insert and Tools menus, themes and Vim under View, the Settings menu split up; custom shortcuts follow moved commands. HTML in Markdown rendered (src/html.js, scripts/checks/html.mjs); extensions notice removed |
+| Claude Opus 5.5 | Claude Code | 2026-11-10 | 0.10.0 release; images scale with the window; own right-click menu instead of the webview's (scripts/checks/contextmenu.mjs) |

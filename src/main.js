@@ -3583,6 +3583,7 @@ function showContextMenu(x, y, items) {
   $('#ctxmenu').dataset.owner = ''
   const m = $('#ctxmenu')
   m.innerHTML = ''
+  // items: '-' or [label, fn, keys?, enabled?]
   for (const it of items) {
     if (it === '-') {
       m.append(el('div', { class: 'menu-sep' }))
@@ -3592,13 +3593,16 @@ function showContextMenu(x, y, items) {
       el(
         'button',
         {
-          class: 'menu-item',
+          class: 'menu-item' + (it[3] === false ? ' disabled' : ''),
+          // keep the focus and selection where they are (Cut/Copy act on them)
+          onmousedown: (e) => e.preventDefault(),
           onclick: () => {
             m.hidden = true
             it[1]()
           },
         },
         el('span', { class: 'lbl' }, it[0]),
+        it[2] ? el('span', { class: 'kbd' }, it[2]) : null,
       ),
     )
   }
@@ -3606,6 +3610,75 @@ function showContextMenu(x, y, items) {
   m.style.left = Math.min(x, innerWidth - m.offsetWidth - 8) + 'px'
   m.style.top = Math.min(y, innerHeight - m.offsetHeight - 8) + 'px'
 }
+
+// ── right-click everywhere else
+// The webview's own menu (Share → tauri.localhost, Reload, Inspect…) makes no sense in an app.
+// Where CaretFlow has no menu of its own, text gets Cut/Copy/Paste/Select All and the rest
+// nothing. Android keeps its system text toolbar.
+function editTargetOf(t) {
+  const field = t.closest?.('input, textarea')
+  if (field && (field.tagName === 'TEXTAREA' || /^(text|search|url|email|password|number|)$/.test(field.type))) return { kind: 'field', el: field }
+  if (S.mode === 'source' && source?.view.dom.contains(t)) return { kind: 'cm', view: source.view }
+  const pm = view()
+  if (pm?.dom.contains(t)) return { kind: 'pm', view: pm }
+  return null
+}
+
+async function pasteInto(target) {
+  let html = ''
+  let text = ''
+  try {
+    for (const item of await navigator.clipboard.read()) {
+      if (!html && item.types.includes('text/html')) html = await (await item.getType('text/html')).text()
+      if (!text && item.types.includes('text/plain')) text = await (await item.getType('text/plain')).text()
+    }
+  } catch {
+    text = await navigator.clipboard.readText().catch(() => null)
+  }
+  if (text == null) return toast('Paste with Ctrl+V')
+  if (target.kind === 'pm') {
+    target.view.focus()
+    if (html) target.view.pasteHTML(html)
+    else target.view.pasteText(text)
+  } else if (target.kind === 'cm') {
+    target.view.focus()
+    target.view.dispatch(target.view.state.replaceSelection(text))
+  } else {
+    const f = target.el
+    f.focus()
+    f.setRangeText(text, f.selectionStart, f.selectionEnd, 'end')
+    f.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+}
+
+function selectAllIn(target) {
+  if (target.kind === 'field') return target.el.select()
+  target.view.focus()
+  if (target.kind === 'cm') target.view.dispatch({ selection: { anchor: 0, head: target.view.state.doc.length } })
+  else document.execCommand('selectAll')
+}
+
+function appContextMenu(e) {
+  if (e.defaultPrevented) return
+  // dev builds: Ctrl+right-click still opens the webview's menu, for Inspect
+  if (import.meta.env.DEV && e.ctrlKey) return
+  e.preventDefault()
+  const target = editTargetOf(e.target)
+  const hasSel = target?.kind === 'field' ? target.el.selectionStart !== target.el.selectionEnd : !!getSelection()?.toString()
+  if (!target) {
+    if (hasSel) showContextMenu(e.clientX, e.clientY, [['Copy', () => document.execCommand('copy'), 'Ctrl+C']])
+    return
+  }
+  const writable = target.kind === 'field' ? !target.el.readOnly && !target.el.disabled : !S.readonly
+  showContextMenu(e.clientX, e.clientY, [
+    ...(writable ? [['Cut', () => document.execCommand('cut'), 'Ctrl+X', hasSel]] : []),
+    ['Copy', () => document.execCommand('copy'), 'Ctrl+C', hasSel],
+    ...(writable ? [['Paste', () => pasteInto(target), 'Ctrl+V']] : []),
+    '-',
+    ['Select All', () => selectAllIn(target), 'Ctrl+A'],
+  ])
+}
+if (!IS_ANDROID) document.addEventListener('contextmenu', appContextMenu)
 
 // ── keyboard
 const MOD_ORDER = ['Ctrl', 'Alt', 'Shift']
