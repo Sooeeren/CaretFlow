@@ -222,7 +222,7 @@ export function mdBlocks(src) {
   let off = 0
   let fence = null
   let math = false
-  let front = lines[0] === '---'
+  let front = lines[0] === '---' || lines[0] === '+++'
   let para = null // { start, end }
   const flush = () => {
     if (para) blocks.push(proseOf(src, para.start, para.end))
@@ -234,7 +234,7 @@ export function mdBlocks(src) {
     const end = off + line.length
     off = end + 1
     if (front) {
-      if (li > 0 && /^(---|\.\.\.)\s*$/.test(line)) front = false
+      if (li > 0 && /^(---|\.\.\.|\+\+\+)\s*$/.test(line)) front = false
       continue
     }
     if (fence) {

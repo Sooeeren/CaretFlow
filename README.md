@@ -59,7 +59,7 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
 ## Highlights
 
 - **What you see is what you write.** Headings, tables, task lists, math (KaTeX), Mermaid diagrams,
-  callouts, HTML and code with syntax highlighting render as you type. `Ctrl+/` shows the raw Markdown.
+  callouts, front matter, HTML and code with syntax highlighting render as you type. `Ctrl+/` shows the raw Markdown.
 - **Spelling & grammar, offline.** Red and blue underlines, right-click suggestions, an `F7` review
   panel and AutoCorrect. Nothing leaves your computer unless you choose LanguageTool for other languages.
 - **Vim mode** for source editing, including visual block, macros, registers and `:w` / `:q`.

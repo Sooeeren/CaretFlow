@@ -119,8 +119,8 @@ async function renderMermaidBlocks(html, dark) {
  * @param o { title, docDir, targetDir, resolveForView, themeVars, dark, inlineKatex }
  */
 export async function toHtml(md, o) {
-  // Strip YAML front matter
-  md = md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '')
+  // Strip front matter (YAML or TOML)
+  md = md.replace(/^(---|\+\+\+)\r?\n[\s\S]*?\r?\n\1[ \t]*(\r?\n|$)/, '')
   // Math code fences → display math
   md = md.replace(/^```(?:math|latex|tex|katex)\s*\n([\s\S]*?)\n```/gm, (_, s) => `$$\n${s}\n$$`)
   // the document's own HTML is kept, minus scripts and event handlers: the export page is

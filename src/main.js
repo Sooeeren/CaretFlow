@@ -25,6 +25,7 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { htmlRendering } from './html.js'
+import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
@@ -492,7 +493,7 @@ async function createEditor(markdown) {
       },
     },
   })
-  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(htmlRendering({ resolveSrc })).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
+  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -1396,6 +1397,12 @@ const mark = (cmd, md) => () => (inSource() ? source.wrap(md[0], md[1] ?? md[0])
 function codeBlock(lang = '') {
   if (inSource()) return source.insert('\n```' + lang + '\n' + source.selectedText() + '\n```\n')
   run(cmk.createCodeBlockCommand, lang)
+}
+
+/** Edit the front matter (title, author, tags… at the top of the file), adding it if missing. */
+function frontMatter() {
+  if (inSource()) return source.frontMatter(sourceFrontmatter)
+  run(frontmatterCommand)
 }
 
 // ── page breaks & callouts
@@ -3259,6 +3266,8 @@ const MENU = [
       '-',
       k('Horizontal Rule', 'Ctrl+Shift+H', hr),
       k('Page Break', 'Ctrl+Enter', pageBreak),
+      '-',
+      k('Front Matter', 'Ctrl+Alt+F', frontMatter),
     ],
   },
   {

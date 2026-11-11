@@ -935,6 +935,61 @@ button { font: inherit; color: inherit; }
   background: var(--code-bg);
 }
 
+/* ───────────── Front matter (frontmatter.js): properties panel, click to edit ───────────── */
+#wysiwyg .folio-frontmatter {
+  margin: 0 0 1.4em;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--chrome);
+  font: 13px/1.5 var(--font-ui);
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+}
+#wysiwyg .folio-frontmatter:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+#wysiwyg .folio-frontmatter.ProseMirror-selectednode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+#wysiwyg .folio-fm-props {
+  display: grid;
+  grid-template-columns: minmax(70px, max-content) minmax(0, 1fr);
+  gap: 3px 18px;
+  margin: 0;
+}
+#wysiwyg .folio-fm-props dt { color: var(--muted); overflow-wrap: anywhere; }
+#wysiwyg .folio-fm-props dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+#wysiwyg .folio-fm-chip {
+  display: inline-block;
+  margin: 0 4px 2px 0;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--fg-strong);
+  font-size: 12px;
+}
+#wysiwyg .folio-fm-none, #wysiwyg .folio-fm-empty { color: var(--muted); }
+#wysiwyg .folio-fm-raw { margin: 0; font: 12.5px/1.5 var(--font-mono); white-space: pre-wrap; color: var(--fg); }
+#wysiwyg .folio-frontmatter.editing { cursor: text; user-select: text; border-color: var(--accent); }
+#wysiwyg .folio-fm-fence { font: 12.5px/1.5 var(--font-mono); color: var(--muted); }
+#wysiwyg .folio-fm-src {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: 12.5px/1.5 var(--font-mono);
+  white-space: pre;
+  overflow-x: auto;
+  outline: none;
+}
+@media (max-width: 520px) {
+  #wysiwyg .folio-fm-props { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  #wysiwyg .folio-fm-props dd { margin-bottom: 4px; }
+}
+
 /* ───────────── Callouts ( > [!NOTE] … ) ───────────── */
 #wysiwyg .milkdown .ProseMirror blockquote.callout {
   --c: #2f74d0;

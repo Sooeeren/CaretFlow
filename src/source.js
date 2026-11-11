@@ -5,6 +5,7 @@ import { vim, getCM, Vim } from '@replit/codemirror-vim'
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo } from '@codemirror/commands'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
+import { yamlFrontmatter } from '@codemirror/lang-yaml'
 import { syntaxHighlighting, HighlightStyle, indentOnInput, bracketMatching } from '@codemirror/language'
 import {
   search,
@@ -177,7 +178,8 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
         highlightActiveLine(),
         highlightSelectionMatches(),
         EditorView.lineWrapping,
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        // a YAML block at the top is front matter, not a heading
+        yamlFrontmatter({ content: markdown({ base: markdownLanguage, codeLanguages: languages }) }),
         syntaxHighlighting(style),
         syntaxHighlighting(codeStyle), // code inside fences: same colors as code blocks and exports
         search({ top: true, createPanel: () => ({ dom: document.createElement('span') }) }),
@@ -273,6 +275,13 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
         }
       }
       view.dispatch({ changes })
+      view.focus()
+    },
+    /** Move into the front matter, adding one at the top first; `add(text)` gives { text, cursor }. */
+    frontMatter(add) {
+      const { text, cursor } = add(view.state.doc.toString())
+      if (text !== view.state.doc.toString()) view.dispatch({ changes: { from: 0, insert: text.slice(0, text.length - view.state.doc.length) } })
+      view.dispatch({ selection: { anchor: cursor }, effects: EditorView.scrollIntoView(cursor, { y: 'start', yMargin: 60 }) })
       view.focus()
     },
     insert(text) {

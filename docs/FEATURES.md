@@ -43,6 +43,10 @@ View → Line Numbers), and CaretFlow starts in source mode again when you quit 
 
 ## Blocks and formatting
 
+- **Front matter** (the `---` YAML block at the top of a file, used by Jekyll, Hugo, Obsidian and
+  Pandoc; TOML `+++` too) shows as a properties panel: keys on the left, lists as chips. Click it, or
+  press `Enter` when it is selected, to edit the YAML; `Ctrl+Enter` or clicking elsewhere finishes,
+  `Escape` cancels. Insert → Front Matter (`Ctrl+Alt+F`) adds one. It is left out of exports.
 - **Callouts** are GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) shown
   as colored boxes in the editor and in exports (Paragraph → Callout).
 - **Underline** (`Ctrl+U`, or the selection toolbar) is saved as `<u>text</u>`, since Markdown has no

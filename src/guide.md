@@ -48,6 +48,19 @@ You can write **bold**, *italic*, ~~strikethrough~~, `inline code`, [links](http
 > [!WARNING]
 > Click on the title line to see (and change) the `[!WARNING]` marker.
 
+## Front matter
+
+A block of YAML between two `---` lines at the very top of a file holds its properties (title, author, tags…), as used by Jekyll, Hugo, Obsidian and Pandoc:
+
+```yaml
+---
+title: My Notes
+tags: [work, ideas]
+---
+```
+
+CaretFlow shows it as a small properties panel; click it to edit. **Insert → Front Matter** (`Ctrl+Alt+F`) adds one.
+
 ## Lists
 
 1. Ordered item
