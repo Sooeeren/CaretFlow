@@ -43,6 +43,9 @@ View → Line Numbers), and CaretFlow starts in source mode again when you quit 
 
 ## Blocks and formatting
 
+- **Sub-points** (nested lists) get hollow or square bullets, lettered or roman numbers, a softer
+  marker color and slightly smaller text. Turn it off in Preferences → Editing → Style sub-points
+  differently.
 - **Front matter** (the `---` YAML block at the top of a file, used by Jekyll, Hugo, Obsidian and
   Pandoc; TOML `+++` too) shows as a properties panel: keys on the left, lists as chips. Click it, or
   press `Enter` when it is selected, to edit the YAML; `Ctrl+Enter` or clicking elsewhere finishes,

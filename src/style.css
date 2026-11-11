@@ -411,6 +411,13 @@ button { font: inherit; color: inherit; }
 .wide #wysiwyg .milkdown .ProseMirror { max-width: none; }
 #wysiwyg .milkdown .ProseMirror p { line-height: var(--doc-lh); padding: 0; margin: 0.8em 0; }
 #wysiwyg .milkdown .ProseMirror li p { margin: 0.2em 0; }
+/* sub-points (Preferences → Editor → Style sub-points differently) */
+.nested-lists #wysiwyg .milkdown .ProseMirror :is(ul, ol) :is(ul, ol) { font-size: 0.96em; }
+.nested-lists #wysiwyg .milkdown .ProseMirror ul ul { list-style-type: circle; }
+.nested-lists #wysiwyg .milkdown .ProseMirror ul ul ul { list-style-type: square; }
+.nested-lists #wysiwyg .milkdown .ProseMirror ol ol { list-style-type: lower-alpha; }
+.nested-lists #wysiwyg .milkdown .ProseMirror ol ol ol { list-style-type: lower-roman; }
+.nested-lists #wysiwyg .milkdown .ProseMirror :is(ul, ol) :is(ul, ol) li::marker { color: var(--muted); }
 #wysiwyg .milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--doc-font);
   font-weight: 650;

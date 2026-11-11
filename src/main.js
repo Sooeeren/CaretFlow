@@ -79,6 +79,7 @@ const DEFAULTS = {
   readonlyDefault: false,
   imageDir: 'assets',
   copyImages: true,
+  nestedLists: true, // sub-points get their own bullet shapes and a softer color
   drawnCaret: IS_LINUX, // CaretFlow draws the caret in the rendered view (WebKitGTK leaves stale carets behind)
   sidebar: true,
   sidebarTab: 'outline',
@@ -2292,6 +2293,7 @@ function applySettings() {
   document.body.classList.toggle('focus-mode', settings.focus)
   document.body.classList.toggle('no-sidebar', !settings.sidebar)
   document.body.classList.toggle('drawn-caret', settings.drawnCaret)
+  document.body.classList.toggle('nested-lists', settings.nestedLists)
   view()?.dispatch(view().state.tr) // show or hide the drawn caret
   $('#wysiwyg').spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (source) {
@@ -2775,6 +2777,7 @@ function openPrefs(section) {
       row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
       row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
       row('Copy dropped images into image folder', null, chk('copyImages')),
+      row('Style sub-points differently', 'Nested list items get hollow or square bullets, numbers in a softer color and slightly smaller text', chk('nestedLists')),
       row('Draw the text cursor', 'CaretFlow draws the blinking cursor itself instead of the system. On by default on Linux, where the system cursor can leave copies behind', chk('drawnCaret')),
     ]],
     ['source', 'Source & Vim', [
