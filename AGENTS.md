@@ -162,3 +162,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-10 | 0.10.0 release; images scale with the window; own right-click menu instead of the webview's (scripts/checks/contextmenu.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-11 | Front matter: properties panel in the rendered view, YAML colors in source mode, Insert → Front Matter (scripts/checks/frontmatter.mjs) |
 | Claude Sonnet 5.5 | Claude Code | 2026-11-11 | Callout title drawn once when spelling underlines split the marker; 0.10.4 release |
+| Claude Opus 5.5 | Claude Code | 2026-11-11 | 0.10.4 tag, draft release and PKGBUILD checksum |
