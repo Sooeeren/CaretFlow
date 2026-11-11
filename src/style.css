@@ -1026,6 +1026,8 @@ button { font: inherit; color: inherit; }
   mask: var(--icon) center / contain no-repeat;
 }
 .callout-marker:not(.editing)::after { content: attr(data-label); font-size: var(--doc-size); font-weight: 650; color: var(--c); }
+/* other decorations (spelling underlines) split the marker into several spans: draw the title only once */
+.callout-marker:not(.editing) ~ .callout-marker:not(.editing) { display: none; }
 .callout-marker.editing { color: var(--c); font-family: var(--font-mono); font-size: 0.88em; }
 .callout-note { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20fill-rule%3D%27evenodd%27%20d%3D%27M8%200a8%208%200%201%201%200%2016A8%208%200%200%201%208%200Zm0%201.5a6.5%206.5%200%201%200%200%2013%206.5%206.5%200%200%200%200-13ZM8%206.5a.75.75%200%200%201%20.75.75v4a.75.75%200%200%201-1.5%200v-4A.75.75%200%200%201%208%206.5ZM8%204a1%201%200%201%201%200%202%201%201%200%200%201%200-2Z%27%2F%3E%3C%2Fsvg%3E"); }
 .callout-tip { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2016%2016%27%3E%3Cpath%20fill-rule%3D%27evenodd%27%20d%3D%27M8%201a5%205%200%200%200-3%209v2.25c0%20.41.34.75.75.75h4.5c.41%200%20.75-.34.75-.75V10a5%205%200%200%200-3-9Zm-1.5%2013.5h3a.75.75%200%200%201%200%201.5h-3a.75.75%200%200%201%200-1.5Z%27%2F%3E%3C%2Fsvg%3E"); }
