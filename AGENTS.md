@@ -119,6 +119,10 @@ These decide most design questions:
      the workflow puts the notes into `latest.json`, so the update popup shows them.
   3. When the workflow is done, put the sha256 of the release `.deb` into `PKGBUILD`
      (`PKGBUILD: checksum of the X.Y.Z .deb`) and publish the draft only when asked to.
+  4. The website lives in a separate repository, <https://github.com/Sooeeren/CaretFlow-Web>, and
+     shows the current version. Check whether you can push to it (`gh repo view Sooeeren/CaretFlow-Web
+     --json viewerPermission`). If you have write access, update it to the new version yourself. If you
+     don't, fork it and open a pull request with the new version instead. Don't skip this step.
 
 ## Commits and credit
 
