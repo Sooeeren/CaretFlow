@@ -8,6 +8,7 @@ import { LanguageDescription } from '@codemirror/language'
 import { highlightCode } from '@lezer/highlight'
 import { isAbs, join, relative, decodeSrc, encodeSrc } from './paths.js'
 import { renderCallouts } from './blocks.js'
+import { renderToc, TOC_CSS } from './toc.js'
 import { codeStyle } from './codestyle.js'
 
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
@@ -129,6 +130,7 @@ export async function toHtml(md, o) {
   html = await renderMermaidBlocks(html, o.dark)
   html = await highlightBlocks(html)
   html = renderCallouts(html)
+  html = renderToc(html)
 
   // Rewrite relative image paths
   html = html.replace(/(<img[^>]*?\ssrc=")([^"]+)(")/g, (all, a, src, b) => {
@@ -149,7 +151,7 @@ export async function toHtml(md, o) {
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(o.title || 'Document')}</title>
 ${katexLink}
-<style>${highlightCss()}${CALLOUT_CSS}
+<style>${highlightCss()}${CALLOUT_CSS}${TOC_CSS}
 div[style*="page-break-after"]{height:0;margin:0;border:0}</style>
 <style>
 :root{${o.themeVars}}

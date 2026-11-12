@@ -64,6 +64,7 @@ These decide most design questions:
 | `src/discord.js`, `src-tauri/src/discord.rs` | Discord Status (lazy, an extension, desktop only): Rich Presence over Discord's local IPC pipe/socket, Preferences → Discord with a preview |
 | `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
+| `src/toc.js` | Table of contents: a `[TOC]` line shown as a live heading list, linked in exports (`renderToc`) |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
 | `src/welcome.md` | Welcome page, shown on the very first start and from Help → Welcome Page |
@@ -169,3 +170,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Discord Status extension: Rich Presence over Discord's local IPC (no crate), Preferences → Discord with a live preview (scripts/checks/discord.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Spelling: other languages (detection, Hunspell dictionaries offered on demand), custom words in Harper, Word-like case rules, folder and front matter word lists, Ignore All per file, LanguageTool presets and Premium; Advanced Grammar extension (LanguageTool on this computer); taskbar-sized icon (scripts/checks/spelling.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Privacy Policy and Terms of Service (docs/PRIVACY.md, docs/TERMS.md), also built into the website's /privacy/ and /terms/ for Discord app verification |
+| Claude Opus 5.5 | Claude Code | 2026-11-12 | Table of contents: `[TOC]` block with a live, clickable heading list, Insert → Table of Contents (`Ctrl+Alt+O`), linked in exports (scripts/checks/toc.mjs) |

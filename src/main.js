@@ -27,6 +27,7 @@ import { drawnCaretPlugin } from './caret.js'
 import { htmlRendering } from './html.js'
 import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
+import { toc as tocPlugin, insertTocCommand, TOC_MARKDOWN, slugify } from './toc.js'
 import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor, languagesEditor, WORDS_FILE } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
@@ -510,7 +511,7 @@ async function createEditor(markdown) {
       },
     },
   })
-  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
+  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -924,12 +925,6 @@ async function openLink(href) {
   osOpenPath(abs).catch((e) => toast(String(e)))
 }
 
-const slugify = (s) =>
-  s
-    .trim()
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
-    .replace(/\s+/g, '-')
 
 function jumpToSlug(slug) {
   const h = collectHeadings().find((h) => slugify(h.text) === slug.toLowerCase() || h.text.toLowerCase() === slug.toLowerCase())
@@ -1428,6 +1423,12 @@ function pageBreak() {
   if (inSource()) return source.insert('\n' + PAGE_BREAK_HTML + '\n\n')
   run(insertPageBreakCommand)
   if (pagePreviewOpen()) schedulePreview()
+}
+
+/** A [TOC] line: a live list of the headings here and in exports. */
+function tableOfContents() {
+  if (inSource()) return source.insert('\n' + TOC_MARKDOWN + '\n\n')
+  run(insertTocCommand)
 }
 
 /** Wrap the current block (or selection) in a GitHub-style alert: > [!WARNING] … */
@@ -3423,6 +3424,7 @@ const MENU = [
       k('Horizontal Rule', 'Ctrl+Shift+H', hr),
       k('Page Break', 'Ctrl+Enter', pageBreak),
       '-',
+      k('Table of Contents', 'Ctrl+Alt+O', tableOfContents),
       k('Front Matter', 'Ctrl+Alt+F', frontMatter),
     ],
   },

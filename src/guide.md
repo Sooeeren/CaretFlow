@@ -70,6 +70,10 @@ tags: [work, ideas]
 
 CaretFlow shows it as a small properties panel; click it to edit. **Insert → Front Matter** (`Ctrl+Alt+F`) adds one.
 
+## Table of contents
+
+A line with just `[TOC]` shows a list of the document's headings. It updates as you write, and a click on an entry goes to that heading. In HTML and PDF exports the entries are links. **Insert → Table of Contents** (`Ctrl+Alt+O`) adds one.
+
 ## Lists
 
 1. Ordered item

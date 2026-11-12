@@ -52,6 +52,9 @@ View → Line Numbers), and CaretFlow starts in source mode again when you quit 
   Pandoc; TOML `+++` too) shows as a properties panel: keys on the left, lists as chips. Click it, or
   press `Enter` when it is selected, to edit the YAML; `Ctrl+Enter` or clicking elsewhere finishes,
   `Escape` cancels. Insert → Front Matter (`Ctrl+Alt+F`) adds one. It is left out of exports.
+- **Table of contents**: a line with just `[TOC]` (as in Typora and GitLab) shows the document's
+  headings as a list that follows your edits; a click goes to the heading. Exports turn it into
+  links and give every heading a GitHub-style id. Insert → Table of Contents (`Ctrl+Alt+O`).
 - **Callouts** are GitHub-style alerts (`> [!NOTE]`, `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) shown
   as colored boxes in the editor and in exports (Paragraph → Callout).
 - **Underline** (`Ctrl+U`, or the selection toolbar) is saved as `<u>text</u>`, since Markdown has no
