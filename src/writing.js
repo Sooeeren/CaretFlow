@@ -12,6 +12,8 @@ import { EditorView as CMView, Decoration as CMDeco, ViewPlugin } from '@codemir
 import { DICTS, dictById, defaultDict, detectLanguage, mainLanguage, languageName } from './languages.js'
 import * as P from './paths.js'
 
+const CALLOUT_MARKER = /^\[!(note|tip|important|warning|caution)\]/i
+
 /**
  * @type {{ settings, saveSettings, el, toast, mode: () => string, pmView, cmView, readonly: () => boolean, openOptions, log,
  *   invoke, path: () => string|null, root: () => string|null, localLt?: () => string|null }}
@@ -401,11 +403,16 @@ async function issuesFor(blocks, ctx) {
 /** Rendered editor: every textblock outside code, with inline code / atoms masked out. */
 function pmBlocks(doc) {
   const out = []
-  doc.descendants((node, pos) => {
+  doc.descendants((node, pos, parent, index) => {
     if (node.type.spec.code) return false
     if (!node.isTextblock) return true
     let text = ''
     const masks = []
+    // a callout's [!WARNING] marker is syntax, not words (shown as the title "Warning")
+    if (parent?.type.name === 'blockquote' && index === 0) {
+      const m = CALLOUT_MARKER.exec(node.textContent)
+      if (m) masks.push([0, m[0].length])
+    }
     node.forEach((child) => {
       if (child.isText) {
         if (child.marks.some((m) => m.type.spec.code || /code/i.test(m.type.name))) masks.push([text.length, text.length + child.text.length])
@@ -521,6 +528,7 @@ function proseOf(src, start, end) {
     set(m.index + 1 + m[1].length, m.index + m[0].length, 1)
   })
   each(/\[[!^][^\]]*\]/g, (m) => set(m.index, m.index + m[0].length, 1))
+  each(/^[ \t]*\[toc\][ \t]*$/gim, (m) => set(m.index, m.index + m[0].length, 1))
   each(/<https?:[^>]+>|<\/?[A-Za-z][^>]*>/g, (m) => set(m.index, m.index + m[0].length, 1))
   // emphasis markers
   each(/\*{1,3}|~~|(?<![\p{L}\p{N}])_{1,3}|_{1,3}(?![\p{L}\p{N}])/gu, (m) => set(m.index, m.index + m[0].length, 1))

@@ -175,4 +175,30 @@ export const scenes = {
       summary()
     },
   },
+  // callout markers ([!WARNING]…) and [TOC] are syntax: never underlined, in either view
+  'spell-callouts': {
+    open: 'Draft.md',
+    settings: { theme: 'paper', sidebar: false, spellcheck: true },
+    setup: (page) =>
+      stubBackend(page, {
+        read_text: () =>
+          '# Callouts\n\n[TOC]\n\n' +
+          ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'].map((k) => `> [!${k}]\n> This box has a message for the reader.\n`).join('\n') +
+          '\nThis line has a mistaek in it.\n',
+      }),
+    async run(page) {
+      await page.waitForSelector('#wysiwyg .wc-err', { timeout: 30000 }).catch(() => {})
+      await wait(1500)
+      const words = await marked(page)
+      check('the checker ran (mistaek is marked)', words.includes('mistaek'), words.join('|'))
+      check('callout markers are not marked', !words.some((w) => /NOTE|TIP|IMPORTANT|WARNING|CAUTION|\[!/.test(w)), words.join('|'))
+
+      await page.keyboard.press('Control+/')
+      await page.waitForSelector('.cm-content .wc-err', { timeout: 30000 }).catch(() => {})
+      await wait(1500)
+      const src = await run(page, () => [...document.querySelectorAll('.cm-content .wc-err')].map((x) => x.textContent))
+      check('source mode: only the real typo', src.length === 1 && src[0] === 'mistaek', src.join('|'))
+      summary()
+    },
+  },
 }
