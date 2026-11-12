@@ -47,7 +47,9 @@ These decide most design questions:
 | --- | --- |
 | `src/main.js` | The app: state, settings (`DEFAULTS`), editor setup, files, find/replace, outline, preferences, menus (`MENU`), shortcuts, boot |
 | `src/writing.js` | Spelling & grammar UI for both editors: block extraction, cache, underlines, right-click menu, F7 panel, dictionary |
-| `src/writing-engine.js` | Checker engines (lazy): Harper in a web worker, LanguageTool over HTTP |
+| `src/writing-engine.js` | Checker engines (lazy): Harper in a web worker, LanguageTool over HTTP, Hunspell for other languages |
+| `src/languages.js`, `src/spell-core.js`, `src/spell-worker.js`, `src/dictionaries.js` | Other languages: dictionary list and paragraph language detection, Hunspell (WebAssembly) in a worker, downloading dictionaries into the data folder |
+| `src/ltlocal.js`, `src-tauri/src/langtool.rs` | Advanced Grammar (lazy, an extension, desktop only): downloads LanguageTool + a Java runtime, runs the server on 127.0.0.1, stops it when idle or on exit; `data_dir`/`data_remove` for downloaded language data |
 | `src/autocorrect.js` | AutoCorrect input rule (typo list, `i` → `I`, two initial capitals) |
 | `src/typingtest.js` | Typing test overlay (lazy) |
 | `src/companion.js` | WPM meter and typing cat |
@@ -78,7 +80,7 @@ These decide most design questions:
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
 | `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
-| `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
+| `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
 | `packaging/rpm/caretflow.spec`, `scripts/rpm-repackage.sh`, `scripts/deb-repackage.sh` | The `.rpm` and `.deb`, rebuilt from Tauri's as `caretflow`, replacing the old Folio packages |
 | `packaging/arch/PKGBUILD` | Arch package (`caretflow-bin`) made from the release `.deb`; built by release.yml |
@@ -165,3 +167,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Sonnet 5.5 | Claude Code | 2026-11-11 | Callout title drawn once when spelling underlines split the marker; 0.10.4 release |
 | Claude Opus 5.5 | Claude Code | 2026-11-11 | 0.10.4 tag, draft release and PKGBUILD checksum |
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Discord Status extension: Rich Presence over Discord's local IPC (no crate), Preferences → Discord with a live preview (scripts/checks/discord.mjs) |
+| Claude Opus 5.5 | Claude Code | 2026-11-12 | Spelling: other languages (detection, Hunspell dictionaries offered on demand), custom words in Harper, Word-like case rules, folder and front matter word lists, Ignore All per file, LanguageTool presets and Premium; Advanced Grammar extension (LanguageTool on this computer); taskbar-sized icon (scripts/checks/spelling.mjs) |

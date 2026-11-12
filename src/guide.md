@@ -19,7 +19,16 @@ CaretFlow is a **seamless** Markdown reader and editor: what you type is rendere
 
 CaretFlow checks your writing as you type, like a word processor: red wavy lines are spelling, blue double lines are grammar (*their/they're*, *could of*, *a apple*, repeated words). Right-click a marked word for suggestions, or press `F7` to go through every issue (`Alt+F7` jumps to the next one). Common typos such as *teh* are fixed while you type; press `Backspace` right after to undo a fix.
 
-The default checker (Harper) runs entirely on your computer. For German, French, Spanish and other languages, switch to LanguageTool in **Preferences → Writing**.
+The default checker (Harper) runs entirely on your computer. A paragraph in another language is checked in that language: CaretFlow offers its spelling dictionary once, and it works offline from then on. For grammar in German, French, Spanish and other languages, switch to LanguageTool in **Preferences → Writing**, or install the **Advanced Grammar** extension to run it on your own computer.
+
+Words you use often go into the custom dictionary (right-click → **Add to Dictionary**). For a project, put them into a `.caretflow-words` file in its folder (right-click → **Add to Folder Word List**), or into the document itself:
+
+```yaml
+---
+lang: de
+spellcheck-words: [CaretFlow, Typora]
+---
+```
 
 ## Extensions
 

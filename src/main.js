@@ -28,7 +28,7 @@ import { htmlRendering } from './html.js'
 import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
-import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor } from './writing.js'
+import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor, languagesEditor, WORDS_FILE } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
 import { isInstalled, setInstalled, EXTENSIONS } from './extensions.js'
@@ -70,6 +70,14 @@ const DEFAULTS = {
   wcIgnoreUpper: true,
   wcIgnoreDigits: true,
   wcDictionary: [],
+  wcDicts: [], // Hunspell dictionaries downloaded for other languages (languages.js ids)
+  wcOfferDicts: true, // offer a dictionary when a paragraph is in another language
+  wcDeclined: [], // languages the offer was declined for good
+  wcIgnored: {}, // "Ignore All" per file: path -> ['rule|word', …]
+  ltUser: '', // LanguageTool Premium username (the API key is in secrets.json)
+  ltLocalMemory: 1024, // Advanced Grammar: Java memory in MB
+  ltLocalIdleStop: true,
+  ltLocalNgrams: true,
   wcDisabledRules: ['OxfordComma'], // opinionated; Word doesn't require it either
   autocorrect: true,
   autoCapitalize: false,
@@ -2639,9 +2647,34 @@ function discordPrefs(row, chk) {
   )
 }
 
+// ════════════════════════════════════════ Advanced Grammar (ltlocal.js: LanguageTool on this computer)
+let ltP = null
+let ltMod = null
+const ltLocalOn = () => !IS_ANDROID && extOn('ltlocal')
+function loadLtLocal() {
+  return (ltP ||= import('./ltlocal.js').then((m) => {
+    m.initLtLocal({ settings, saveSettings, el, toast, customSelect, changed: () => writingSettingsChanged(true) })
+    ltMod = m
+    // the checker asked before this module was there: ask again, which starts the server
+    if (settings.wcEngine === 'languagetool' && settings.ltServer === 'local') writingSettingsChanged()
+    return m
+  }))
+}
+function applyLtLocal() {
+  if (!ltLocalOn()) {
+    ltMod?.stop()
+    if (settings.ltServer === 'local') {
+      settings.ltServer = DEFAULTS.ltServer
+      settings.wcEngine = 'harper'
+    }
+  }
+  writingSettingsChanged()
+}
+
 /** After installing or removing an extension: shortcuts, tabs and background work follow. */
 function applyExtensions() {
   applyKeybindings()
+  applyLtLocal()
   applyDiscord()
   applyCloudUi()
   applyAi()
@@ -2869,6 +2902,7 @@ function openPrefs(section) {
     ]],
     extOn('cloud') ? ['cloud', 'Cloud Sync', [cloudPrefs(row)]] : null,
     extOn('discord') && !IS_ANDROID ? ['discord', 'Discord', [discordPrefs(row, chk)]] : null,
+    ltLocalOn() ? ['ltlocal', 'Advanced Grammar', [ltLocalPrefs(row, chk)]] : null,
     ['export', 'Export', [
       row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
     ]],
@@ -3152,10 +3186,46 @@ function writingPrefs(row, chk, sel) {
     writingSettingsChanged()
     showLt()
   }
-  const server = el('input', { type: 'text', value: settings.ltServer, spellcheck: 'false', style: 'width:220px' })
+  // the server: the free public one, LanguageTool on this computer (Docker, or the Advanced Grammar
+  // extension), or any other address
+  const PUBLIC = DEFAULTS.ltServer
+  const DOCKER = 'http://localhost:8081'
+  const presets = [
+    [PUBLIC, 'Public server (languagetool.org)'],
+    [DOCKER, 'On this computer (Docker, port 8081)'],
+    ...(ltLocalOn() ? [['local', 'On this computer (Advanced Grammar)']] : []),
+    ['custom', 'Other address…'],
+  ]
+  const preset = () => (presets.some(([v]) => v === settings.ltServer && v !== 'custom') ? settings.ltServer : 'custom')
+  const server = el('input', { type: 'text', value: preset() === 'custom' ? settings.ltServer : '', placeholder: 'https://languagetool.example.com', spellcheck: 'false', style: 'width:220px' })
   server.onchange = () => {
-    settings.ltServer = server.value.trim() || DEFAULTS.ltServer
+    settings.ltServer = server.value.trim() || PUBLIC
     changed()
+  }
+  const serverPick = customSelect(presets, preset(), (v) => {
+    if (v === 'custom') {
+      customRow.hidden = false
+      server.focus()
+      return
+    }
+    settings.ltServer = v
+    changed()
+  })
+  const customRow = row('Server address', 'Your text is sent here', server)
+  // Premium: username plus API key (languagetool.org → Account → API); the key stays out of the settings file
+  const user = el('input', { type: 'text', value: settings.ltUser, placeholder: 'you@example.com', spellcheck: 'false', style: 'width:220px' })
+  user.onchange = () => {
+    settings.ltUser = user.value.trim()
+    saveSettings()
+    writingSettingsChanged(true)
+  }
+  const key = el('input', { type: 'password', placeholder: 'Only with a Premium account', spellcheck: 'false', style: 'width:220px' })
+  invoke('secret_get', { key: 'lt:apiKey' })
+    .then((v) => v && (key.value = v))
+    .catch(() => {})
+  key.onchange = async () => {
+    await invoke('secret_set', { key: 'lt:apiKey', value: key.value.trim() }).catch((e) => toast(String(e)))
+    writingSettingsChanged(true)
   }
   const LT_LANGS = [
     ['auto', 'Detect automatically'],
@@ -3179,13 +3249,17 @@ function writingPrefs(row, chk, sel) {
   ]
   const ltRows = [
     row('Language', 'For LanguageTool', sel('ltLanguage', LT_LANGS, changed)),
-    row('LanguageTool server', 'Your text is sent here. The free public server allows about 20 checks a minute; a self-hosted server has no limit', server),
+    row('LanguageTool server', 'Your text is sent here. The free public server allows about 20 checks a minute; one on this computer has no limit (docs/LANGUAGETOOL.md)', serverPick),
+    customRow,
+    row('Premium username', 'Optional: the email address of your LanguageTool Premium account', user),
+    row('Premium API key', 'Stored on this computer only, outside the editor’s storage', key),
   ]
   const harperRows = [row('English variant', null, sel('wcDialect', [['american', 'American'], ['british', 'British'], ['canadian', 'Canadian'], ['australian', 'Australian'], ['indian', 'Indian']], changed))]
   const showLt = () => {
     const lt = settings.wcEngine === 'languagetool'
     for (const r of ltRows) r.hidden = !lt
     for (const r of harperRows) r.hidden = lt
+    customRow.hidden = !lt || preset() !== 'custom'
   }
   showLt()
   const rules = el('span', {})
@@ -3222,8 +3296,11 @@ function writingPrefs(row, chk, sel) {
     row('Rules', 'Rules turned off from the right-click menu', rules),
     row('AutoCorrect while typing', 'Fixes common typos (teh → the, dont → don’t, i → I) in English. Backspace right after undoes it', chk('autocorrect')),
     row('Capitalize first letter of sentences', 'Part of AutoCorrect', chk('autoCapitalize')),
-    el('div', { class: 'pref-sub' }, 'Custom dictionary', el('small', {}, 'Words that are never marked as misspelled, one per line')),
+    el('div', { class: 'pref-sub' }, 'Custom dictionary', el('small', {}, `Words that are never marked as misspelled, one per line. A word in lowercase also allows “Word” and “WORD”. Per folder: a ${WORDS_FILE} file; per document: spellcheck-words in the front matter`)),
     dictionaryEditor(),
+    el('div', { class: 'pref-sub' }, 'Other languages', el('small', {}, 'With Harper, paragraphs in other languages are checked with these dictionaries, offline. Downloaded once from cdn.jsdelivr.net')),
+    row('Offer a dictionary for other languages', 'When a paragraph is in a language without one', chk('wcOfferDicts')),
+    languagesEditor(),
   )
 }
 
@@ -4405,6 +4482,10 @@ async function boot() {
     pmView: view,
     cmView: () => source?.view ?? null,
     openOptions: () => openPrefs('writing'),
+    invoke,
+    path: () => S.path,
+    root: () => S.root,
+    localLt: () => (ltLocalOn() ? (ltMod?.url() ?? (loadLtLocal(), null)) : null),
   })
   writingStatus($('#st-wc'))
   initCompanion({ settings, el, isTypingKey })
@@ -4472,3 +4553,10 @@ boot().catch((e) => {
   console.error(e)
   win.show().catch(() => {})
 })
+
+/** Preferences → Advanced Grammar (ltlocal.js draws it once loaded). */
+function ltLocalPrefs(row, chk) {
+  const box = el('div', {}, el('p', { class: 'about-note' }, 'Loading…'))
+  loadLtLocal().then((m) => box.replaceChildren(m.prefsPage(row, chk)))
+  return box
+}

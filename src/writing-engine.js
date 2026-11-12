@@ -11,7 +11,7 @@ const category = (kind) => (SPELLING.has(kind) ? 'spelling' : STYLE.has(kind) ? 
  * Text Harper should skip: things that are code or names rather than prose.
  * Rust regex syntax (passed into the WebAssembly module).
  */
-function maskPattern({ ignoreUpper = true, ignoreDigits = true } = {}) {
+export function maskPattern({ ignoreUpper = true, ignoreDigits = true } = {}) {
   const parts = [
     String.raw`https?://\S+`,
     String.raw`www\.\S+`,
@@ -62,6 +62,11 @@ export async function createHarper({ dialect = 'american', ignoreUpper, ignoreDi
         disabled = [...o.disabledRules]
         await linter.setLintConfig({ ...(await linter.getLintConfig()), ...cfg })
       }
+    },
+    /** Words that are never misspelled (custom dictionary, folder and document word lists). */
+    async setWords(words) {
+      await linter.clearWords()
+      if (words.length) await linter.importWords(words)
     },
     async check(blocks) {
       const out = []
@@ -128,10 +133,12 @@ const SEP = '\n\n'
  * LanguageTool over HTTP: the public server (api.languagetool.org, ~20 requests/minute and 20 KB per
  * request without an account) or a self-hosted one. Blocks are joined into as few requests as possible.
  */
-export function createLanguageTool({ server = 'https://api.languagetool.org', language = 'auto', motherTongue = '', picky = false } = {}) {
+export function createLanguageTool({ server = 'https://api.languagetool.org', language = 'auto', motherTongue = '', picky = false, username = '', apiKey = '' } = {}) {
   let disabled = []
-  let opts = { server, language, motherTongue, picky }
-  const endpoint = () => opts.server.replace(/\/+$/, '').replace(/\/v2(\/check)?$/, '') + '/v2/check'
+  let opts = { server, language, motherTongue, picky, username, apiKey }
+  // a Premium account is checked on Premium's server, not the free one
+  const base = () => (opts.apiKey && /\/\/api\.languagetool\.org/.test(opts.server) ? 'https://api.languagetoolplus.com' : opts.server)
+  const endpoint = () => base().replace(/\/+$/, '').replace(/\/v2(\/check)?$/, '') + '/v2/check'
 
   async function request(text) {
     const body = new URLSearchParams({ text, language: opts.language || 'auto' })
@@ -139,8 +146,13 @@ export function createLanguageTool({ server = 'https://api.languagetool.org', la
     if (opts.motherTongue) body.set('motherTongue', opts.motherTongue)
     if (opts.picky) body.set('level', 'picky')
     if (disabled.length) body.set('disabledRules', disabled.join(','))
-    const res = await fetch(endpoint(), { method: 'POST', body, headers: { Accept: 'application/json' } })
+    if (opts.username && opts.apiKey) {
+      body.set('username', opts.username)
+      body.set('apiKey', opts.apiKey)
+    }
+    const res = opts.post ? await opts.post(endpoint(), body.toString()) : await fetch(endpoint(), { method: 'POST', body, headers: { Accept: 'application/json' } })
     if (res.status === 429) throw new Error('LanguageTool: too many requests, slowing down')
+    if (res.status === 401 || res.status === 403) throw new Error('LanguageTool: the Premium username or API key was not accepted')
     if (!res.ok) throw new Error(`LanguageTool: ${res.status} ${res.statusText}`)
     return res.json()
   }
@@ -197,5 +209,68 @@ export function createLanguageTool({ server = 'https://api.languagetool.org', la
       return out
     },
     dispose() {},
+  }
+}
+
+// ─────────────────────────────── Hunspell (other languages)
+/**
+ * Hunspell dictionaries in a web worker (spell-worker.js). `load(id, aff, dic)` once per dictionary,
+ * then `check(texts, id, opts)` like the other engines, for one language at a time.
+ */
+export function createHunspell() {
+  let worker = null
+  let local = null // spell-core.js on the main thread, where the worker can't start
+  let seq = 0
+  const waiting = new Map()
+  try {
+    worker = new Worker(new URL('./spell-worker.js', import.meta.url), { type: 'module' })
+    worker.onmessage = ({ data }) => {
+      const w = waiting.get(data.id)
+      waiting.delete(data.id)
+      if (data.error) w?.reject(new Error(data.error))
+      else w?.resolve(data.result)
+    }
+    worker.onerror = (e) => {
+      // the module couldn't load in a worker: everything waiting retries on the main thread
+      e.preventDefault?.()
+      worker?.terminate()
+      worker = null
+      for (const [, w] of waiting) w.retry()
+      waiting.clear()
+    }
+  } catch {
+    worker = null
+  }
+  const onMain = async (op, args) => {
+    local ||= await import('./spell-core.js')
+    return op === 'load' ? local.load(...args) : local.check(...args)
+  }
+  const call = (op, args, transfer = []) => {
+    if (!worker) return onMain(op, args)
+    return new Promise((resolve, reject) => {
+      const id = ++seq
+      waiting.set(id, { resolve, reject, retry: () => onMain(op, args).then(resolve, reject) })
+      worker.postMessage({ id, op, args }, transfer)
+    })
+  }
+  const loaded = new Map() // id -> promise
+  return {
+    name: 'hunspell',
+    has: (id) => loaded.has(id),
+    load(id, files) {
+      if (!loaded.has(id)) {
+        const p = files().then(([aff, dic]) => call('load', [id, aff, dic]))
+        p.catch(() => loaded.delete(id))
+        loaded.set(id, p)
+      }
+      return loaded.get(id)
+    },
+    async check(texts, id, opts) {
+      await loaded.get(id)
+      return call('check', [texts, id, opts])
+    },
+    dispose() {
+      worker?.terminate()
+    },
   }
 }

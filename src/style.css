@@ -770,6 +770,9 @@ button { font: inherit; color: inherit; }
   white-space: nowrap;
 }
 .fsel:hover, .fsel:focus { border-color: var(--accent); outline: none; }
+/* a button that looks like the dropdowns next to it, without the arrow */
+.fsel.pref-btn { min-width: 0; padding-right: 12px; background-image: none; }
+.fsel.pref-btn:disabled { opacity: 0.55; cursor: default; }
 
 /* ───────────── Code blocks: even padding, tools float on hover ───────────── */
 #wysiwyg .milkdown .milkdown-code-block .tools {
@@ -1229,6 +1232,31 @@ button { font: inherit; color: inherit; }
 .pref-sub { margin: 10px 0 6px; font-weight: 600; }
 .pref-sub small { display: block; font-weight: 400; color: var(--muted); }
 .wc-dict { min-height: 80px; }
+/* other languages: dictionary list (Preferences) and the download offer */
+.wc-langs { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; max-height: 260px; overflow-y: auto; }
+.wc-lang { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 6px 5px 10px; }
+.wc-lang + .wc-lang { border-top: 1px solid var(--border); }
+.wc-lang small { color: var(--accent); }
+.wc-lang .fsel { flex: none; }
+.wc-offer {
+  position: fixed; right: 16px; bottom: 40px; z-index: 60; max-width: min(460px, calc(100vw - 32px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px;
+  background: var(--chrome); color: var(--fg); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18); font-size: 13px;
+}
+.wc-offer > span { flex: 1 1 100%; }
+.wc-offer button { font: inherit; cursor: pointer; }
+.wc-offer .wc-offer-yes { padding: 4px 12px; border: 0; border-radius: 6px; background: var(--accent); color: #fff; }
+.wc-offer .wc-offer-yes:disabled { opacity: 0.6; }
+.wc-offer .wc-link { border: 0; background: none; color: var(--accent); padding: 4px 2px; }
+/* Advanced Grammar */
+.lt-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+.lt-actions .lt-primary { background: var(--accent); color: #fff; border-color: transparent; }
+.lt-progress { height: 4px; border-radius: 2px; background: var(--chrome-2); overflow: hidden; margin: 4px 0 8px; }
+.lt-progress[hidden] { display: none; }
+.lt-progress > div { height: 100%; background: var(--accent); transition: width 0.3s; }
+.lt-progress.indeterminate > div { width: 30% !important; animation: lt-slide 1.2s ease-in-out infinite; }
+@keyframes lt-slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 
 /* ───────────── Typing companions ───────────── */
 #st-wpm { font-variant-numeric: tabular-nums; color: var(--accent); cursor: default; padding: 0 4px; transition: opacity 0.4s; }

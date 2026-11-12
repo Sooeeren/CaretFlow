@@ -40,7 +40,7 @@ pub struct HttpRes {
     body: String,
 }
 
-fn client() -> Result<&'static reqwest::Client, String> {
+pub(crate) fn client() -> Result<&'static reqwest::Client, String> {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     if let Some(c) = CLIENT.get() {
         return Ok(c);

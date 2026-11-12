@@ -66,6 +66,9 @@ function tauriStub({ files, dir, open }) {
     walk_md: () => Object.keys(fs),
     search_files: () => [],
     temp_dir: () => 'C:\\Temp',
+    // Advanced Grammar: downloaded, with German and English n-grams; the server "runs" on 8010
+    lt_status: () => ({ installed: true, running: 8010, ngrams: ['de', 'en'], busy: null, bytes: 11.6e9, dir: '' }),
+    lt_start: () => 8010,
     log_line: ({ line }) => console.log('[folio]', line),
     'plugin:window|is_maximized': () => false,
     'plugin:window|is_fullscreen': () => false,
@@ -312,6 +315,57 @@ const SCENES = {
       await settle(page, 300)
       await page.click('.prefs-nav button:has-text("Discord")')
       await settle(page, 2500)
+    },
+  },
+  // the Advanced Grammar screenshots of the Extensions page
+  'ltlocal-prefs': {
+    webp: 'ltlocal-1',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'paper', extensions: ['ltlocal'], spellcheck: true, wcEngine: 'languagetool', ltServer: 'local' },
+    setup: (page) => page.route('http://127.0.0.1:8010/v2/check', (r) => r.fulfill({ json: { matches: [] } })),
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("Advanced Grammar")')
+      await settle(page, 1200)
+    },
+  },
+  'ltlocal-review': {
+    webp: 'ltlocal-2',
+    only: true,
+    open: 'Draft.md',
+    settings: { theme: 'ink', sidebar: false, extensions: ['ltlocal'], spellcheck: true, wcStyle: true, wcEngine: 'languagetool', ltServer: 'local' },
+    // what LanguageTool answers for the draft: found by text, like the real server would
+    setup: (page) =>
+      page.route('http://127.0.0.1:8010/v2/check', (r) => {
+        const text = new URLSearchParams(r.request().postData()).get('text') || ''
+        const rules = [
+          ['Their going', 'Their', 'Did you mean “They’re”?', 'They’re', 'grammar', 'Grammar'],
+          ['tomorow', 'tomorow', 'Possible spelling mistake found.', 'tomorrow', 'misspelling', 'Possible Typo'],
+          ['should of', 'should of', 'Did you mean “should have”?', 'should have', 'grammar', 'Grammar'],
+          ['Its a', 'Its', 'Did you mean “It’s” (= it is)?', 'It’s', 'grammar', 'Grammar'],
+          ['alot', 'alot', 'Did you mean “a lot”?', 'a lot', 'misspelling', 'Possible Typo'],
+          ['is is', 'is is', 'Possible typo: you repeated a word.', 'is', 'duplication', 'Grammar'],
+          ['I has', 'has', 'The pronoun “I” must be used with a non-third-person form of a verb.', 'have', 'grammar', 'Grammar'],
+          ['completely offline', 'completely', 'This word is often unnecessary. Consider removing it.', '', 'style', 'Style'],
+        ]
+        const matches = rules
+          .filter(([find]) => text.includes(find))
+          .map(([find, word, message, rep, issueType, cat]) => ({
+            offset: text.indexOf(find) + find.indexOf(word),
+            length: word.length,
+            message,
+            replacements: [{ value: rep }],
+            rule: { id: cat.toUpperCase().replace(/ /g, '_'), issueType, category: { name: cat } },
+          }))
+        r.fulfill({ json: { matches } })
+      }),
+    run: async (page) => {
+      await page.waitForSelector('.wc-err', { timeout: 20000 }).catch(() => {})
+      await settle(page, 600)
+      await key(page, 'F7')
+      await settle(page, 800)
     },
   },
   about: {

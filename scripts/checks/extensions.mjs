@@ -58,7 +58,7 @@ export const scenes = {
         out.fields = m.EXTENSIONS.every((e) => e.name && e.icon && e.tagline && e.description && e.adds.length && e.network && e.shots.length >= 2)
         return out
       })
-      check('catalog ids', JSON.stringify(r.ids) === '["cloud","typing","ai","discord"]', JSON.stringify(r.ids ?? r.error))
+      check('catalog ids', JSON.stringify(r.ids) === '["cloud","typing","ai","discord","ltlocal"]', JSON.stringify(r.ids ?? r.error))
       check('nothing installed', r.none === false)
       check('installed keeps catalog order', JSON.stringify(r.both) === '["cloud","ai"]', JSON.stringify(r.both))
       check('remove', JSON.stringify(r.after) === '["ai"]', JSON.stringify(r.after))
@@ -112,7 +112,7 @@ export const scenes = {
       }
       await openTab()
       const cards = await page.$$eval('.ext-card', (cs) => cs.map((c) => ({ name: c.querySelector('.ext-name').textContent, btn: c.querySelector('button.ext-act').textContent })))
-      check('four cards', cards.length === 4, JSON.stringify(cards))
+      check('five cards', cards.length === 5, JSON.stringify(cards))
       check('Cloud Sync shows Remove, others Install', cards[0]?.btn === 'Remove' && cards[1]?.btn === 'Install' && cards[2]?.btn === 'Install', JSON.stringify(cards))
       await page.click('.ext-card:nth-child(1) .ext-name')
       await wait(300)

@@ -9,8 +9,13 @@ import { Plugin, PluginKey, TextSelection } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 import { StateField, StateEffect } from '@codemirror/state'
 import { EditorView as CMView, Decoration as CMDeco, ViewPlugin } from '@codemirror/view'
+import { DICTS, dictById, defaultDict, detectLanguage, mainLanguage, languageName } from './languages.js'
+import * as P from './paths.js'
 
-/** @type {{ settings, saveSettings, el, toast, mode: () => string, pmView, cmView, readonly: () => boolean, openOptions, log }} */
+/**
+ * @type {{ settings, saveSettings, el, toast, mode: () => string, pmView, cmView, readonly: () => boolean, openOptions, log,
+ *   invoke, path: () => string|null, root: () => string|null, localLt?: () => string|null }}
+ */
 let H = null
 export function initWriting(host) {
   H = host
@@ -44,6 +49,8 @@ export function currentIssues() {
 export function documentLoaded() {
   const ad = adapter()
   if (ad) for (const src of sources) src.opened?.(ad.view, ad.blocks())
+  loadIgnored()
+  loadFolderWords()
 }
 /** An editor opened a document: sources learn its text right away, before any check runs. */
 function opened(view, blocks) {
@@ -70,11 +77,35 @@ let engineKey = '' // engine options the current engine was made with
 const cache = new Map() // block text -> issues
 const CACHE_MAX = 5000
 
+/** The LanguageTool server to use, or null while the one on this computer (an extension) is starting. */
+function ltServer() {
+  const s = H.settings.ltServer || 'https://api.languagetool.org'
+  return s === 'local' ? (H.localLt?.() ?? null) : s
+}
+
 function engineOptions() {
   const s = H.settings
-  return s.wcEngine === 'languagetool'
-    ? { kind: 'languagetool', server: s.ltServer || 'https://api.languagetool.org', language: s.ltLanguage || 'auto', picky: !!s.wcStyle }
+  const server = s.wcEngine === 'languagetool' && ltServer()
+  // LanguageTool on this computer takes a few seconds to start: Harper checks until then
+  return server
+    ? { kind: 'languagetool', server, language: s.ltLanguage || 'auto', picky: !!s.wcStyle, username: s.ltUser || '' }
     : { kind: 'harper', dialect: s.wcDialect || 'american', ignoreUpper: s.wcIgnoreUpper !== false, ignoreDigits: s.wcIgnoreDigits !== false }
+}
+const usingLt = () => engineKey.includes('"languagetool"')
+
+/**
+ * WebKitGTK (Linux) may block plain-HTTP requests from the app's own secure origin, also to this
+ * computer: a LanguageTool server here is asked through the backend instead.
+ */
+function localPost(server) {
+  if (!/Linux/.test(navigator.userAgent) || /Android/.test(navigator.userAgent) || !/^http:\/\/(127\.0\.0\.1|localhost)[:/]/.test(server)) return null
+  return async (url, form) => {
+    const r = await H.invoke('cloud_http', {
+      req: { method: 'POST', url, headers: [['Content-Type', 'application/x-www-form-urlencoded'], ['Accept', 'application/json']], body: btoa(unescape(encodeURIComponent(form))), timeoutMs: 60000 },
+    })
+    const text = decodeURIComponent(escape(atob(r.body || '')))
+    return { status: r.status, ok: r.status >= 200 && r.status < 300, statusText: '', json: async () => JSON.parse(text) }
+  }
 }
 
 function getEngine() {
@@ -83,8 +114,14 @@ function getEngine() {
   publish()
   const o = engineOptions()
   engineKey = JSON.stringify(o)
+  wordsSig = ''
   enginePromise = import('./writing-engine.js')
-    .then((m) => (o.kind === 'languagetool' ? m.createLanguageTool(o) : m.createHarper(o)))
+    .then(async (m) => {
+      engineMod = m
+      if (o.kind !== 'languagetool') return m.createHarper(o)
+      const apiKey = o.username ? await H.invoke('secret_get', { key: 'lt:apiKey' }).catch(() => null) : ''
+      return m.createLanguageTool({ ...o, apiKey: apiKey || '', post: localPost(o.server) })
+    })
     .then((e) => {
       engine = e
       engineState = 'ready'
@@ -101,15 +138,15 @@ function getEngine() {
   return enginePromise
 }
 
-/** Call after any writing-check setting changed. */
-export function writingSettingsChanged() {
+/** Call after any writing-check setting changed; `rebuild` also when something outside the settings did (an API key). */
+export function writingSettingsChanged(rebuild = false) {
   const nativeOff = () => {
     const w = document.querySelector('#wysiwyg')
     if (w) w.spellcheck = false
   }
   nativeOff()
   // only rebuild the engine when its own options changed; filters (style, grammar, rules) apply on the fly
-  if (!harperOn() || JSON.stringify(engineOptions()) !== engineKey) {
+  if (rebuild || !harperOn() || JSON.stringify(engineOptions()) !== engineKey) {
     engine?.dispose()
     engine = null
     enginePromise = null
@@ -124,35 +161,208 @@ export function writingSettingsChanged() {
   refresh(0)
 }
 
-async function checkTexts(texts) {
-  if (!harperOn()) return texts.map(() => [])
-  const missing = [...new Set(texts.filter((t) => !cache.has(t)))]
-  if (missing.length) {
-    const eng = await getEngine()
-    // check in slices so other work (and newer edits) can interleave
-    for (let i = 0; i < missing.length; i += 40) {
-      const part = missing.slice(i, i + 40)
-      const res = await eng.check(part)
-      part.forEach((t, j) => cache.set(t, res[j] || []))
-    }
-    while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value)
+// ════════════════════════════════════════ languages
+// With Harper, every paragraph goes to the checker for its language: English to Harper, others to a
+// downloaded Hunspell dictionary, or nowhere (and CaretFlow offers the dictionary) when there is none.
+// LanguageTool detects languages itself and gets everything.
+let engineMod = null // writing-engine.js once loaded
+let hunspell = null
+const langCache = new Map() // block text -> detected language or null
+const missingLangs = new Set() // languages seen in this check without a dictionary
+
+const installedDict = (base) => (H.settings.wcDicts || []).map(dictById).find((d) => d && d.base === base)
+
+function detect(text) {
+  let l = langCache.get(text)
+  if (l === undefined) {
+    l = detectLanguage(text)
+    if (langCache.size > CACHE_MAX) langCache.clear()
+    langCache.set(text, l)
   }
-  return texts.map((t) => cache.get(t) || [])
+  return l
+}
+
+/** Per text: 'en', a dictionary id, or 'none:<language>'. */
+function routeLanguages(texts, declared) {
+  const main = mainLanguage(texts.filter((t) => t.length > 40).slice(0, 200), declared)
+  return texts.map((t) => {
+    const l = detect(t) || main
+    if (l === 'en') return 'en'
+    const d = installedDict(l)
+    if (d) return d.id
+    missingLangs.add(l)
+    return 'none:' + l
+  })
+}
+
+async function dictFiles(id) {
+  const m = await import('./dictionaries.js')
+  return m.readDict(H.invoke, id)
+}
+
+async function checkWith(lang, texts) {
+  if (lang.startsWith('none:')) return texts.map(() => [])
+  if (lang === 'en' || lang === 'lt') {
+    const eng = await getEngine()
+    await syncWords(eng)
+    return eng.check(texts)
+  }
+  if (!engineMod) await getEngine()
+  hunspell ||= engineMod.createHunspell()
+  const d = dictById(lang)
+  await hunspell.load(lang, () => dictFiles(lang))
+  const s = H.settings
+  return hunspell.check(texts, lang, { mask: engineMod.maskPattern({ ignoreUpper: s.wcIgnoreUpper !== false, ignoreDigits: s.wcIgnoreDigits !== false }), name: d?.name })
+}
+
+async function checkTexts(texts, declared) {
+  if (!harperOn()) return texts.map(() => [])
+  missingLangs.clear()
+  if (!enginePromise) await getEngine().catch(() => {})
+  const langs = usingLt() ? texts.map(() => 'lt') : routeLanguages(texts, declared)
+  const key = (i) => langs[i] + '\u0001' + texts[i]
+  const missing = new Map() // lang -> [text]
+  texts.forEach((t, i) => {
+    if (cache.has(key(i)) || langs[i].startsWith('none:')) return
+    const list = missing.get(langs[i]) || []
+    if (!list.includes(t)) list.push(t)
+    missing.set(langs[i], list)
+  })
+  for (const [lang, list] of missing) {
+    // check in slices so other work (and newer edits) can interleave
+    for (let i = 0; i < list.length; i += 40) {
+      const part = list.slice(i, i + 40)
+      let res
+      try {
+        res = await checkWith(lang, part)
+      } catch (e) {
+        if (lang === 'en' || lang === 'lt') throw e
+        H.log?.(`writing check: ${lang} dictionary failed`, e)
+        res = []
+      }
+      part.forEach((t, j) => cache.set(lang + '\u0001' + t, res[j] || []))
+    }
+  }
+  while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value)
+  if (missingLangs.size) offerDictionary([...missingLangs])
+  return texts.map((t, i) => cache.get(key(i)) || [])
+}
+
+// ════════════════════════════════════════ words that are never misspelled
+// The custom dictionary (Preferences), word lists in the folder (.caretflow-words, one word per
+// line, found up to the open folder) and `spellcheck-words` in the document's front matter.
+export const WORDS_FILE = '.caretflow-words'
+let folder = { words: [], file: null }
+let docMeta = { words: [], lang: null }
+let wordsSig = '' // the words Harper was given last
+
+function allWords() {
+  return [...new Set([...(H.settings.wcDictionary || []), ...folder.words, ...docMeta.words])]
+}
+
+/** Harper learns the words too: they come up as suggestions and stop confusing its grammar rules. */
+async function syncWords(eng) {
+  if (!eng.setWords) return
+  const words = allWords()
+  const sig = words.join('\n')
+  if (sig === wordsSig) return
+  wordsSig = sig
+  await eng.setWords(words)
+  // results checked with the old words are out of date
+  for (const k of cache.keys()) if (k.startsWith('en\u0001')) cache.delete(k)
+}
+
+/**
+ * Like Word: a word added in lowercase accepts "word", "Word" and "WORD"; one added with capitals
+ * ("CaretFlow") accepts only itself and all caps.
+ */
+function accepts(words, w) {
+  w = w.trim()
+  if (words.has(w)) return true
+  const lower = w.toLowerCase()
+  if (words.has(lower) && (w === lower[0].toUpperCase() + lower.slice(1) || w === w.toUpperCase())) return true
+  if (w === w.toUpperCase() && w !== lower) for (const x of words) if (x.toUpperCase() === w) return true
+  return false
+}
+
+/** `lang:` and `spellcheck-words:` from front matter (a list, `[a, b]` or `a, b`). */
+export function readDocMeta(fm) {
+  const out = { words: [], lang: null }
+  if (!fm) return out
+  const lines = fm.split(/\r?\n/)
+  const unq = (s) => s.trim().replace(/^(["'])(.*)\1$/, '$2')
+  lines.forEach((line, i) => {
+    const m = /^(lang|language|spellcheck-words)\s*[:=]\s*(.*)$/i.exec(line)
+    if (!m) return
+    const v = m[2].trim()
+    if (/^lang/i.test(m[1])) {
+      out.lang = unq(v) || null
+      return
+    }
+    if (v) out.words.push(...v.replace(/^\[|\]$/g, '').split(',').map(unq))
+    else for (let j = i + 1; j < lines.length && /^\s+-\s+/.test(lines[j]); j++) out.words.push(unq(lines[j].replace(/^\s+-\s+/, '')))
+  })
+  out.words = out.words.filter(Boolean)
+  return out
+}
+
+async function loadFolderWords() {
+  const path = H.path?.()
+  const before = folder.words.join('\n')
+  folder = { words: [], file: null }
+  if (path && !P.isUri(path)) {
+    const root = H.root?.()
+    const files = []
+    let dir = P.dirname(path)
+    // from the document's folder up to the open folder (only the document's own folder without one)
+    for (let i = 0; i < 12 && dir; i++) {
+      const f = P.join(dir, WORDS_FILE)
+      if (await H.invoke('exists', { path: f }).catch(() => false)) files.push(f)
+      if (!root || P.samePath(dir, root) || !P.isInside(dir, root)) break
+      const up = P.dirname(dir)
+      if (!up || up === dir) break
+      dir = up
+    }
+    for (const f of files) {
+      const text = await H.invoke('read_text', { path: f }).catch(() => '')
+      folder.words.push(...String(text).split(/\r?\n/).map((w) => w.trim()).filter((w) => w && !w.startsWith('#')))
+    }
+    folder.file = files[0] || P.join(P.dirname(path), WORDS_FILE)
+  }
+  if (folder.words.join('\n') !== before) refresh(0)
 }
 
 // ════════════════════════════════════════ filtering (dictionary, ignored, settings)
 const session = { ignoreAll: new Set(), ignoreOnce: new Set() }
-const dict = () => new Set((H.settings.wcDictionary || []).map((w) => w.toLowerCase()))
+const dict = () => new Set(allWords())
 const contextKey = (iss) => `${iss.rule}|${iss.problem}|${iss.block.slice(Math.max(0, iss.start - 24), iss.end + 24)}`
 const allKey = (iss) => `${iss.rule}|${iss.problem.toLowerCase()}`
+
+/** "Ignore All" lasts for the file: kept in the settings per path (unsaved documents: until closed). */
+function loadIgnored() {
+  const p = H.path?.()
+  session.ignoreAll = new Set(p ? H.settings.wcIgnored?.[P.pathKey(p)] || [] : [])
+}
+function saveIgnored() {
+  const p = H.path?.()
+  if (!p) return
+  const s = H.settings
+  const all = { ...(s.wcIgnored || {}) }
+  delete all[P.pathKey(p)] // re-added last: the oldest files drop out first
+  all[P.pathKey(p)] = [...session.ignoreAll].slice(-500)
+  const keys = Object.keys(all)
+  for (const k of keys.slice(0, Math.max(0, keys.length - 300))) delete all[k]
+  s.wcIgnored = all
+  H.saveSettings()
+}
 
 function keep(iss, words) {
   const s = H.settings
   if (iss.cat === 'style' && !s.wcStyle) return false
   if (iss.cat === 'grammar' && s.wcGrammar === false) return false
-  if (iss.source && words.has(iss.problem.trim().toLowerCase())) return false
+  if (iss.source && accepts(words, iss.problem)) return false
   if ((s.wcDisabledRules || []).includes(iss.rule)) return false
-  if (iss.cat === 'spelling' && words.has(iss.problem.toLowerCase())) return false
+  if (iss.cat === 'spelling' && accepts(words, iss.problem)) return false
   if (session.ignoreAll.has(allKey(iss)) || session.ignoreOnce.has(contextKey(iss))) return false
   if (iss.masks?.some(([a, b]) => iss.start < b && iss.end > a)) return false
   if (iss.problem.includes('￼') || !iss.problem.trim()) return false // atoms; spacing (invisible in Markdown)
@@ -164,7 +374,7 @@ async function issuesFor(blocks, ctx) {
   // other sources first: they must see the document as it is now, not after the spelling
   // checker has loaded (AI Writing Help tells opened text from new writing this way)
   const extras = sources.filter((src) => src.active()).map((src) => src.issues(blocks, ctx))
-  const results = await checkTexts(blocks.map((b) => b.text))
+  const results = await checkTexts(blocks.map((b) => b.text), docMeta.lang)
   for (const extra of extras) {
     extra.forEach((list, i) => {
       // the spelling checker already marks exactly these words: one underline is enough
@@ -372,6 +582,7 @@ async function run() {
   try {
     const snap = ad.snapshot()
     const blocks = ad.blocks()
+    docMeta = readDocMeta(ad.frontMatter())
     const found = await issuesFor(blocks, checkContext(ad, blocks))
     if (!on() || !ad.alive()) return
     if (ad.snapshot() !== snap) {
@@ -521,6 +732,7 @@ function pmAdapter(v) {
     focus: () => v.focus(),
     redraw: () => v.dispatch(v.state.tr.setMeta(pmKey, { issues: pmKey.getState(v.state).issues }).setMeta('addToHistory', false)),
     caret: () => v.state.selection.head,
+    frontMatter: () => (v.state.doc.firstChild?.type.name === 'front_matter' ? v.state.doc.firstChild.attrs.value : null),
     plainText: () => v.state.doc.textBetween(0, v.state.doc.content.size, '\n\n', ' '),
   }
 }
@@ -617,6 +829,7 @@ function cmAdapter(v) {
     focus: () => v.focus(),
     redraw: () => v.dispatch({ effects: redrawCm.of(null) }),
     caret: () => v.state.selection.main.head,
+    frontMatter: () => /^(?:---|\+\+\+)\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.|\+\+\+)[ \t]*(?:\r?\n|$)/.exec(v.state.sliceDoc(0, 20000))?.[1] ?? null,
     plainText: () => mdBlocks(v.state.doc.toString()).map((b) => b.text).join('\n\n'),
   }
 }
@@ -643,6 +856,7 @@ function ignoreOnce(ad, iss) {
 }
 function ignoreAll(ad, iss) {
   session.ignoreAll.add(allKey(iss))
+  saveIgnored()
   dropIssues(ad, (x) => allKey(x) === allKey(iss))
 }
 function addToDictionary(ad, iss) {
@@ -650,8 +864,27 @@ function addToDictionary(ad, iss) {
   const s = H.settings
   s.wcDictionary = [...new Set([...(s.wcDictionary || []), w])].sort((a, b) => a.localeCompare(b))
   H.saveSettings()
-  dropIssues(ad, (x) => x.cat === 'spelling' && x.problem.toLowerCase() === w.toLowerCase())
+  const added = new Set([w])
+  dropIssues(ad, (x) => x.cat === 'spelling' && accepts(added, x.problem))
   H.toast(`“${w}” added to the dictionary`)
+  refresh(60) // Harper learns the word too (the grammar around it may change)
+}
+/** Adds the word to .caretflow-words next to the document (or to the list already found above it). */
+async function addToFolderList(ad, iss) {
+  const w = iss.problem.trim()
+  const f = folder.file
+  if (!f) return
+  try {
+    const old = (await H.invoke('exists', { path: f }).catch(() => false)) ? String(await H.invoke('read_text', { path: f })) : ''
+    await H.invoke('write_text', { path: f, content: (old && !old.endsWith('\n') ? old + '\n' : old) + w + '\n' })
+  } catch (e) {
+    return H.toast(`Could not write ${WORDS_FILE}: ${e}`)
+  }
+  folder.words.push(w)
+  const added = new Set([w])
+  dropIssues(ad, (x) => x.cat === 'spelling' && accepts(added, x.problem))
+  H.toast(`“${w}” added to ${P.basename(P.dirname(f))}/${WORDS_FILE}`)
+  refresh(60)
 }
 function disableRule(ad, iss) {
   const s = H.settings
@@ -710,7 +943,10 @@ function showIssueMenu(ad, iss, x, y, viaKeyboard = false) {
   if (src) for (const [label, fn] of src.menuExtras?.(iss) || []) item(label, () => (fn(), refresh(0)))
   else {
     item('Ignore All', () => ignoreAll(ad, iss))
-    if (iss.cat === 'spelling') item('Add to Dictionary', () => addToDictionary(ad, iss))
+    if (iss.cat === 'spelling') {
+      item('Add to Dictionary', () => addToDictionary(ad, iss))
+      if (folder.file) item('Add to Folder Word List', () => addToFolderList(ad, iss))
+    }
     else if (iss.rule) item('Turn Off This Rule', () => disableRule(ad, iss))
   }
   m.append(el('div', { class: 'menu-sep' }))
@@ -948,7 +1184,10 @@ function renderPanel(select = false) {
 function footer() {
   const { el } = H
   const s = H.settings
-  const name = s.wcEngine === 'languagetool' ? `LanguageTool (${s.ltLanguage === 'auto' || !s.ltLanguage ? 'auto-detect' : s.ltLanguage})` : `Harper · ${(s.wcDialect || 'american').replace(/^./, (c) => c.toUpperCase())} English · offline`
+  const others = (s.wcDicts || []).map((id) => dictById(id)?.name).filter(Boolean)
+  const name = usingLt()
+    ? `LanguageTool (${s.ltLanguage === 'auto' || !s.ltLanguage ? 'auto-detect' : s.ltLanguage})${s.ltServer === 'local' ? ' · on this computer' : ''}`
+    : `Harper · ${(s.wcDialect || 'american').replace(/^./, (c) => c.toUpperCase())} English${others.length ? ' + ' + others.join(', ') : ''} · offline${s.wcEngine === 'languagetool' ? ' (LanguageTool is starting)' : ''}`
   const opt = el('button', { class: 'wc-link' }, 'Options…')
   opt.onclick = () => H.openOptions()
   return el('div', { class: 'wc-foot' }, el('span', {}, name), opt)
@@ -1043,4 +1282,106 @@ export function dictionaryEditor() {
     refresh(0)
   }
   return ta
+}
+
+// ════════════════════════════════════════ other languages: dictionaries
+const offered = new Set() // languages already offered in this session
+const busy = new Map() // dictionary id -> download promise
+
+/** Download a dictionary and start using it. */
+export function installDictionary(id) {
+  if (busy.has(id)) return busy.get(id)
+  const d = dictById(id)
+  const p = import('./dictionaries.js')
+    .then((m) => m.downloadDict(H.invoke, id))
+    .then(() => {
+      const s = H.settings
+      // one variant per language: German (Austria) replaces German (Germany)
+      s.wcDicts = [...(s.wcDicts || []).filter((x) => dictById(x)?.base !== d.base), id]
+      H.saveSettings()
+      H.toast(`${d.name} spelling is ready`)
+      refresh(0)
+    })
+    .finally(() => busy.delete(id))
+  busy.set(id, p)
+  return p
+}
+
+export async function removeDictionary(id) {
+  const s = H.settings
+  s.wcDicts = (s.wcDicts || []).filter((x) => x !== id)
+  H.saveSettings()
+  await import('./dictionaries.js').then((m) => m.removeDict(H.invoke, id)).catch(() => {})
+  refresh(0)
+}
+
+/** A paragraph in a language without a dictionary: offer it once, unless declined for good. */
+function offerDictionary(langs) {
+  const s = H.settings
+  if (s.wcOfferDicts === false || document.querySelector('.wc-offer')) return
+  const base = langs.find((l) => defaultDict(l) && !offered.has(l) && !(s.wcDeclined || []).includes(l))
+  if (!base) return
+  offered.add(base)
+  const d = defaultDict(base)
+  const { el } = H
+  const lang = languageName(base)
+  const btn = (label, cls, fn) => {
+    const b = el('button', { class: cls }, label)
+    b.onclick = fn
+    return b
+  }
+  const close = () => bar.remove()
+  const text = el('span', {}, `Part of this document is in ${lang}. Download ${lang} spelling (${d.mb} MB)? It works offline after that.`)
+  const yes = btn('Download', 'wc-offer-yes', async () => {
+    yes.disabled = true
+    text.textContent = `Downloading ${lang} spelling…`
+    try {
+      await installDictionary(d.id)
+      close()
+    } catch (e) {
+      text.textContent = `Download failed: ${e?.message || e}`
+      yes.disabled = false
+    }
+  })
+  const bar = el(
+    'div',
+    { class: 'wc-offer', role: 'status' },
+    text,
+    yes,
+    btn('Not Now', 'wc-link', close),
+    btn(`Never for ${lang}`, 'wc-link', () => {
+      s.wcDeclined = [...new Set([...(s.wcDeclined || []), base])]
+      H.saveSettings()
+      close()
+    }),
+  )
+  document.body.append(bar)
+}
+
+/** Preferences → Writing: the languages list with download and remove buttons. */
+export function languagesEditor() {
+  const { el } = H
+  const box = el('div', { class: 'wc-langs' })
+  const draw = () => {
+    const have = new Set(H.settings.wcDicts || [])
+    box.replaceChildren(
+      ...DICTS.map((d) => {
+        const on = have.has(d.id)
+        const b = el('button', { class: 'fsel pref-btn' }, busy.has(d.id) ? 'Downloading…' : on ? 'Remove' : `Download · ${d.mb} MB`)
+        b.disabled = busy.has(d.id)
+        b.onclick = async () => {
+          if (on) await removeDictionary(d.id)
+          else {
+            const p = installDictionary(d.id)
+            draw()
+            await p.catch((e) => H.toast(`Download failed: ${e?.message || e}`))
+          }
+          draw()
+        }
+        return el('div', { class: 'wc-lang' + (on ? ' on' : '') }, el('span', {}, d.name, on ? el('small', {}, ' · installed') : null), b)
+      }),
+    )
+  }
+  draw()
+  return box
 }

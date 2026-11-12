@@ -62,6 +62,18 @@ export const EXTENSIONS = [
     network: 'None from CaretFlow. It tells the Discord app on this computer what to show, and Discord shares it with people who can see your activity.',
     shots: [shot('discord-1.webp'), shot('discord-2.webp')],
   },
+  {
+    id: 'ltlocal',
+    name: 'Advanced Grammar',
+    desktop: true, // runs a Java server next to CaretFlow, which Android can't
+    icon: svg('<path d="M4 6h9M4 10h7M4 14h5"/><path d="M13.5 15.5l2.5 2.5 5-6"/><rect x="2.5" y="3" width="13" height="15" rx="2"/>'),
+    tagline: 'LanguageTool’s full grammar checking, running on your computer',
+    description:
+      'The grammar and style checker of LanguageTool for 30+ languages, without request limits and without sending your text anywhere. CaretFlow downloads LanguageTool and a Java runtime once (about 300 MB), starts it in the background when you write and stops it when you don’t. Optional n-gram data (1–9 GB per language) catches confused words like their/there or seit/seid. Harper keeps checking while it starts.',
+    adds: ['Preferences → Advanced Grammar with downloads, memory and n-gram data', 'A LanguageTool server choice “On this computer (Advanced Grammar)” in Preferences → Writing'],
+    network: 'Only the downloads, from languagetool.org and adoptium.net, when you start them. Checking happens on this computer.',
+    shots: [shot('ltlocal-1.webp'), shot('ltlocal-2.webp')],
+  },
 ]
 
 export const isInstalled = (settings, id) => (settings.extensions || []).includes(id)

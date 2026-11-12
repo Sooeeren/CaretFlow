@@ -9,6 +9,7 @@ mod android;
 mod cloud;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod discord;
+mod langtool;
 mod mcp;
 mod pdf;
 
@@ -499,6 +500,22 @@ pub fn run() {
             mcp::mcp_stop,
             mcp::mcp_reply,
             mcp::mcp_status,
+            langtool::data_dir,
+            langtool::data_remove,
+            #[cfg(desktop)]
+            langtool::lt_status,
+            #[cfg(desktop)]
+            langtool::lt_install,
+            #[cfg(desktop)]
+            langtool::lt_ngrams,
+            #[cfg(desktop)]
+            langtool::lt_cancel,
+            #[cfg(desktop)]
+            langtool::lt_remove,
+            #[cfg(desktop)]
+            langtool::lt_start,
+            #[cfg(desktop)]
+            langtool::lt_stop,
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             discord::discord_set,
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -527,6 +544,15 @@ pub fn run() {
             #[cfg(target_os = "android")]
             android::android_system_color
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running CaretFlow");
+        .build(tauri::generate_context!())
+        .expect("error while running CaretFlow")
+        .run(|_app, event| {
+            // LanguageTool on this computer (Advanced Grammar) must not outlive CaretFlow
+            #[cfg(desktop)]
+            if let tauri::RunEvent::Exit = event {
+                langtool::stop();
+            }
+            #[cfg(not(desktop))]
+            let _ = event;
+        });
 }

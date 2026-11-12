@@ -88,8 +88,11 @@ suggestion, `Enter` applies the first one, and a clean document shows readabilit
 
 ![The Spelling & Grammar review panel in the Sepia theme](docs/screenshots/review.png)
 
-The checker is [Harper](https://writewithharper.com), which runs on your computer (English), or
-optionally [LanguageTool](https://languagetool.org) for 30+ more languages. The **AI Writing Help**
+The checker is [Harper](https://writewithharper.com), which runs on your computer (English). Paragraphs
+in other languages get that language's spelling dictionary, downloaded once and offline after that.
+For grammar in 30+ languages there is [LanguageTool](https://languagetool.org): its public server, or
+free and without limits on your own computer with the **Advanced Grammar** extension
+([docs/LANGUAGETOOL.md](docs/LANGUAGETOOL.md)). The **AI Writing Help**
 extension adds corrections and suggestions from the AI you choose. More in
 [docs/FEATURES.md](docs/FEATURES.md#writing-check).
 
@@ -126,6 +129,7 @@ settings, and their code never loads. Removing one keeps its settings.
 | **Cloud Sync** | Keeps a folder in sync with storage **you** choose: WebDAV (Nextcloud, NAS…), S3-compatible (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through [rclone](https://rclone.org). A Cloud tab in the sidebar shows every file and its sync state. [Setup](docs/CLOUD-SYNC.md) |
 | **AI Writing Help** | Spelling, grammar and style suggestions from Claude, ChatGPT, Gemini, DeepSeek and others with your API key, or a model on your computer (Ollama, LM Studio), with limits you set. Or connect Claude Desktop, Cursor or VS Code over **MCP** to review your document. Nothing changes until you click Apply. [Details](docs/AI.md) · [MCP setup](docs/MCP.md) |
 | **Typing Test** | A minimal speed test by time or word count, or on your own document, with WPM, accuracy and a per-second chart. [Details](docs/FEATURES.md#typing-test-and-extras) |
+| **Advanced Grammar** | LanguageTool's full grammar and style checking for 30+ languages, running on your computer: no request limits, and your text stays there. Downloads LanguageTool and Java once (about 300 MB), starts in the background when you write, and optionally adds n-gram data that catches *their/there*. Windows and Linux. [Details](docs/LANGUAGETOOL.md) |
 | **Discord Status** | Shows the CaretFlow logo on your Discord profile with what you are doing (writing or reading), the word count, source mode or Vim and how long you've been at it. The file name stays private unless you turn it on. Windows and Linux. [Details](docs/FEATURES.md#discord-status) |
 
 CaretFlow has no servers or accounts of its own: Cloud Sync and AI Writing Help only talk to the

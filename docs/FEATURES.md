@@ -13,11 +13,13 @@ optional style hints. Right-click a marked word to fix it, ignore it or add it t
 
 | | |
 | --- | --- |
-| **Checker** | [Harper](https://writewithharper.com) by default: runs locally (WebAssembly), English in American, British, Canadian, Australian or Indian spelling. [LanguageTool](https://languagetool.org) optionally, for German, French, Spanish and 30+ more languages (public server or your own). |
+| **Checker** | [Harper](https://writewithharper.com) by default: runs locally (WebAssembly), English in American, British, Canadian, Australian or Indian spelling. [LanguageTool](https://languagetool.org) optionally, for grammar in German, French, Spanish and 30+ more languages: the public server, Premium, Docker or the **Advanced Grammar** extension on this computer ([LANGUAGETOOL.md](LANGUAGETOOL.md)). |
+| **Other languages** | With Harper, each paragraph is checked in its own language. A German, French, Spanish… paragraph is never marked as English mistakes; CaretFlow offers that language's spelling dictionary (Hunspell, the one LibreOffice uses, 1–9 MB) and checks it offline from then on. 17 dictionaries, including German for Austria and Switzerland, in Preferences → Writing → Other languages. `lang: de` in the front matter sets a document's main language. |
+| **Your words** | The custom dictionary (Preferences → Writing) also feeds Harper's suggestions. A word added in lowercase allows *word*, *Word* and *WORD*; one with capitals (*CaretFlow*) only itself and all caps. Per folder: a `.caretflow-words` file (one word per line, `#` for comments) in the document's folder or any folder above it up to the open folder; the right-click menu's **Add to Folder Word List** writes it. Per document: `spellcheck-words: [word, other]` in the front matter. **Ignore All** is remembered per file. |
 | **Shortcuts** | `F7` review panel · `Alt+F7` next issue · right-click for suggestions |
 | **AutoCorrect** | Fixes common typos while you type (*teh* → *the*, *dont* → *don't*, *i* → *I*). `Backspace` right after a fix undoes it. |
 | **Markdown-aware** | Code, inline code, math, links and file names are skipped, in both the rendered and the source view. |
-| **Settings** | Preferences → Writing: engine, language, style hints, custom dictionary, rules you turned off. |
+| **Settings** | Preferences → Writing: engine, language, LanguageTool server and Premium login, style hints, custom dictionary, other languages, rules you turned off. |
 | **AI** | The AI Writing Help extension adds findings from the AI you choose, in the same menu and in an AI tab of the review panel ([AI.md](AI.md)). |
 
 ## Vim mode
