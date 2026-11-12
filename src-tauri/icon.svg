@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 30 452 452" width="512" height="512">
+  <!-- Cropped to the rounded square: desktop taskbars expect icons to fill their box. -->
   <defs>
     <linearGradient id="plumBg" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#735296" />
