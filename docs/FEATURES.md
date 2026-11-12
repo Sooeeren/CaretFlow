@@ -95,3 +95,16 @@ verifies its signature, installs it and opens CaretFlow again. This works for th
 the AppImage, `.deb` and `.rpm`. `CaretFlow-portable.exe`, the raw binary, the Arch package (updated
 by pacman) and the `.rpm` on systems whose `rpm` only installs GPG-signed packages (Fedora 43 and
 later; update with `dnf`) get a download link instead.
+
+## Discord Status
+
+The Discord Status extension shows on your Discord profile that you are writing in CaretFlow: the
+CaretFlow logo, **Writing** or **Reading** (after 15 minutes away, **Idle**), the word count,
+source mode or Vim, how long you have been on the document, and a **Get CaretFlow** button.
+The file name is not shown unless you turn it on.
+
+Install it in Preferences → Extensions. **Preferences → Discord** shows a preview of your status and
+lets you choose each part; **Tools → Discord Status** hides or shows it. CaretFlow talks only to the
+Discord app on your computer (no network of its own), so Discord must be running, with
+*Share your detected activities* on under Settings → Activity Privacy. It works with the Discord
+app on Windows and Linux (also Flatpak and Snap), not on Android.

@@ -146,7 +146,15 @@ const DEFAULTS = {
   aiGuideBanner: true, // "Need help setting up MCP?" at the top of Preferences → AI
   mcpEnabled: false, // the local MCP server (mcp.js / mcp.rs)
   mcpPort: 38457,
-  extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai'
+  extensions: [], // installed extensions (extensions.js): 'cloud' | 'typing' | 'ai' | 'discord'
+  // Discord Status (discord.js): only once the extension is installed; the file name stays private by default
+  discordEnabled: true,
+  discordFileName: false,
+  discordWords: true,
+  discordMode: true,
+  discordElapsed: true,
+  discordButton: true,
+  discordAppId: '', // empty = CaretFlow's own Discord application
   androidStorageAsked: false, // Android: asked once for "All files access" (android.js)
 }
 // No saved settings yet: CaretFlow's very first start (shows the welcome page)
@@ -1021,6 +1029,7 @@ function updateCount() {
     if (!empty && v.hasFocus() && v.state.selection instanceof TextSelection) sel = v.state.doc.textBetween(from, to, '\n', ' ')
   }
   const w = countWords(text)
+  S.words = w
   const min = Math.max(1, Math.round(w / 230))
   const st = $('#st-count')
   st.textContent = sel ? `${countWords(sel).toLocaleString()} of ${w.toLocaleString()} words` : `${w.toLocaleString()} words · ${min} min read`
@@ -2304,6 +2313,7 @@ function applySettings() {
   wvLines.set(settings.fifthLineNumbers ? 5 : 0)
   wvLines.refresh() // font size, width, spacing … change where lines wrap
   companionSettingsChanged()
+  discordP?.then((m) => m.refresh())
   let css = $('#custom-css')
   if (!css) document.head.append((css = el('style', { id: 'custom-css' })))
   css.textContent = settings.customCSS || ''
@@ -2568,9 +2578,71 @@ function applyAi() {
   else if (aiP) aiP.then((m) => (m.stop(), sourceChanged()))
 }
 
+// ════════════════════════════════════════ Discord Status (discord.js, loaded once installed and turned on)
+let discordP = null
+const discordOn = () => !IS_ANDROID && extOn('discord') && settings.discordEnabled
+function loadDiscord() {
+  return (discordP ||= import('./discord.js'))
+}
+const discordHost = () => ({
+  settings,
+  version: APP_VERSION,
+  doc: () => ({
+    name: S.path ? P.basename(S.path) : null,
+    words: S.words || 0,
+    mode: S.mode === 'source' ? (settings.vim ? 'Source mode (Vim)' : 'Source mode') : '',
+  }),
+})
+function applyDiscord() {
+  if (discordOn()) loadDiscord().then((m) => m.startDiscord(discordHost()))
+  else discordP?.then((m) => m.stopDiscord())
+}
+function toggleDiscord() {
+  settings.discordEnabled = !settings.discordEnabled
+  applyDiscord()
+  saveSettings()
+  toast(settings.discordEnabled ? 'Showing your status on Discord' : 'Discord status hidden')
+}
+
+/** Preferences → Discord: what the status shows, and whether CaretFlow reaches Discord. */
+function discordPrefs(row, chk) {
+  const state = el('p', { class: 'about-note' }, 'Not connected')
+  const preview = el('div', {})
+  loadDiscord().then((m) => {
+    preview.replaceWith(m.previewCard(el, discordHost()))
+    const show = () => (state.textContent = discordOn() ? m.statusText() : 'Off')
+    show()
+    // stops listening at the first change after Preferences closed
+    const off = m.onStatus(() => (state.isConnected ? show() : off()))
+  })
+  const on = chk('discordEnabled')
+  on.addEventListener('change', applyDiscord)
+  const id = el('input', { type: 'text', class: 'fsel', value: settings.discordAppId, placeholder: 'CaretFlow’s', spellcheck: 'false', style: 'width:200px' })
+  id.onchange = () => {
+    settings.discordAppId = id.value.trim()
+    saveSettings()
+    discordP?.then((m) => m.refresh())
+  }
+  return el(
+    'div',
+    {},
+    el('p', { class: 'about-note' }, 'CaretFlow tells the Discord app on this computer what to show on your profile. Nothing goes over the network from CaretFlow itself; Discord shows it to people who can see your activity.'),
+    row('Show my status on Discord', 'Discord must be running on this computer, with “Share your detected activities” on in its Activity Privacy settings', on),
+    state,
+    preview,
+    row('Show the file name', 'Off: “Writing a Markdown document”', chk('discordFileName')),
+    row('Show the word count', null, chk('discordWords')),
+    row('Show source mode and Vim', null, chk('discordMode')),
+    row('Show how long I’ve been on this document', null, chk('discordElapsed')),
+    row('Show a “Get CaretFlow” button', 'Lets others open the CaretFlow website from your profile', chk('discordButton')),
+    row('Discord application ID', 'Only to use your own application from the Discord Developer Portal', id),
+  )
+}
+
 /** After installing or removing an extension: shortcuts, tabs and background work follow. */
 function applyExtensions() {
   applyKeybindings()
+  applyDiscord()
   applyCloudUi()
   applyAi()
   applyMcp()
@@ -2673,6 +2745,7 @@ function updateTitle() {
   // phones: the app bar has room for the file name only
   $('#tb-title').textContent = `${name}${S.dirty ? ' •' : ''}${IS_ANDROID ? '' : ' — CaretFlow'}`
   win.setTitle(`${name}${S.dirty ? ' •' : ''} — CaretFlow`).catch(() => {})
+  discordP?.then((m) => m.refresh())
   const sp = $('#st-path')
   sp.textContent = (S.dirty ? '● ' : '') + (S.path || 'Untitled — not saved yet')
   sp.title = S.path && canReveal ? 'Click to reveal in Explorer' : ''
@@ -2795,6 +2868,7 @@ function openPrefs(section) {
       row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
     ]],
     extOn('cloud') ? ['cloud', 'Cloud Sync', [cloudPrefs(row)]] : null,
+    extOn('discord') && !IS_ANDROID ? ['discord', 'Discord', [discordPrefs(row, chk)]] : null,
     ['export', 'Export', [
       row('Export / PDF theme', 'Colors used for Print / Export PDF and HTML export', sel('exportTheme', [['paper', 'Paper (light)'], ['sepia', 'Sepia'], ['current', 'Same as editor']], () => saveSettings())),
     ]],
@@ -2877,6 +2951,7 @@ function extensionsPage() {
     box.append(el('p', { class: 'about-note' }, 'Optional features. They come with CaretFlow, so installing needs no download; until then they stay out of your menus and never load.'))
     const g = el('div', { class: 'ext-grid' })
     for (const x of EXTENSIONS) {
+      if (IS_ANDROID && x.desktop) continue // needs a program Android can't reach (the Discord app's local IPC)
       const card = el(
         'div',
         { class: 'ext-card' + (extOn(x.id) ? ' on' : ''), tabindex: '0', onclick: () => detail(x), onkeydown: (e) => e.key === 'Enter' && e.target === card && detail(x) },
@@ -2914,6 +2989,7 @@ function extensionsPage() {
         cloud: ['Open Cloud Sync settings', () => reopenPrefs('cloud')],
         ai: ['Open AI settings', () => reopenPrefs('ai')],
         typing: ['Start the typing test', () => (closePrefs?.(true), typingTest())],
+        discord: ['Open Discord settings', () => reopenPrefs('discord')],
       }[x.id]
     box.append(
       el('button', { type: 'button', class: 'ext-back wc-link', onclick: () => ((extDetail = null), grid()) }, '← Back'),
@@ -3353,6 +3429,7 @@ const MENU = [
       k('Typing Cat', null, toggle('bongo'), { checked: () => settings.bongo }),
       '-',
       k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled, ext: 'cloud' }),
+      k('Discord Status', null, toggleDiscord, { checked: () => settings.discordEnabled, ext: 'discord' }),
       k('Extensions…', null, () => openPrefs('extensions')),
       k('Preferences…', 'Ctrl+,', openPrefs),
     ],
@@ -4344,6 +4421,7 @@ async function boot() {
   applyCloudUi()
   applyAi()
   applyMcp()
+  applyDiscord()
   setTab(settings.sidebarTab)
 
   const args = await invoke('cli_args').catch(() => [])

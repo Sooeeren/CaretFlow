@@ -71,7 +71,8 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
   optional **Material You style** (View → Theme) with colors made from one color, or from your
   wallpaper on Android 12+.
 - **Extensions you add when you want them**: Cloud Sync with your own server, AI writing help with
-  the AI you choose, and a typing test. Until installed they stay out of your menus.
+  the AI you choose, a typing test, and your writing status on Discord. Until installed they stay
+  out of your menus.
 - **Optional extras**: a live WPM meter and a typing cat (View menu).
 
 ## Writing check
@@ -125,6 +126,7 @@ settings, and their code never loads. Removing one keeps its settings.
 | **Cloud Sync** | Keeps a folder in sync with storage **you** choose: WebDAV (Nextcloud, NAS…), S3-compatible (B2, R2, MinIO, AWS), or Google Drive, Proton Drive and others through [rclone](https://rclone.org). A Cloud tab in the sidebar shows every file and its sync state. [Setup](docs/CLOUD-SYNC.md) |
 | **AI Writing Help** | Spelling, grammar and style suggestions from Claude, ChatGPT, Gemini, DeepSeek and others with your API key, or a model on your computer (Ollama, LM Studio), with limits you set. Or connect Claude Desktop, Cursor or VS Code over **MCP** to review your document. Nothing changes until you click Apply. [Details](docs/AI.md) · [MCP setup](docs/MCP.md) |
 | **Typing Test** | A minimal speed test by time or word count, or on your own document, with WPM, accuracy and a per-second chart. [Details](docs/FEATURES.md#typing-test-and-extras) |
+| **Discord Status** | Shows the CaretFlow logo on your Discord profile with what you are doing (writing or reading), the word count, source mode or Vim and how long you've been at it. The file name stays private unless you turn it on. Windows and Linux. [Details](docs/FEATURES.md#discord-status) |
 
 CaretFlow has no servers or accounts of its own: Cloud Sync and AI Writing Help only talk to the
 services you set up, and only once you turn them on.

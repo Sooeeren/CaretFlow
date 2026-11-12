@@ -287,6 +287,33 @@ const SCENES = {
       await settle(page, 800)
     },
   },
+  // the Discord Status screenshots of the Extensions page (discord_set answers null in the stub)
+  'discord-prefs': {
+    webp: 'discord-1',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'paper', extensions: ['discord'], discordAppId: '1' },
+    run: async (page) => {
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("Discord")')
+      await settle(page, 2500)
+    },
+  },
+  'discord-dark': {
+    webp: 'discord-2',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'ink', extensions: ['discord'], discordAppId: '1', discordFileName: true, vim: true },
+    run: async (page) => {
+      await key(page, 'Control+/')
+      await settle(page, 400)
+      await key(page, 'Control+,')
+      await settle(page, 300)
+      await page.click('.prefs-nav button:has-text("Discord")')
+      await settle(page, 2500)
+    },
+  },
   about: {
     open: 'Welcome.md',
     settings: { theme: 'paper', sidebar: false },

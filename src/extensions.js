@@ -50,6 +50,18 @@ export const EXTENSIONS = [
     network: 'Only to the AI provider you choose, or to AI apps on this computer over MCP.',
     shots: [shot('ai-1.webp'), shot('ai-2.webp')],
   },
+  {
+    id: 'discord',
+    name: 'Discord Status',
+    desktop: true, // talks to the Discord app's local IPC, which Android doesn't offer
+    icon: svg('<path d="M8.5 7.5a12 12 0 0 1 7 0M8 16.5a12 12 0 0 0 8 0"/><path d="M8.5 7.5C6.5 8 5 9 4.5 10c-.8 2-1 4.4-.5 6.5 1.2 1 2.6 1.6 4 2l1-2M15.5 7.5c2 .5 3.5 1.5 4 2.5.8 2 1 4.4.5 6.5-1.2 1-2.6 1.6-4 2l-1-2"/><circle cx="9.5" cy="13" r="1"/><circle cx="14.5" cy="13" r="1"/>'),
+    tagline: 'Show on your Discord profile that you are writing',
+    description:
+      'Your Discord profile shows the CaretFlow logo with what you are doing: writing or reading, the word count, source mode or Vim, how long you have been on the document, and a button to get CaretFlow. The file name stays private unless you turn it on. CaretFlow only talks to the Discord app on your computer; Discord must be running for the status to show.',
+    adds: ['Preferences → Discord with a preview of your status', 'Tools → Discord Status to hide or show it'],
+    network: 'None from CaretFlow. It tells the Discord app on this computer what to show, and Discord shares it with people who can see your activity.',
+    shots: [shot('discord-1.webp'), shot('discord-2.webp')],
+  },
 ]
 
 export const isInstalled = (settings, id) => (settings.extensions || []).includes(id)

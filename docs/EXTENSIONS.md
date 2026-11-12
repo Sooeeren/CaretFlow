@@ -18,6 +18,7 @@ its commands.
 | **Cloud Sync** ([guide](CLOUD-SYNC.md)) | Cloud tab in the sidebar (`Ctrl+Shift+4`), File → Sync Now (`Ctrl+Alt+S`), a sync button in the status bar, Preferences → Cloud Sync | Only to the server or storage you set up, once you turn it on |
 | **AI Writing Help** ([guide](AI.md), [MCP](MCP.md)) | Preferences → AI, the AI tab in the review panel (`F7`), AI underlines, Tools → AI commands (`Ctrl+Alt+K`, `Shift+Alt+F7`), Help → AI Setup Guide, a local MCP server | Only to the AI provider you choose, or to AI apps on this computer over MCP |
 | **Typing Test** ([details](FEATURES.md#typing-test-and-extras)) | Tools → Typing Test… (`Ctrl+Alt+T`) | None |
+| **Discord Status** ([details](FEATURES.md#discord-status)) | Preferences → Discord with a preview, Tools → Discord Status | None from CaretFlow: it only talks to the Discord app on this computer, which shows the status to people who can see your activity. Windows and Linux only |
 
 The typing cat and the WPM meter are part of CaretFlow itself (View menu).
 

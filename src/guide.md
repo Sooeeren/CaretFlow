@@ -23,7 +23,7 @@ The default checker (Harper) runs entirely on your computer. For German, French,
 
 ## Extensions
 
-Bigger optional features are extensions: **Tools → Extensions…** installs them with one click, and until then they stay out of your menus. **Cloud Sync** keeps a folder in sync with your own server, **AI Writing Help** adds suggestions from the AI you choose (or your AI app over MCP: **Help → AI Setup Guide**), and the **Typing Test** measures your speed.
+Bigger optional features are extensions: **Tools → Extensions…** installs them with one click, and until then they stay out of your menus. **Cloud Sync** keeps a folder in sync with your own server, **AI Writing Help** adds suggestions from the AI you choose (or your AI app over MCP: **Help → AI Setup Guide**), the **Typing Test** measures your speed, and **Discord Status** shows on your Discord profile that you are writing (Preferences → Discord chooses what it shows; the file name stays private by default).
 
 ## Typing test
 

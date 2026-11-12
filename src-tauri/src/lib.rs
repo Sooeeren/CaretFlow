@@ -7,6 +7,8 @@ use tauri::Manager;
 #[cfg(target_os = "android")]
 mod android;
 mod cloud;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod discord;
 mod mcp;
 mod pdf;
 
@@ -497,6 +499,10 @@ pub fn run() {
             mcp::mcp_stop,
             mcp::mcp_reply,
             mcp::mcp_status,
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            discord::discord_set,
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            discord::discord_clear,
             exe_path,
             #[cfg(target_os = "android")]
             android::android_storage,

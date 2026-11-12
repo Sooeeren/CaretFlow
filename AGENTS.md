@@ -59,6 +59,7 @@ These decide most design questions:
 | `src/extensions.js` | The extension catalog (`EXTENSIONS`) and installed state (`settings.extensions`) |
 | `src/ai.js` | AI Writing Help (lazy, an extension): providers (Anthropic + OpenAI-compatible), limits and usage, live checking of finished paragraphs, the AI tab of the review panel, Preferences → AI, the MCP setup guide |
 | `src/mcp.js` | MCP tool answers (document, selection, suggestions) and Preferences → AI → MCP server |
+| `src/discord.js`, `src-tauri/src/discord.rs` | Discord Status (lazy, an extension, desktop only): Rich Presence over Discord's local IPC pipe/socket, Preferences → Discord with a preview |
 | `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
@@ -163,3 +164,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-11 | Front matter: properties panel in the rendered view, YAML colors in source mode, Insert → Front Matter (scripts/checks/frontmatter.mjs) |
 | Claude Sonnet 5.5 | Claude Code | 2026-11-11 | Callout title drawn once when spelling underlines split the marker; 0.10.4 release |
 | Claude Opus 5.5 | Claude Code | 2026-11-11 | 0.10.4 tag, draft release and PKGBUILD checksum |
+| Claude Opus 5.5 | Claude Code | 2026-11-12 | Discord Status extension: Rich Presence over Discord's local IPC (no crate), Preferences → Discord with a live preview (scripts/checks/discord.mjs) |
