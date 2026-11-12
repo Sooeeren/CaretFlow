@@ -146,6 +146,7 @@ services you set up, and only once you turn them on.
 | [AI Writing Help](docs/AI.md) · [MCP setup](docs/MCP.md) | Providers and keys, local models, every setting and limit; connecting your AI app |
 | [Android](docs/ANDROID.md) | Installing, files and folders, the touch layout, what differs from the desktop |
 | [Notes](docs/NOTES.md) | Privacy and network access, platform notes, where files are stored |
+| [Privacy Policy](docs/PRIVACY.md) · [Terms of Service](docs/TERMS.md) | What is sent where, and the terms for the app, its extensions and the website |
 | [Building](docs/BUILDING.md) · [Releasing](docs/RELEASING.md) | For developers |
 
 In the app, **Help → Markdown Guide** shows the Markdown syntax and **Shift+F1** all shortcuts.

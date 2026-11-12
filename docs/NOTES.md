@@ -4,7 +4,8 @@ Details that are good to know, but not needed to get started.
 
 ## Privacy and network access
 
-CaretFlow sends nothing anywhere unless you turn something on. There is no telemetry.
+CaretFlow sends nothing anywhere unless you turn something on. There is no telemetry. The full
+[Privacy Policy](PRIVACY.md) and the [Terms of Service](TERMS.md) have the details.
 
 - **Update checks** download only `latest.json` from GitHub, and only after you agree. No data is sent.
 - **LanguageTool** sends the text being checked to the server you configure; the free public server

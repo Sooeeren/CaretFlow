@@ -168,3 +168,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-11 | 0.10.4 tag, draft release and PKGBUILD checksum |
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Discord Status extension: Rich Presence over Discord's local IPC (no crate), Preferences → Discord with a live preview (scripts/checks/discord.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Spelling: other languages (detection, Hunspell dictionaries offered on demand), custom words in Harper, Word-like case rules, folder and front matter word lists, Ignore All per file, LanguageTool presets and Premium; Advanced Grammar extension (LanguageTool on this computer); taskbar-sized icon (scripts/checks/spelling.mjs) |
+| Claude Opus 5.5 | Claude Code | 2026-11-12 | Privacy Policy and Terms of Service (docs/PRIVACY.md, docs/TERMS.md), also built into the website's /privacy/ and /terms/ for Discord app verification |
