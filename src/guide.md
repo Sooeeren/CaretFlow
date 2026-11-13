@@ -125,4 +125,4 @@ Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies
 
 ---
 
-Check page layout with **File → Page Preview** (`Ctrl+Alt+L`), add page breaks with `Ctrl+Enter`, and export with **File → Export as PDF** or **File → Export as HTML**.
+Check page layout with **File → Page Preview** (`Ctrl+Alt+L`), add page breaks with `Ctrl+Enter`, and export with **File → Export as PDF**, **Export as Word (.docx)** (`Ctrl+Alt+W`) or **Export as HTML**. **File → Export as Other Format** also writes OpenDocument (.odt), EPUB e-books, LaTeX and plain text.

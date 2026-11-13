@@ -50,7 +50,8 @@ A hardware keyboard works with all the usual shortcuts (`Ctrl+S`, `Ctrl+/`, `F7`
 - **Export as PDF** works like on the desktop, with page size, margins, header, footer and page
   numbers. The PDF opens in your PDF viewer afterwards if you like.
 - **Print…** opens Android's print dialog (a printer, or Save as PDF).
-- **Export as HTML** writes a single HTML file.
+- **Export as HTML** writes a single HTML file; **Export as Word (.docx)** and the other formats
+  (OpenDocument, EPUB, LaTeX, plain text) work as on the desktop.
 
 ## What's different from the desktop
 
@@ -60,4 +61,4 @@ A hardware keyboard works with all the usual shortcuts (`Ctrl+S`, `Ctrl+/`, `F7`
 - The **MCP server** works for AI apps on the same phone (for example in Termux); the `caretflow --mcp`
   bridge for desktop apps doesn't apply.
 - Updates are new APKs instead of the in-app installer.
-- The command-line exports (`--export-pdf`) are desktop-only.
+- The command-line exports (`--export-pdf`, `--export-docx`, …) are desktop-only.

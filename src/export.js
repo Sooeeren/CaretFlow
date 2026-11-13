@@ -58,7 +58,13 @@ const CALLOUT_CSS = `
 .callout-title{font-weight:650;color:var(--c);margin:0 0 .3em}
 .callout>:last-child{margin-bottom:0}
 .callout-note{--c:#2f74d0}.callout-tip{--c:#2c9a4b}.callout-important{--c:#8250df}.callout-warning{--c:#b7791f}.callout-caution{--c:#cf3a33}`
-const tex = (s, displayMode) => katex.renderToString(s, { displayMode, throwOnError: false })
+// How math is written: 'html' (KaTeX, for the screen and PDF), 'mathml' (e-book readers), or
+// 'source' (the TeX kept in a data attribute, for the Word / OpenDocument / LaTeX writers)
+let mathMode = 'html'
+const tex = (s, displayMode) =>
+  mathMode === 'source'
+    ? `<span class="math-src${displayMode ? ' display' : ''}" data-tex="${esc(s)}"></span>`
+    : katex.renderToString(s, { displayMode, throwOnError: false, output: mathMode === 'mathml' ? 'mathml' : 'htmlAndMathml' })
 
 marked.use({
   gfm: true,
@@ -93,10 +99,13 @@ marked.use({
 })
 
 let mmId = 0
-async function renderMermaidBlocks(html, dark) {
+async function renderMermaidBlocks(html, dark, plainLabels) {
   if (!html.includes('language-mermaid')) return html
   const { default: mermaid } = await import('mermaid')
-  mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict' })
+  // plainLabels: SVG text instead of HTML labels, so the diagram can be drawn into a canvas
+  // (a <foreignObject> would taint it) and shown by e-book readers
+  const labels = plainLabels ? { htmlLabels: false, flowchart: { htmlLabels: false } } : { htmlLabels: true, flowchart: { htmlLabels: true } }
+  mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default', securityLevel: 'strict', ...labels })
   const re = /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g
   const parts = []
   let last = 0
@@ -115,22 +124,54 @@ async function renderMermaidBlocks(html, dark) {
   return parts.join('')
 }
 
+const FRONT_MATTER = /^(---|\+\+\+)\r?\n([\s\S]*?)\r?\n\1[ \t]*(\r?\n|$)/
+
+/** title / author / date / … from the simple `key: value` lines of the front matter */
+export function frontMatter(md) {
+  const m = FRONT_MATTER.exec(md)
+  const out = {}
+  if (!m) return out
+  const unquote = (v) => v.trim().replace(/^(["'])(.*)\1$/, '$2')
+  for (const line of m[2].split(/\r?\n/)) {
+    const kv = /^([A-Za-z][\w-]*)\s*[:=]\s*(.*)$/.exec(line)
+    if (!kv) continue
+    let v = unquote(kv[2])
+    if (/^\[.*\]$/.test(v)) v = v.slice(1, -1).split(',').map(unquote).join(', ')
+    if (v) out[kv[1].toLowerCase()] = v
+  }
+  return out
+}
+
+/**
+ * The document as HTML without a page around it: front matter left out; math, diagrams, code
+ * colors and callouts done. o: { dark, math: 'html' | 'mathml' | 'source', plainLabels }
+ */
+export async function bodyHtml(md, o = {}) {
+  md = md.replace(FRONT_MATTER, '')
+  // Math code fences → display math
+  md = md.replace(/^```(?:math|latex|tex|katex)\s*\n([\s\S]*?)\n```/gm, (_, s) => `$$\n${s}\n$$`)
+  mathMode = o.math || 'html'
+  let html
+  try {
+    // the document's own HTML is kept, minus scripts and event handlers: the export page is
+    // loaded by CaretFlow (print, PDF export, page preview), where a script could reach its commands
+    html = DOMPurify.sanitize(marked.parse(md))
+  } finally {
+    mathMode = 'html'
+  }
+  html = await renderMermaidBlocks(html, o.dark, o.plainLabels)
+  html = await highlightBlocks(html)
+  return renderToc(renderCallouts(html))
+}
+
+export { highlightCss }
+
 /**
  * @param md markdown source
  * @param o { title, docDir, targetDir, resolveForView, themeVars, dark, inlineKatex }
  */
 export async function toHtml(md, o) {
-  // Strip front matter (YAML or TOML)
-  md = md.replace(/^(---|\+\+\+)\r?\n[\s\S]*?\r?\n\1[ \t]*(\r?\n|$)/, '')
-  // Math code fences → display math
-  md = md.replace(/^```(?:math|latex|tex|katex)\s*\n([\s\S]*?)\n```/gm, (_, s) => `$$\n${s}\n$$`)
-  // the document's own HTML is kept, minus scripts and event handlers: the export page is
-  // loaded by CaretFlow (print, PDF export, page preview), where a script could reach its commands
-  let html = DOMPurify.sanitize(marked.parse(md))
-  html = await renderMermaidBlocks(html, o.dark)
-  html = await highlightBlocks(html)
-  html = renderCallouts(html)
-  html = renderToc(html)
+  let html = await bodyHtml(md, o)
 
   // Rewrite relative image paths
   html = html.replace(/(<img[^>]*?\ssrc=")([^"]+)(")/g, (all, a, src, b) => {

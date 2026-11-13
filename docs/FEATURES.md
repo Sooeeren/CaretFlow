@@ -43,6 +43,30 @@ View → Line Numbers), and CaretFlow starts in source mode again when you quit 
   `caretflow --export-pdf notes.md notes.pdf --paper letter --landscape` (also `--header`,
   `--footer`, `--author`, `--page-numbers`) and `caretflow --export-html notes.md notes.html`.
 
+## Word, OpenDocument, EPUB, LaTeX and plain text
+
+**File → Export as Word (.docx)** (`Ctrl+Alt+W`) and **File → Export as Other Format** write the
+document for other programs. Everything is made inside CaretFlow, offline; web images are left out
+as links.
+
+- **Word (.docx)** uses Word's own styles (Title, Heading 1–6, Quote, lists, a table style), so the
+  navigation pane, a table of contents and restyling work. Math becomes real, editable Word
+  equations; code keeps its colors; callouts are colored boxes; images and Mermaid diagrams are
+  embedded. Paper size, margins, header, footer and page numbers come from the PDF page settings.
+- **OpenDocument (.odt)** for LibreOffice, OnlyOffice and Google Docs, with the same layout and page
+  settings. Math is kept as TeX text there; use .docx when you need equations.
+- **EPUB (.epub)** e-books: a chapter per top-level heading, a table of contents, images packed in,
+  math as MathML and diagrams as SVG.
+- **LaTeX (.tex)** for journals and theses: sections, lists, `longtable` tables, math as written and
+  images referenced from where they are. Compiles with pdfLaTeX, XeLaTeX and LuaLaTeX.
+- **Plain text (.txt)** without Markdown marks: underlined headings, aligned tables, link addresses
+  in brackets.
+
+Front matter fills in the title, author and date (a title page in Word, OpenDocument and EPUB) and
+the document properties. On the command line: `caretflow --export-docx notes.md notes.docx`, and
+likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with the same `--paper`,
+`--landscape`, `--header`, `--footer`, `--author` and `--page-numbers` options as PDFs).
+
 ## Blocks and formatting
 
 - **Sub-points** (nested lists) get hollow or square bullets, lettered or roman numbers, a softer

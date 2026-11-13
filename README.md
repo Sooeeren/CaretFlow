@@ -65,6 +65,8 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
 - **Vim mode** for source editing, including visual block, macros, registers and `:w` / `:q`.
 - **PDF export** with page preview, page breaks, headers, footers and page numbers; also from the
   command line.
+- **Word (.docx) export** with Word styles, editable equations and embedded images, plus OpenDocument
+  (.odt), EPUB e-books, LaTeX, HTML and plain text.
 - **Files and folders**: sidebar with outline, file tree and folder search; quick open (`Ctrl+P`);
   command palette (`F1`).
 - **Four themes** (Paper, Sepia, Ink, Slate) plus custom CSS, focus, typewriter and zen modes, and an
@@ -140,7 +142,7 @@ services you set up, and only once you turn them on.
 | | |
 | --- | --- |
 | [Keyboard shortcuts](docs/SHORTCUTS.md) | Every default shortcut, by menu |
-| [Features in detail](docs/FEATURES.md) | Writing check, Vim, PDF export and preview, callouts, updates, command line |
+| [Features in detail](docs/FEATURES.md) | Writing check, Vim, PDF/Word/EPUB export and preview, callouts, updates, command line |
 | [Extensions](docs/EXTENSIONS.md) | Installing and removing extensions, what each one adds |
 | [Cloud Sync](docs/CLOUD-SYNC.md) | Setting up WebDAV, S3 and rclone; how syncing works |
 | [AI Writing Help](docs/AI.md) · [MCP setup](docs/MCP.md) | Providers and keys, local models, every setting and limit; connecting your AI app |

@@ -83,9 +83,9 @@ function tauriStub({ files, dir, open }) {
     unregisterCallback: (id) => delete callbacks[id],
     convertFileSrc: (p) => p,
     // window.__stubExtra: more commands from a scene's setup() (see --extra)
-    invoke: async (cmd, a = {}) => {
+    invoke: async (cmd, a = {}, opts) => {
       const h = window.__stubExtra?.[cmd] || handlers[cmd]
-      return h ? h(a) : null
+      return h ? h(a, opts) : null
     },
   }
   window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} }

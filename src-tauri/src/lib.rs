@@ -85,6 +85,28 @@ fn write_bytes(path: String, data: Vec<u8>) -> Result<(), String> {
     fs::write(&p, data).map_err(|e| e.to_string())
 }
 
+/// An exported file (.docx, .odt, .epub): the bytes come as the raw request body instead of a
+/// JSON number array, the path (base64 of its UTF-8) in the `path` header.
+#[tauri::command]
+fn write_binary(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    use base64::Engine;
+    let tauri::ipc::InvokeBody::Raw(data) = request.body() else {
+        return Err("expected raw bytes".into());
+    };
+    let header = request.headers().get("path").and_then(|v| v.to_str().ok()).ok_or("missing path")?;
+    let path = base64::engine::general_purpose::STANDARD.decode(header).map_err(|e| e.to_string())?;
+    let path = String::from_utf8(path).map_err(|e| e.to_string())?;
+    #[cfg(target_os = "android")]
+    if android::is_uri(&path) {
+        return android::write_uri(&path, data);
+    }
+    let p = PathBuf::from(&path);
+    if let Some(dir) = p.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    fs::write(&p, data).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn copy_file(from: String, to: String) -> Result<(), String> {
     let p = PathBuf::from(&to);
@@ -258,7 +280,7 @@ fn cli_args() -> Vec<String> {
 
 #[cfg(desktop)]
 fn is_cli_export() -> bool {
-    std::env::args().any(|a| a == "--export-pdf" || a == "--export-html")
+    std::env::args().any(|a| a.starts_with("--export-"))
 }
 
 // ── UI config read by Rust before the window exists (the title-bar choice must be
@@ -467,6 +489,7 @@ pub fn run() {
             read_text,
             write_text,
             write_bytes,
+            write_binary,
             copy_file,
             rename_path,
             make_dir,

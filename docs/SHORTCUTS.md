@@ -18,6 +18,7 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Close file | `Ctrl+F4` |
 | Sync now *(Cloud Sync extension)* | `Ctrl+Alt+S` |
 | Export as PDF… | `Ctrl+Alt+E` |
+| Export as Word (.docx)… | `Ctrl+Alt+W` |
 | Page preview | `Ctrl+Alt+L` |
 | Print… | `Ctrl+Alt+P` |
 | Preferences… | `Ctrl+,` |

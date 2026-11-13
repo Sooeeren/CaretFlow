@@ -1845,6 +1845,77 @@ async function exportHtmlTo(target) {
 
 const docTitle = () => firstHeading() || (S.path ? P.stem(S.path) : 'Document')
 
+// ── Word, OpenDocument, EPUB, LaTeX and plain text (writers in docx.js, odt.js, epub.js, textformats.js)
+const FORMATS = {
+  docx: { name: 'Word document', ext: 'docx' },
+  odt: { name: 'OpenDocument text', ext: 'odt' },
+  epub: { name: 'EPUB e-book', ext: 'epub' },
+  tex: { name: 'LaTeX', ext: 'tex' },
+  txt: { name: 'Plain text', ext: 'txt' },
+}
+
+async function exportAs(fmt) {
+  const f = FORMATS[fmt]
+  const target = await pickSave({
+    defaultPath: (S.path && !P.isUri(S.path) ? S.path.replace(/\.[^.\\/]+$/, '') : P.stem(S.path || '') || 'document') + '.' + f.ext,
+    filters: [{ name: f.name, extensions: [f.ext] }],
+  })
+  if (!target) return
+  toast('Exporting…', 30000)
+  try {
+    await exportFormatTo(fmt, target)
+    toast('Exported ' + P.basename(target))
+  } catch (e) {
+    log(fmt + ' export failed:', e)
+    $('#toast').classList.remove('show')
+    await dialog({ title: `${f.name} export failed`, body: String(e?.message || e) })
+  }
+}
+
+async function exportFormatTo(fmt, target) {
+  const md = currentText()
+  const docDir = S.path && !P.isUri(S.path) ? P.dirname(S.path) : ''
+  const readFile = async (path) => new Uint8Array(await invoke('read_bytes', { path }))
+  const { buildModel } = await import('./docmodel.js')
+  // code colors from the light Paper palette: these files are printed and read on white
+  const vars = themeVars('paper')
+  const model = await buildModel(md, { docDir, readFile, themeVars: vars, title: docTitle() })
+  // page size, margins, header, footer and page numbers: the same as for PDFs (File → Export as PDF)
+  const p = { ...PDF_DEFAULTS, ...(settings.pdf || {}) }
+  const [w, h] = PAPER[p.paper] || PAPER.a4
+  const fill = Object.fromEntries(Object.entries({ author: p.author, subject: p.subject, keywords: p.keywords }).filter(([, v]) => v))
+  model.meta = { ...fill, ...model.meta } // front matter wins over the PDF settings
+  const o = {
+    page: { paper: p.paper, widthMm: w, heightMm: h, landscape: !!p.landscape, marginMm: +p.margin || 18 },
+    header: expandPlaceholders(p.header, model.meta),
+    footer: expandPlaceholders(p.footer, model.meta),
+    pageNumbers: p.pageNumbers || '',
+  }
+  let out
+  if (fmt === 'docx') out = await (await import('./docx.js')).toDocx(model, o)
+  else if (fmt === 'odt') out = await (await import('./odt.js')).toOdt(model, o)
+  else if (fmt === 'epub') out = await (await import('./epub.js')).toEpub(md, model, { docDir, readFile, themeVars: vars, lang: navigator.language?.split('-')[0] })
+  else {
+    const tf = await import('./textformats.js')
+    const text =
+      fmt === 'tex'
+        ? tf.toLatex(model, {
+            ...o,
+            // images stay files next to the document, referenced from the .tex
+            imagePath: (src) => {
+              if (/^(https?|data|blob):/i.test(src) || !docDir) return null
+              const raw = P.decodeSrc(src)
+              const abs = P.isAbs(raw) ? raw : P.join(docDir, raw)
+              return P.isUri(target) ? null : P.relative(P.dirname(target), abs) || abs
+            },
+          })
+        : tf.toPlainText(model)
+    return invoke('write_text', { path: target, content: text })
+  }
+  const path = btoa(String.fromCharCode(...new TextEncoder().encode(target)))
+  await invoke('write_binary', out, { headers: { path } })
+}
+
 // ── PDF export (direct to file, with page numbers / header / footer / properties)
 const PAPER = { a4: [210, 297, 'A4'], letter: [215.9, 279.4, 'Letter'], legal: [215.9, 355.6, 'Legal'], a5: [148, 210, 'A5'], a3: [297, 420, 'A3'] }
 const PDF_DEFAULTS = {
@@ -3338,8 +3409,18 @@ const MENU = [
       k('Close File', 'Ctrl+F4', closeFile, { enabled: () => !!S.path || S.dirty }),
       k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync', ext: 'cloud' }),
       '-',
-      k('Export as HTML…', null, exportHtml),
       k('Export as PDF…', 'Ctrl+Alt+E', exportPdfDialog),
+      k('Export as Word (.docx)…', 'Ctrl+Alt+W', () => exportAs('docx')),
+      k('Export as HTML…', null, exportHtml),
+      {
+        label: 'Export as Other Format',
+        sub: [
+          k('OpenDocument Text (.odt)…', null, () => exportAs('odt')),
+          k('EPUB E-book (.epub)…', null, () => exportAs('epub')),
+          k('LaTeX (.tex)…', null, () => exportAs('tex')),
+          k('Plain Text (.txt)…', null, () => exportAs('txt')),
+        ],
+      },
       {
         label: 'Export / PDF Theme',
         sub: [
@@ -4387,12 +4468,14 @@ function wireUi() {
  * Headless command-line export (window stays hidden):
  *   folio --export-pdf  input.md output.pdf
  *   folio --export-html input.md output.html
+ *   folio --export-docx input.md output.docx   (also --export-odt, --export-epub, --export-tex, --export-txt)
  * Uses the PDF options saved in the app. Exit code 0 on success, 1 on failure.
  */
+const CLI_EXPORTS = ['--export-pdf', '--export-html', ...Object.keys(FORMATS).map((f) => '--export-' + f)]
 async function runCliExport(args) {
   S.cli = true // never write settings or recent files from a headless export
   settings.spellcheck = false // no need to load the checker for an export
-  const i = args.findIndex((a) => a === '--export-pdf' || a === '--export-html')
+  const i = args.findIndex((a) => CLI_EXPORTS.includes(a))
   const input = await invoke('initial_path')
   const output = args[i + 2]
   try {
@@ -4413,7 +4496,11 @@ async function runCliExport(args) {
     if (args.includes('--landscape')) o.landscape = true
     if (flag('theme')) settings.exportTheme = flag('theme')
     if (args[i] === '--export-pdf') await exportPdfTo(out, pdfOptionsFor(settings.pdf, o))
-    else await exportHtmlTo(out)
+    else if (args[i] === '--export-html') await exportHtmlTo(out)
+    else {
+      settings.pdf = { ...settings.pdf, ...o } // paper, header, footer… apply to Word and OpenDocument too
+      await exportFormatTo(args[i].slice('--export-'.length), out)
+    }
     await invoke('exit_app', { code: 0 })
   } catch (e) {
     log('cli export failed:', e)
@@ -4508,7 +4595,7 @@ async function boot() {
   setTab(settings.sidebarTab)
 
   const args = await invoke('cli_args').catch(() => [])
-  if (args.includes('--export-pdf') || args.includes('--export-html')) return runCliExport(args)
+  if (args.some((a) => CLI_EXPORTS.includes(a))) return runCliExport(args)
 
   let path = null
   try {

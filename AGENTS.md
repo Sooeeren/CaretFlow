@@ -57,6 +57,10 @@ These decide most design questions:
 | `src/material.js` | Material You style: a Material 3 color scheme from one seed color (OKLCH tonal palettes), laid over the theme; shapes in `style.css` under `body.material` |
 | `src/codestyle.js` | Syntax colors shared by code blocks, source mode and exports (`--tok-*` per theme) |
 | `src/export.js` | HTML export and print-to-PDF (lazy) |
+| `src/docmodel.js` | The document as blocks and runs (from the export HTML), with images read and converted; shared by the writers below (lazy) |
+| `src/docx.js`, `src/omml.js` | Word export: WordprocessingML with Word's styles; TeX math → Office Math equations |
+| `src/odt.js`, `src/epub.js`, `src/textformats.js` | OpenDocument, EPUB 3, LaTeX and plain-text export |
+| `src/zip.js` | Small ZIP writer for .docx / .odt / .epub |
 | `src/updater.js` | In-app updates (lazy): check, signed download, install, restart |
 | `src/extensions.js` | The extension catalog (`EXTENSIONS`) and installed state (`settings.extensions`) |
 | `src/ai.js` | AI Writing Help (lazy, an extension): providers (Anthropic + OpenAI-compatible), limits and usage, live checking of finished paragraphs, the AI tab of the review panel, Preferences → AI, the MCP setup guide |
@@ -79,7 +83,7 @@ These decide most design questions:
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, exports) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -171,3 +175,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Spelling: other languages (detection, Hunspell dictionaries offered on demand), custom words in Harper, Word-like case rules, folder and front matter word lists, Ignore All per file, LanguageTool presets and Premium; Advanced Grammar extension (LanguageTool on this computer); taskbar-sized icon (scripts/checks/spelling.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Privacy Policy and Terms of Service (docs/PRIVACY.md, docs/TERMS.md), also built into the website's /privacy/ and /terms/ for Discord app verification |
 | Claude Opus 5.5 | Claude Code | 2026-11-12 | Table of contents: `[TOC]` block with a live, clickable heading list, Insert → Table of Contents (`Ctrl+Alt+O`), linked in exports (scripts/checks/toc.mjs) |
+| Claude Opus 5.5 | Claude Code | 2026-11-13 | Export as Word (.docx, with editable equations), OpenDocument, EPUB, LaTeX and plain text; `--export-docx` etc.; scripts/checks/exports.mjs |
