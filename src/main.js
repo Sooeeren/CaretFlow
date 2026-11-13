@@ -3,7 +3,7 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 import './style.css'
 
-import { editorViewCtx, serializerCtx, commandsCtx } from '@milkdown/kit/core'
+import { editorViewCtx, serializerCtx, commandsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import { callCommand, $prose, $inputRule } from '@milkdown/kit/utils'
 import { Plugin, PluginKey, TextSelection } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
@@ -201,6 +201,7 @@ const S = {
   dirty: false,
   baseline: '', // markdown representation considered "clean" for the active mode (null = dirty until saved)
   diskText: '', // last loaded/saved file text (normalized \n)
+  rendered: null, // { text, md }: what the rendered editor was made from, and its Markdown then (wysiwygText)
   eol: '\n',
   mtime: 0,
   readonly: false,
@@ -511,12 +512,36 @@ async function createEditor(markdown) {
       },
     },
   })
+  // write list bullets and rules the way this document already does (`-` unless it uses `*` or `+`)
+  const style = markdownStyle(markdown)
+  c.editor.config((ctx) => ctx.update(remarkStringifyOptionsCtx, (o) => ({ ...o, ...style })))
   c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
+  S.rendered = { text: markdown, md: c.getMarkdown() }
   if (S.readonly) c.setReadonly(true)
   return c
+}
+
+/** Bullet and rule characters a document uses, for the Markdown the rendered editor writes */
+function markdownStyle(text) {
+  // front matter (---) and code blocks don't count
+  const t = text.replace(/^(---|\+\+\+)\r?\n[\s\S]*?\r?\n\1[ \t]*(\r?\n|$)/, '').replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, '')
+  const bullet = /^[ \t]*([-*+])[ \t]+(?:\[[ xX]\][ \t]+)?\S/m.exec(t)?.[1] || '-'
+  const rule = /^[ \t]{0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$/m.exec(t)?.[1] || '-'
+  return { bullet, rule }
+}
+
+/**
+ * The rendered editor's Markdown. While nothing was edited there it is the exact text the editor
+ * was made from, so switching to source mode or saving never rewrites what was typed (issue #27:
+ * `-` bullets came back as `*`).
+ */
+function wysiwygText() {
+  if (!crepe) return ''
+  const md = crepe.getMarkdown()
+  return S.rendered && md === S.rendered.md ? S.rendered.text : md
 }
 
 function onMarkdown(md) {
@@ -559,7 +584,7 @@ function setVimMode(m) {
 async function enterSource() {
   const mod = await ensureSourceMod()
   const ratio = scrollRatio()
-  const text = S.dirty ? crepe.getMarkdown() : S.diskText
+  const text = S.dirty ? wysiwygText() : S.diskText
   const clean = !S.dirty
   if (crepe) {
     const old = crepe
@@ -636,7 +661,7 @@ const setScrollRatio = (r) => (scroller.scrollTop = r * (scroller.scrollHeight -
 // ════════════════════════════════════════ document text
 function currentText() {
   if (S.mode === 'source') return source.getText()
-  return crepe ? crepe.getMarkdown() : ''
+  return wysiwygText()
 }
 
 async function loadText(text, { keepScroll = false } = {}) {
@@ -763,7 +788,8 @@ async function writeDoc(path, text) {
   S.mtime = await invoke('write_text', { path, content: out })
   cloudSaved(path)
   S.diskText = text
-  S.baseline = text
+  // the rendered editor compares its own Markdown with the baseline (see onMarkdown)
+  S.baseline = S.mode === 'wysiwyg' && crepe ? crepe.getMarkdown() : text
   S.externalChange = false
   hideNotice()
   setDirty(false)
@@ -2448,7 +2474,7 @@ function setTheme(t) {
   mermaidP = null
   // Re-render to refresh diagram colors
   if (S.mode === 'wysiwyg' && crepe && currentText().includes('```mermaid')) {
-    const md = crepe.getMarkdown()
+    const md = wysiwygText()
     const clean = !S.dirty
     const top = scroller.scrollTop
     createEditor(md).then(() => {
