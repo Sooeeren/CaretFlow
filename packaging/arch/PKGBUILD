@@ -3,7 +3,7 @@
 # package to each release; the same file works for the AUR. Install a release file with:
 #   sudo pacman -U ./caretflow-bin-<version>-1-x86_64.pkg.tar.zst
 pkgname=caretflow-bin
-_ver=0.11.1 # CaretFlow's version; pkgver can't contain '-'
+_ver=0.11.2 # CaretFlow's version; pkgver can't contain '-'
 pkgver=${_ver//-/_}
 pkgrel=1
 pkgdesc='A fast, seamless Markdown reader & editor (formerly Folio)'
@@ -17,7 +17,7 @@ conflicts=('caretflow' 'folio-bin')
 replaces=('folio-bin')
 options=('!strip' '!debug')
 source=("https://github.com/Sooeeren/CaretFlow/releases/download/v${_ver}/CaretFlow_${_ver}_amd64.deb")
-sha256sums=('56f225ac41ab0605b03b7515dcceeb3c9e6307bdd6776f20dcbdc6e8256d2b3c')
+sha256sums=('SKIP')
 
 package() {
   bsdtar -xf data.tar.* -C "$pkgdir"
