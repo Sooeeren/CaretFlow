@@ -37,6 +37,9 @@ View → Line Numbers), and CaretFlow starts in source mode again when you quit 
   margins, page numbers, header and footer (`{title}` `{file}` `{date}` `{author}`) and document
   properties. **File → Print…** still opens the system dialog.
 - **Page preview** (`Ctrl+Alt+L`) shows the real PDF next to the editor, refreshed as you type.
+- **Same layout as the editor.** PDFs, the page preview, printing and HTML exports use the editor's
+  spacing: paragraphs, list items and sub-points, quotes, callouts, code blocks, tables and rules sit
+  where they do while you write.
 - **Page breaks** (`Ctrl+Enter`) are stored as `<div style="page-break-after: always;"></div>`,
   which other Markdown tools understand too.
 - **Command line**, no window shown:
