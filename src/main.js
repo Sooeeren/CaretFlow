@@ -1860,6 +1860,7 @@ async function exportHtml() {
 async function exportHtmlTo(target) {
   const { toHtml } = await import('./export.js')
   const out = await toHtml(currentText(), {
+    nestedLists: settings.nestedLists,
     title: docTitle(),
     docDir: S.path && P.dirname(S.path),
     targetDir: P.dirname(target),
@@ -1991,6 +1992,7 @@ function pdfOptionsFor(p, overrides = {}) {
 async function exportPdfTo(out, options) {
   const { toHtml } = await import('./export.js')
   const htmlDoc = await toHtml(currentText(), {
+    nestedLists: settings.nestedLists,
     title: options.title || docTitle(),
     docDir: S.path && P.dirname(S.path),
     resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,
@@ -2365,6 +2367,7 @@ async function printDoc() {
   const { toHtml, printHtml } = await import('./export.js')
   const title = S.path ? P.stem(S.path) : firstHeading() || 'Document'
   const out = await toHtml(currentText(), {
+    nestedLists: settings.nestedLists,
     title,
     docDir: S.path && P.dirname(S.path),
     resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,

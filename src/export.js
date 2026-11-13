@@ -54,9 +54,10 @@ async function highlightBlocks(html) {
 const highlightCss = () => codeStyle.module?.getRules() || ''
 
 const CALLOUT_CSS = `
-.callout{border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 8%,transparent);border-radius:0 6px 6px 0;padding:.55em 1em;color:var(--fg)}
-.callout-title{font-weight:650;color:var(--c);margin:0 0 .3em}
-.callout>:last-child{margin-bottom:0}
+.callout{border-left:4px solid var(--c);background:color-mix(in srgb,var(--c) 9%,transparent);border-radius:0 8px 8px 0;padding:.5em 1em .5em calc(1.1em - 4px);color:var(--fg)}
+.callout-title{font-weight:650;color:var(--c);margin:.15em 0 0}
+.callout-title+*{margin-top:0}
+.callout>:last-child{margin-bottom:.15em}
 .callout-note{--c:#2f74d0}.callout-tip{--c:#2c9a4b}.callout-important{--c:#8250df}.callout-warning{--c:#b7791f}.callout-caution{--c:#cf3a33}`
 // How math is written: 'html' (KaTeX, for the screen and PDF), 'mathml' (e-book readers), or
 // 'source' (the TeX kept in a data attribute, for the Word / OpenDocument / LaTeX writers)
@@ -161,6 +162,8 @@ export async function bodyHtml(md, o = {}) {
   }
   html = await renderMermaidBlocks(html, o.dark, o.plainLabels)
   html = await highlightBlocks(html)
+  // no space after a task's check box: the box sits where the bullet would be (like the editor)
+  html = html.replace(/(<input [^>]*type="checkbox"[^>]*>)[ \t]+/g, '$1')
   return renderToc(renderCallouts(html))
 }
 
@@ -204,22 +207,31 @@ h1{font-size:2.15em;border-bottom:1px solid var(--border);padding-bottom:.25em}
 h2{font-size:1.65em;border-bottom:1px solid var(--border);padding-bottom:.2em}
 h3{font-size:1.35em}h4{font-size:1.15em}h6{color:var(--muted)}
 body>:first-child{margin-top:0}
+/* the same spacing as the rendered editor (style.css #wysiwyg …), so the page preview and PDF match it */
+p{margin:.8em 0}
+ul,ol{margin:0;padding-left:34px}li{padding:.2em 0}li>p{margin:0}
+li:has(>input[type=checkbox],>p:first-child>input[type=checkbox]){list-style:none}
+li>:is(ul,ol){margin-top:.2em}li:has(>ul,>ol){padding-bottom:0}
+.nested-lists :is(ul,ol) :is(ul,ol){font-size:.96em}
+.nested-lists ul ul{list-style-type:circle}.nested-lists ul ul ul{list-style-type:square}
+.nested-lists ol ol{list-style-type:lower-alpha}.nested-lists ol ol ol{list-style-type:lower-roman}
+.nested-lists :is(ul,ol) :is(ul,ol) li::marker{color:var(--muted)}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);color:var(--code-fg);padding:.1em .35em;border-radius:4px}
-pre{background:var(--code-bg);padding:14px 16px;border-radius:6px;overflow:auto;line-height:1.5}
-pre code{background:none;color:var(--fg);padding:0;font-size:.86em}
-blockquote{margin:1em 0;padding:0 1.1em;color:var(--quote);border-left:3px solid var(--quote-bar)}
-table{border-collapse:collapse;margin:1em 0;display:block;overflow:auto}
-th,td{border:1px solid var(--border);padding:6px 13px}th{background:var(--chrome)}
+pre{background:var(--code-bg);padding:12px 16px;border-radius:8px;overflow:auto;margin:1em 0;line-height:calc(var(--doc-size)*1.4)}
+pre code{background:none;color:var(--fg);padding:0;font-size:.88em}
+blockquote{margin:.9em 0;padding:0 0 0 calc(1.1em - 3px);color:var(--quote);border-left:3px solid var(--quote-bar)}
+table{border-collapse:collapse;margin:1em 0;width:100%;table-layout:fixed;overflow-wrap:anywhere}
+th,td{border:1px solid var(--border);padding:6px 13px;line-height:1.5}th:not([align]){text-align:left}th{background:var(--chrome)}
 tr:nth-child(2n) td{background:color-mix(in srgb,var(--chrome) 50%,transparent)}
-img{max-width:100%}hr{border:0;border-top:1px solid var(--border);margin:2em 0}
-li>input[type=checkbox]{margin-right:.4em}
+img{max-width:100%}hr{border:0;height:1px;padding:6px 0;margin:0;background:var(--border);background-clip:content-box;box-sizing:content-box}
+li>input[type=checkbox],li>p:first-child>input[type=checkbox]{width:18px;height:18px;margin:0 16px 0 -34px;vertical-align:-.2em}
 .math-block{overflow-x:auto;margin:1em 0}.mermaid{text-align:center;margin:1em 0}
 @media print{body{padding:0;max-width:none}pre,blockquote,table,img,.mermaid{break-inside:avoid}h1,h2,h3{break-after:avoid}}
 ${o.forPdf ? '' : '@page{margin:18mm 16mm}'}
 ${o.forPdf ? 'body{padding:0;max-width:none}' : ''}
 </style></head>
-<body>
+<body${o.nestedLists ? ' class="nested-lists"' : ''}>
 ${html}
 </body></html>`
 }

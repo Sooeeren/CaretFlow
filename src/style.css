@@ -793,6 +793,10 @@ button { font: inherit; color: inherit; }
 #wysiwyg .milkdown .milkdown-code-block .cm-editor,
 #wysiwyg .milkdown .milkdown-code-block .cm-gutters { background: transparent; }
 #wysiwyg .milkdown .milkdown-code-block .cm-content { padding: 0; }
+/* the code font and size of source mode and exports; lines as tall as before (1.4 × text size) */
+#wysiwyg .milkdown .milkdown-code-block .cm-editor { font-size: 0.88em; }
+#wysiwyg .milkdown .milkdown-code-block .cm-scroller { font-family: var(--font-mono); }
+#wysiwyg .milkdown .milkdown-code-block :is(.cm-content, .cm-line, .cm-gutterElement) { line-height: calc(var(--doc-size) * 1.4); }
 #wysiwyg .milkdown .milkdown-code-block .cm-line { padding: 0 4px 0 0; }
 #wysiwyg .milkdown .milkdown-code-block .preview-panel .preview { padding: 4px 0; }
 #wysiwyg .milkdown .milkdown-code-block .preview-divider { margin: 10px 0 6px; }
