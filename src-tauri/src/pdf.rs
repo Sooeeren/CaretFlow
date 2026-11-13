@@ -479,3 +479,79 @@ fn wrap_contents(doc: &mut Document, page_id: ObjectId, open: ObjectId, close: O
     page.set("Contents", Object::Array(arr));
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A two-page PDF like the print engines write: pages with a content stream and a font.
+    fn sample(path: &Path) {
+        let mut doc = Document::with_version("1.7");
+        let pages_id = doc.new_object_id();
+        let font = doc.add_object(dictionary! { "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Courier" });
+        let mut kids = vec![];
+        for text in ["one", "two"] {
+            let content = doc.add_object(Stream::new(Dictionary::new(), format!("BT /F1 12 Tf 72 720 Td ({text}) Tj ET").into_bytes()));
+            let page = doc.add_object(dictionary! {
+                "Type" => "Page",
+                "Parent" => pages_id,
+                "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
+                "Contents" => content,
+                "Resources" => dictionary! { "Font" => dictionary! { "F1" => font } },
+            });
+            kids.push(page.into());
+        }
+        doc.objects.insert(pages_id, Object::Dictionary(dictionary! { "Type" => "Pages", "Kids" => kids, "Count" => 2 }));
+        let catalog = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+        doc.trailer.set("Root", catalog);
+        doc.compress();
+        doc.save(path).unwrap();
+    }
+
+    #[test]
+    fn stamps_page_numbers_header_and_properties() {
+        let dir = std::env::temp_dir().join(format!("caretflow-pdf-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (raw, out) = (dir.join("raw.pdf"), dir.join("out.pdf"));
+        sample(&raw);
+        let o = PdfOptions {
+            page_width_mm: 210.0,
+            page_height_mm: 297.0,
+            landscape: false,
+            margin_mm: 18.0,
+            page_numbers: "n/N".into(),
+            header: "Report".into(),
+            footer: String::new(),
+            skip_first_page: false,
+            title: "Test Title".into(),
+            author: "Ada".into(),
+            subject: String::new(),
+            keywords: String::new(),
+        };
+        postprocess(&raw, &out, &o).unwrap();
+
+        let doc = Document::load(&out).unwrap();
+        let pages = doc.get_pages();
+        assert_eq!(pages.len(), 2);
+        for (n, id) in pages.values().enumerate() {
+            // every content stream of the page, decompressed (works the same across lopdf versions)
+            let text: String = doc
+                .get_page_contents(*id)
+                .iter()
+                .map(|s| {
+                    let stream = doc.get_object(*s).unwrap().as_stream().unwrap();
+                    String::from_utf8_lossy(&stream.decompressed_content().unwrap_or_else(|_| stream.content.clone())).to_string()
+                })
+                .collect();
+            assert!(text.contains(&format!("({} / 2) Tj", n + 1)), "page number on page {}: {text}", n + 1);
+            assert!(text.contains("(Report) Tj"), "header on page {}", n + 1);
+            assert!(text.contains(if n == 0 { "(one) Tj" } else { "(two) Tj" }), "original content kept");
+        }
+        let info = match doc.trailer.get(b"Info").unwrap() {
+            Object::Reference(id) => doc.get_object(*id).unwrap().as_dict().unwrap().clone(),
+            _ => panic!("no Info"),
+        };
+        assert_eq!(info.get(b"Title").unwrap().as_str().unwrap(), b"Test Title");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}
