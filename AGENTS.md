@@ -77,13 +77,14 @@ These decide most design questions:
 | `src/linenumbers.js` | Every-fifth-line numbers in the rendered view, measured from the text layout |
 | `src/caret.js` | The text cursor CaretFlow draws itself in the rendered view (Linux default; WebKitGTK leaves stale carets) |
 | `src-tauri/windows/installer-hooks.nsh` | Windows installer hooks: remove an old Folio install, recreate its shortcuts |
+| `src-tauri/linux/caretflow.desktop` | Desktop file of the `.deb`, `.rpm` and Arch package: the Markdown file type and `%f`, so file managers offer CaretFlow under "Open with" |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
 | `src-tauri/src/cloud.rs` | Cloud Sync commands: HTTP (reqwest, also used by AI), folder scan, sync trash, `secrets.json`, running rclone |
 | `src-tauri/src/android.rs`, `src-tauri/gen/android` | Android: bridge to `CaretFlowPlugin.kt` (content:// files, storage permission, share, print, PDF via `PdfPrint.java`); the Gradle project with manifest, icons and signing |
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, exports, source/rendered round trip, editor/export spacing) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -178,3 +179,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-13 | Export as Word (.docx, with editable equations), OpenDocument, EPUB, LaTeX and plain text; `--export-docx` etc.; scripts/checks/exports.mjs |
 | Claude Opus 5.5 | Claude Code | 2026-11-13 | 0.11.2 release; issue #27: switching views keeps the typed Markdown, rendered edits keep the document's bullet and rule style (scripts/checks/roundtrip.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-13 | PDF/HTML export spacing matches the rendered editor (lists, sub-points, task boxes, quotes, callouts, code, tables, rules); editor code blocks in the code font (scripts/checks/spacing.mjs) |
+| Claude Fable 5.2 | Claude Code | 2026-11-15 | Issues #28–#30: Vim scrolling (Ctrl+E / Ctrl+Y, page keys, zz), `:Explore`, Ctrl+W on indented lines, red only for failed commands, the cursor keeps its place between views, "Open with" on Linux, page preview scrolling (scripts/checks/vim.mjs, preview.mjs) |
