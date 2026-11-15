@@ -1,6 +1,6 @@
 [package]
 name = "caretflow"
-version = "0.11.3"
+version = "0.12.0"
 description = "CaretFlow - a fast, seamless Markdown reader & editor"
 edition = "2021"
 
