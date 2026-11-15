@@ -2101,7 +2101,7 @@ async function exportPdfDialog(settingsOnly = false) {
 }
 
 // ── page preview: the real PDF (same pipeline as Export as PDF), rendered with pdf.js
-const PV = { open: false, doc: null, busy: false, pending: false, zoom: 0, file: null, token: 0, fitScale: 1 }
+const PV = { open: false, doc: null, busy: false, pending: false, zoom: 0, file: null, token: 0, fitScale: 1, scrolled: 0, drawing: false, timer: 0 }
 const pagePreviewOpen = () => PV.open
 const pvStatus = (t) => ($('#pv-status').textContent = t)
 
@@ -2119,6 +2119,7 @@ function openPagePreview() {
 function closePagePreview() {
   PV.open = false
   PV.token++
+  clearTimeout(PV.timer)
   $('#pagepreview').hidden = true
   $('#pv-resizer').hidden = true
   $('#pv-pages').innerHTML = ''
@@ -2188,41 +2189,77 @@ async function layoutPages() {
   PV.fitScale = Math.max(0.15, (box.clientWidth - 40) / first.getViewport({ scale: 1 }).width)
   const scale = PV.zoom || PV.fitScale
   $('#pv-zoom').textContent = PV.zoom ? Math.round(PV.zoom * 100) + '%' : 'Fit'
+  const dpr = devicePixelRatio || 1
   const frag = document.createDocumentFragment()
-  const wraps = []
   for (let i = 1; i <= doc.numPages; i++) {
     const page = i === 1 ? first : await doc.getPage(i)
     if (token !== PV.token) return
     const vp = page.getViewport({ scale })
-    const wrap = el('div', { class: 'pv-page', style: `width:${vp.width}px;height:${vp.height}px` }, el('span', { class: 'pv-num' }, String(i)))
+    // A page is a whole number of screen pixels in size and its canvas has exactly that many: a
+    // canvas that is stretched by a fraction of a pixel is resampled every time it is painted, and
+    // scrolling paints it again and again (issue #30)
+    const w = Math.max(1, Math.round(vp.width * dpr))
+    const h = Math.max(1, Math.round(vp.height * dpr))
+    const wrap = el('div', { class: 'pv-page', style: `width:${w / dpr}px;height:${h / dpr}px` }, el('span', { class: 'pv-num' }, String(i)))
     if (oldCanvases[i - 1]) wrap.prepend(oldCanvases[i - 1])
     wrap._page = page
-    wrap._scale = scale
-    wraps.push(wrap)
+    wrap._w = w
+    wrap._h = h
     frag.append(wrap)
   }
   box.innerHTML = ''
   box.append(frag)
   box.scrollTop = ratio * Math.max(0, box.scrollHeight - box.clientHeight)
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const en of entries)
-        if (en.isIntersecting) {
-          io.unobserve(en.target)
-          drawPage(en.target, token)
-        }
-    },
-    { root: box, rootMargin: '600px 0px' },
-  )
-  wraps.forEach((w) => io.observe(w))
+  drawPages()
+}
+
+// pdf.js paints a page on the main thread, so one that is drawn while the list moves makes the
+// scrolling stutter, most of all on Linux, where WebKitGTK paints without the GPU (issue #30).
+// Pages are drawn one after the other while nothing scrolls: the visible ones first, then outwards
+// from there, so that a page is usually ready before it is scrolled to.
+const PV_IDLE = 120 // ms without scrolling before the next page is drawn
+const PV_PIXELS = 48e6 // canvas pixels kept at most (about 190 MB); pages far away give theirs back
+function drawPages() {
+  clearTimeout(PV.timer)
+  if (!PV.open || PV.drawing) return
+  const idle = PV_IDLE - (performance.now() - PV.scrolled)
+  if (idle > 0) return void (PV.timer = setTimeout(drawPages, idle))
+  const box = $('#pv-pages')
+  const seen = box.getBoundingClientRect()
+  const pages = [...box.querySelectorAll('.pv-page')]
+    .map((wrap) => {
+      const r = wrap.getBoundingClientRect()
+      const canvas = wrap.querySelector('canvas')
+      return { wrap, canvas, away: Math.max(0, r.top - seen.bottom, seen.top - r.bottom), pixels: canvas ? canvas.width * canvas.height : 0 }
+    })
+    .sort((a, b) => a.away - b.away)
+  const next = pages.find((p) => !p.wrap._drawn)
+  if (!next) return
+  // make room: the pages farthest away give up their canvas, but none that is nearer than this one
+  const need = next.wrap._w * next.wrap._h
+  let used = pages.reduce((n, p) => n + p.pixels, 0) - next.pixels
+  for (let i = pages.length - 1; used + need > PV_PIXELS && i >= 0 && pages[i].away > next.away; i--) {
+    const p = pages[i]
+    if (!p.canvas) continue
+    used -= p.pixels
+    p.canvas.width = p.canvas.height = 0 // gives the memory back at once
+    p.canvas.remove()
+    p.wrap._drawn = false
+  }
+  if (used + need > PV_PIXELS && next.away > 0) return // all that fits is drawn; scrolling there continues
+  PV.drawing = true
+  drawPage(next.wrap, PV.token).finally(() => {
+    PV.drawing = false
+    PV.timer = setTimeout(drawPages, 0)
+  })
 }
 async function drawPage(wrap, token) {
   if (token !== PV.token) return
-  const dpr = devicePixelRatio || 1
-  const vp = wrap._page.getViewport({ scale: wrap._scale * dpr })
+  wrap._drawn = true // also when it fails: no endless retries
+  const vp = wrap._page.getViewport({ scale: wrap._w / wrap._page.getViewport({ scale: 1 }).width })
   const canvas = document.createElement('canvas')
-  canvas.width = Math.floor(vp.width)
-  canvas.height = Math.floor(vp.height)
+  canvas.width = wrap._w
+  canvas.height = wrap._h
   try {
     await wrap._page.render({ canvas, canvasContext: canvas.getContext('2d'), viewport: vp }).promise
   } catch (e) {
@@ -2252,6 +2289,14 @@ function wirePagePreview() {
     layoutPages()
   }
   $('#pv-zoom').title = 'Click to fit width'
+  $('#pv-pages').addEventListener(
+    'scroll',
+    () => {
+      PV.scrolled = performance.now()
+      drawPages() // once the list is still again
+    },
+    { passive: true },
+  )
   new ResizeObserver(debounce(() => PV.open && !PV.zoom && PV.doc && layoutPages(), 150)).observe($('#pv-pages'))
   const rz = $('#pv-resizer')
   rz.onmousedown = (e) => {
