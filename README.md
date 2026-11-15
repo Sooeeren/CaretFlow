@@ -32,6 +32,8 @@ Pick a file from the [latest release](https://github.com/Sooeeren/CaretFlow/rele
 | Arch / Manjaro | `caretflow-bin-*-x86_64.pkg.tar.zst` | `sudo pacman -U ./caretflow-bin-*.pkg.tar.zst` |
 | Android 7+ | `CaretFlow-*.apk` | Open it on the phone; see [docs/ANDROID.md](docs/ANDROID.md) |
 
+The `.deb`, `.rpm` and Arch package register CaretFlow for Markdown files, so it shows up under
+"Open with" and can be made the default app.
 The Windows installer, AppImage, `.deb` and `.rpm` update themselves from inside the app; on Android,
 CaretFlow offers the new APK. To build
 CaretFlow yourself, see [docs/BUILDING.md](docs/BUILDING.md).

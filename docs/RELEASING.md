@@ -11,6 +11,9 @@ and attaches them to a draft release.
 - The `.deb` and `.rpm` are rebuilt by `scripts/deb-repackage.sh` and `scripts/rpm-repackage.sh` as
   `caretflow` (Tauri would call them `caret-flow`). They replace the packages of the Folio days
   (`folio`, and `folio-markdown` for the `.rpm`).
+- The Linux packages take their desktop file from `src-tauri/linux/caretflow.desktop`: it names the
+  Markdown file type and passes the file (`%f`), which is what makes file managers offer CaretFlow
+  under "Open with" and as the default app. The repackage scripts stop the release if that is missing.
 - The Windows installer removes an old Folio install first (`src-tauri/windows/installer-hooks.nsh`).
 
 ## Signed updates

@@ -2,8 +2,12 @@
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
     "linux": {
+      "deb": {
+        "desktopTemplate": "linux/caretflow.desktop"
+      },
       "rpm": {
-        "release": "1"
+        "release": "1",
+        "desktopTemplate": "linux/caretflow.desktop"
       }
     }
   }

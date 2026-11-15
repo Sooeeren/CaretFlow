@@ -14,6 +14,11 @@ trap 'rm -rf "$WORK"' EXIT
 
 dpkg-deb -R "$SRC" "$WORK/pkg"
 [ -x "$WORK/pkg/usr/bin/caretflow" ] || { echo "no usr/bin/caretflow in $SRC" >&2; exit 1; }
+# "Open with" offers CaretFlow only if its desktop file takes a file and names Markdown
+# (src-tauri/linux/caretflow.desktop)
+for d in "$WORK"/pkg/usr/share/applications/*.desktop; do
+  grep -q '^Exec=caretflow %f$' "$d" && grep -q '^MimeType=text/markdown;' "$d" || { echo "desktop file without %f or the Markdown type:" >&2; cat "$d" >&2; exit 1; }
+done
 CTRL="$WORK/pkg/DEBIAN/control"
 sed -i 's/^Package: .*/Package: caretflow/' "$CTRL"
 grep -q '^Replaces:' "$CTRL" || printf 'Replaces: folio\n' >> "$CTRL"

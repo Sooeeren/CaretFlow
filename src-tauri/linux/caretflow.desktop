@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name={{name}}
+GenericName=Markdown Editor
+{{#if comment}}
+Comment={{comment}}
+{{/if}}
+Exec={{exec}} %f
+Icon={{icon}}
+StartupWMClass={{exec}}
+Terminal=false
+Categories=Office;WordProcessor;TextEditor;Utility;
+MimeType=text/markdown;text/x-markdown;
+Keywords=markdown;md;notes;writing;editor;
