@@ -31,6 +31,17 @@ Turn on **Open Files in Source Mode** to always edit that way. Vim mode shows li
 (optionally relative, like `:set relativenumber`; without Vim, every fifth line can be numbered:
 View → Line Numbers), and CaretFlow starts in source mode again when you quit there.
 
+- **Scrolling**: `Ctrl+E` / `Ctrl+Y` scroll the text line by line, `Ctrl+D` / `Ctrl+U` by half a page,
+  `Ctrl+F` / `Ctrl+B` by a page; `zz`, `zt` and `zb` put the cursor's line in the middle, at the top or
+  at the bottom.
+- **`:Explore`** (or `:Ex`) opens the file tree and moves the keyboard there: `j` / `k` go down and up,
+  `l` or `Enter` opens a folder or a file, `h` closes a folder or goes to the one a file is in, `gg` /
+  `G` jump to the first and last row. `Escape` goes back to the text; `:Explore` again closes the
+  tree. These keys only work in a tree that was opened with `:Explore`.
+- **Messages** in the command line are red only when something failed.
+- **The cursor keeps its place** when you switch between the rendered view and source mode (`Ctrl+/`,
+  `:pre`), with or without Vim: the same word, at the same height in the window.
+
 ## PDF export and page preview
 
 - **Export as PDF** (`Ctrl+Alt+E`) writes the file directly, no print dialog: paper size, orientation,

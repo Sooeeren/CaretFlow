@@ -76,7 +76,7 @@ function lineNumbers(opts) {
   ]
 }
 
-/** Register Vim ex commands (:w, :q, …) once. `h` = { save, close, forceClose, toggleMode, quickOpen, open } */
+/** Register Vim ex commands (:w, :q, …) once. `h` = { save, close, forceClose, toggleMode, quickOpen, open, explore } */
 let exDefined = false
 export function defineVimCommands(h) {
   if (exDefined) return
@@ -98,8 +98,22 @@ export function defineVimCommands(h) {
     const arg = (p?.argString || '').trim()
     arg ? h.open(arg) : h.quickOpen()
   })
-  Vim.defineEx('preview', 'pre', () => h.toggleMode())
-  Vim.defineEx('wysiwyg', 'wys', () => h.toggleMode())
+  // after the command line has closed: it still reaches for the editor that the switch removes
+  const toggleMode = () => setTimeout(() => h.toggleMode(), 0)
+  Vim.defineEx('preview', 'pre', toggleMode)
+  Vim.defineEx('wysiwyg', 'wys', toggleMode)
+  // netrw's file explorer is the Files tab here, with Vim keys while it was opened this way
+  for (const [name, short] of [
+    ['Explore', 'Ex'],
+    ['Lexplore', 'Lex'],
+    ['Vexplore', 'Vex'],
+  ])
+    Vim.defineEx(name, short, () => h.explore())
+
+  // Insert-mode CTRL-W as in Vim: on a line that holds only indentation it deletes back to the
+  // start of that line. The plugin's own went on into the line above and took its last word too.
+  Vim.defineAction('folioDeleteWordBefore', (cm) => deleteWordBefore(cm.cm6))
+  Vim.mapCommand('<C-w>', 'action', 'folioDeleteWordBefore', {}, { context: 'insert' })
 
   // Visual-mode number increment, missing from the Vim plugin:
   //   {Visual}CTRL-A / CTRL-X   add/subtract [count] to the first number on every selected line
@@ -112,6 +126,80 @@ export function defineVimCommands(h) {
     ['g<C-x>', false, true],
   ])
     Vim.mapCommand(keys, 'action', 'folioVisualIncrement', { increase, progressive }, { context: 'visual', isEdit: true })
+}
+
+const isBlank = (c) => /\s/.test(c)
+const isWordChar = (c) => /[\p{L}\p{N}_]/u.test(c)
+/** How many characters CTRL-W deletes before column `col` of `text`: blanks, then one word or one run of punctuation. */
+function wordBefore(text, col) {
+  let i = col
+  while (i > 0 && isBlank(text[i - 1])) i--
+  if (i > 0) {
+    const word = isWordChar(text[i - 1])
+    while (i > 0 && !isBlank(text[i - 1]) && isWordChar(text[i - 1]) === word) i--
+  }
+  return col - i
+}
+
+function deleteWordBefore(view) {
+  const { state } = view
+  view.dispatch(
+    state.changeByRange((r) => {
+      const line = state.doc.lineAt(r.head)
+      // at the start of a line it joins the line above, as Backspace does
+      const n = r.head > line.from ? wordBefore(line.text, r.head - line.from) : r.head > 0 ? 1 : 0
+      return { changes: { from: r.head - n, to: r.head }, range: EditorSelection.cursor(r.head - n) }
+    }),
+    { scrollIntoView: true, userEvent: 'delete.backward' },
+  )
+}
+
+// What the Vim plugin reports through the same channel as its errors: "3 lines yanked", :registers,
+// the value of an option, … Only these texts are failures.
+const VIM_ERROR = /^(E\d+:|\w*Error\b|Invalid\b|Unknown\b|No (such|match|matches|previous|word)\b|Not an editor command|Argument\b.*\brequired|Regular Expression missing|Substitutions should be|Mark not set|Pattern not found)/
+
+/**
+ * Fit the Vim plugin to this editor (issues #28, #29):
+ *  - CaretFlow scrolls the whole document area; CodeMirror's own scroll element never scrolls here.
+ *    The plugin measured and moved that element, so CTRL-E / CTRL-Y and zz / zt / zb did nothing,
+ *    CTRL-D took a whole page and CTRL-F went to the end of the document.
+ *  - it prints every message in red, also "3 lines yanked".
+ */
+function fitVim(cm, view, scroller) {
+  if (scroller) {
+    // the plugin's "local" coordinates start at the top of the text
+    const top = () => scroller.getBoundingClientRect().top - view.contentDOM.getBoundingClientRect().top
+    cm.getScrollInfo = () => ({
+      left: scroller.scrollLeft,
+      top: top(),
+      height: scroller.scrollHeight,
+      width: scroller.scrollWidth,
+      clientHeight: scroller.clientHeight,
+      clientWidth: scroller.clientWidth,
+    })
+    cm.scrollTo = (_x, y) => {
+      if (y != null) scroller.scrollTop += y - top()
+    }
+    // CTRL-F / CTRL-B: this is only asked for a move by pages. The text moves by a page (less two
+    // lines, as in Vim) and the cursor with it, so it stays where it was in the window.
+    const findPosV = cm.findPosV.bind(cm)
+    cm.findPosV = (start, amount, unit, goalColumn) => {
+      if (unit !== 'page') return findPosV(start, amount, unit, goalColumn)
+      const page = Math.max(view.defaultLineHeight, scroller.clientHeight - 2 * view.defaultLineHeight)
+      let range = EditorSelection.cursor(cm.indexFromPos(start), 1, undefined, goalColumn)
+      for (let i = Math.round(Math.abs(amount)); i > 0; i--) range = view.moveVertically(range, amount > 0, page)
+      scroller.scrollTop += Math.round(amount) * page
+      return cm.posFromIndex(range.head)
+    }
+  }
+  const notify = cm.openNotification.bind(cm)
+  cm.openNotification = (node, options) => {
+    for (const m of node.matches?.('.cm-vim-message') ? [node] : node.querySelectorAll?.('.cm-vim-message') || []) {
+      m.style.color = ''
+      m.classList.toggle('cm-vim-error', VIM_ERROR.test(m.textContent.trim()))
+    }
+    return notify(node, options)
+  }
 }
 
 const posLess = (a, b) => a.line < b.line || (a.line === b.line && a.ch < b.ch)
@@ -152,7 +240,11 @@ export function visualIncrement(cm, args, vimState) {
   cm.setCursor({ line: segs[0].ln, ch: segs[0].s })
 }
 
-export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, numbers = null, onVimMode, extensions = [], panelHost = null }) {
+/**
+ * `scroller`: the element that scrolls the document (Vim's scroll commands move it);
+ * `cursor`: where the cursor starts, as an offset into `text`.
+ */
+export function createSource(parent, { text, onChange, onSelection, vim: vimOn = false, numbers = null, onVimMode, extensions = [], panelHost = null, scroller = null, cursor = 0 }) {
   const vimSlot = new Compartment()
   const numberSlot = new Compartment()
   let numberKey = JSON.stringify(numbers)
@@ -161,6 +253,7 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
     parent,
     state: EditorState.create({
       doc: text,
+      selection: { anchor: Math.max(0, Math.min(cursor || 0, text.length)) },
       extensions: [
         vimSlot.of(vimOn ? vim({ status: false }) : []), // must precede other keymaps
         // The Vim : command line lives below the scroll area: inside it, focusing its input
@@ -196,6 +289,7 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
   const attachVim = () => {
     const cm = getCM(view)
     if (!cm || vimListener) return
+    fitVim(cm, view, scroller)
     vimListener = (e) => onVimMode?.(e.mode === 'visual' && e.subMode ? `visual ${e.subMode}` : e.mode)
     cm.on('vim-mode-change', vimListener)
     onVimMode?.('normal')
@@ -298,6 +392,12 @@ export function createSource(parent, { text, onChange, onSelection, vim: vimOn =
       view.focus()
     },
     cursorLine: () => view.state.doc.lineAt(view.state.selection.main.head).number,
+    cursorOffset: () => view.state.selection.main.head,
+    /** Where the cursor is on screen (y, in the window). Text far outside the window is not laid out yet: an estimate then. */
+    cursorTop() {
+      const head = view.state.selection.main.head
+      return view.coordsAtPos(head)?.top ?? view.documentTop + view.lineBlockAt(head).top
+    },
     lineTop(n) {
       const line = view.state.doc.line(Math.max(1, Math.min(n, view.state.doc.lines)))
       return view.lineBlockAt(line.from).top

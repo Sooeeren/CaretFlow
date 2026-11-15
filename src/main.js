@@ -3,9 +3,9 @@ import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 import './style.css'
 
-import { editorViewCtx, serializerCtx, commandsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
+import { editorViewCtx, serializerCtx, parserCtx, commandsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import { callCommand, $prose, $inputRule } from '@milkdown/kit/utils'
-import { Plugin, PluginKey, TextSelection } from '@milkdown/kit/prose/state'
+import { Plugin, PluginKey, Selection, TextSelection } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 import * as cmk from '@milkdown/kit/preset/commonmark'
 import * as gfm from '@milkdown/kit/preset/gfm'
@@ -572,6 +572,7 @@ async function ensureSourceMod() {
     toggleMode: () => toggleSource(),
     quickOpen: () => quickOpen(),
     open: (name) => openFile(resolve(name)),
+    explore: () => toggleExplore(),
   })
   return sourceMod
 }
@@ -581,11 +582,126 @@ function setVimMode(m) {
   updateFlags()
 }
 
+// ── the cursor keeps its place when the mode changes (issue #29)
+// Only Milkdown's own parser and serializer know where a place in the Markdown is in the rendered
+// document. So a copy of the text, with a character that is nowhere in it at the cursor, goes through
+// them, and the cursor is where that character comes out. Punctuation, so emphasis next to it still
+// parses; the document itself is never touched.
+const CURSOR_MARKS = ['\u2E3B', '\u2E3A', '\u29D8', '\u2999'] // rare punctuation
+const cursorMark = (text) => CURSOR_MARKS.find((m) => !text.includes(m))
+const CURSOR_MAX = 2e6 // characters; a longer document keeps the part of the text in view instead
+
+/**
+ * The offset in `text` of the place between `before` and `after`, which are another writing of the
+ * same Markdown: the rendered editor's own, while `text` is what was typed (`*` or `-` bullets,
+ * `__` or `**`, escapes, numbering …). Letters are the same in both, so they are counted.
+ */
+function alignOffset(before, after, text) {
+  if (before + after === text) return before.length
+  let letters = 0
+  let end = 0
+  for (const m of before.matchAll(/\p{L}/gu)) {
+    letters++
+    end = m.index + m[0].length
+  }
+  let at = 0
+  if (letters) {
+    at = text.length
+    let n = 0
+    for (const m of text.matchAll(/\p{L}/gu))
+      if (++n === letters) {
+        at = m.index + m[0].length
+        break
+      }
+  }
+  // what follows the last letter, as far as both agree: digits, punctuation, the start of a new block
+  const tail = before.slice(end)
+  let k = 0
+  while (k < tail.length && text[at + k] === tail[k]) k++
+  return at + k
+}
+
+/** Where the rendered editor's cursor is in `text`, the document's Markdown (an offset), or null. */
+function cursorToSource(text) {
+  const v = view()
+  const mark = cursorMark(text)
+  if (!v || !mark || text.length > CURSOR_MAX) return null
+  // a document that was only opened, never clicked into: the very start, as before
+  if (!v.hasFocus() && v.state.selection.eq(Selection.atStart(v.state.doc))) return 0
+  try {
+    const doc = v.state.tr.insertText(mark, v.state.selection.head).doc
+    const md = crepe.editor.action((ctx) => ctx.get(serializerCtx)(doc))
+    const at = md.indexOf(mark)
+    return at < 0 ? null : alignOffset(md.slice(0, at), md.slice(at + mark.length), text)
+  } catch {
+    return null
+  }
+}
+
+/** Where the offset `at` of `text` is in the rendered editor made from that text (a position), or null. */
+function cursorToRendered(text, at) {
+  const v = view()
+  const mark = cursorMark(text)
+  if (!v || !mark || text.length > CURSOR_MAX) return null
+  const bol = text.lastIndexOf('\n', at - 1) + 1
+  const eol = text.indexOf('\n', at) < 0 ? text.length : text.indexOf('\n', at)
+  // inside `- `, `> ` or `## ` the mark would turn the line into something else: go behind them
+  const lead = /^[ \t]*(?:>[ \t]?)*(?:(?:[-*+]|\d+[.)])[ \t]+(?:\[[ xX]\][ \t]+)?|#{1,6}[ \t]+)?/.exec(text.slice(bol, eol))[0].length
+  // in a link's address, a table's rule or a fence line the mark is not text: try the ends of the line
+  for (const o of new Set([Math.max(at, Math.min(bol + lead, eol)), eol, bol])) {
+    try {
+      const doc = crepe.editor.action((ctx) => ctx.get(parserCtx)(text.slice(0, o) + mark + text.slice(o)))
+      let pos = null
+      doc.descendants((n, p) => {
+        if (pos == null && n.isText && n.text.includes(mark)) pos = p + n.text.indexOf(mark)
+        return pos == null
+      })
+      if (pos != null) return Math.min(pos, v.state.doc.content.size)
+    } catch {}
+  }
+  return null
+}
+
+/** The cursor's height in the window (also when it is scrolled out of view), or null. */
+function cursorTop() {
+  try {
+    return (S.mode === 'source' ? source?.cursorTop() : view()?.coordsAtPos(view().state.selection.head).top) ?? null
+  } catch {
+    return null
+  }
+}
+
+/** How far below the top of the document area the cursor is, when it can be seen there (else null). */
+function cursorY() {
+  const top = cursorTop()
+  const box = scroller.getBoundingClientRect()
+  return top != null && top >= box.top && top <= box.bottom - 16 ? top - box.top : null
+}
+
+/** After a mode change: the cursor at the height `y` it had, or else the same part of the text as before. */
+function restoreView(y, ratio) {
+  if (y == null) return requestAnimationFrame(() => setScrollRatio(ratio))
+  const place = () => {
+    const top = cursorTop()
+    if (top != null) scroller.scrollTop += top - scroller.getBoundingClientRect().top - y
+  }
+  // twice: source mode lays out only the text near the window, so the first step is an estimate
+  requestAnimationFrame(() => {
+    place()
+    requestAnimationFrame(place)
+  })
+}
+
 async function enterSource() {
   const mod = await ensureSourceMod()
   const ratio = scrollRatio()
+  // the rendered editor reports changes a moment after they happen: ask it, or the last words
+  // typed before a quick switch would be dropped for the text on disk
+  if (!S.dirty && crepe && S.baseline !== null && crepe.getMarkdown() !== S.baseline) setDirty(true)
   const text = S.dirty ? wysiwygText() : S.diskText
   const clean = !S.dirty
+  const y = cursorY()
+  const cursor = cursorToSource(text)
   if (crepe) {
     const old = crepe
     crepe = null
@@ -602,6 +718,8 @@ async function enterSource() {
     numbers: lineNumberOpts(),
     extensions: [writingSourceExtension()],
     panelHost: $('#source-panels'),
+    scroller,
+    cursor: cursor ?? 0,
     onVimMode: setVimMode,
     onChange: (t) => {
       setDirty(S.baseline === null ? true : t !== S.baseline)
@@ -617,7 +735,7 @@ async function enterSource() {
   S.baseline = clean ? text : null
   source.view.contentDOM.spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (S.readonly) source.view.contentDOM.contentEditable = 'false'
-  requestAnimationFrame(() => setScrollRatio(ratio))
+  restoreView(cursor == null ? null : y, ratio)
   source.focus()
   afterModeSwitch()
 }
@@ -626,6 +744,8 @@ async function exitSource() {
   const ratio = scrollRatio()
   const text = source.getText()
   const clean = !S.dirty
+  const y = cursorY()
+  const at = source.cursorOffset()
   source.destroy()
   source = null
   setVimMode(null)
@@ -635,7 +755,20 @@ async function exitSource() {
   S.mode = 'wysiwyg'
   await createEditor(text)
   S.baseline = clean ? crepe.getMarkdown() : null
-  requestAnimationFrame(() => setScrollRatio(ratio))
+  const pos = cursorToRendered(text, at)
+  const v = view()
+  const putCursor = () => {
+    if (pos == null || !v || v !== view()) return
+    const sel = Selection.near(v.state.doc.resolve(Math.min(pos, v.state.doc.content.size)))
+    if (!sel.eq(v.state.selection)) v.dispatch(v.state.tr.setSelection(sel))
+  }
+  putCursor()
+  // typing goes on where it stopped (not on Android, where that would bring up the keyboard)
+  if (!IS_ANDROID) v?.focus()
+  // Crepe's list items note the selection while they are put on the page and set it again a frame
+  // later, which would be the start of the document: put the cursor back after that
+  requestAnimationFrame(putCursor)
+  restoreView(pos == null ? null : y, ratio)
   afterModeSwitch()
 }
 
@@ -1119,6 +1252,93 @@ async function renderTree() {
   await renderDir(root, frag, open, 0)
   tree.innerHTML = ''
   tree.append(frag)
+  if (exploreOn()) exploreSelect([...tree.querySelectorAll('.tree-row')].find((r) => r.title === explore.path))
+}
+
+// ── :Explore (Vim): the Files tab, with Vim keys until it is closed again (issue #29)
+let explore = null // set while the file tree was opened by :Explore: { sidebar, tab } as they were before, path of the selected row
+const exploreOn = () => !!explore && settings.sidebar && settings.sidebarTab === 'files'
+const treeRows = () => [...$('#tree').querySelectorAll('.tree-row')].filter((r) => r.offsetParent)
+
+function exploreSelect(row) {
+  for (const r of $('#tree').querySelectorAll('.tree-row.kb')) r.classList.remove('kb')
+  if (!row || !explore) return
+  row.classList.add('kb')
+  row.scrollIntoView({ block: 'nearest' })
+  explore.path = row.title
+}
+
+/** `:Explore` opens the file tree and moves the keyboard there; `:Explore` again closes it. */
+function toggleExplore() {
+  if (exploreOn()) {
+    const before = explore
+    explore = null
+    exploreSelect(null)
+    // what the sidebar showed before, if that was something else; otherwise it closes
+    if (before.sidebar && before.tab !== 'files') setTab(before.tab)
+    else setSidebar(false)
+    return focusEditor()
+  }
+  explore = { sidebar: settings.sidebar, tab: settings.sidebarTab, path: null }
+  setSidebar(true)
+  setTab('files')
+  const rows = treeRows()
+  exploreSelect(rows.find((r) => r.classList.contains('current')) || rows[0])
+  // Vim's command line hands the keyboard back to the text as it closes: take it after that
+  setTimeout(() => exploreOn() && $('#tree').focus({ preventScroll: true }), 0)
+}
+
+/** Keys in the file tree while it was opened by `:Explore`: j k h l, gg, G, Enter, Escape. */
+function exploreKey(e) {
+  if (!exploreOn() || e.ctrlKey || e.altKey || e.metaKey) return
+  const rows = treeRows()
+  const cur = rows.find((r) => r.classList.contains('kb'))
+  const i = rows.indexOf(cur)
+  const go = (n) => rows.length && exploreSelect(rows[Math.max(0, Math.min(rows.length - 1, n))])
+  const isOpen = (row) => row.classList.contains('dir') && !row.nextElementSibling.hidden
+  const g = explore.g
+  explore.g = false
+  switch (e.key) {
+    case 'j':
+    case 'ArrowDown':
+      go(i + 1)
+      break
+    case 'k':
+    case 'ArrowUp':
+      go(Math.max(0, i - 1))
+      break
+    case 'G':
+      go(rows.length - 1)
+      break
+    case 'g':
+      if (g) go(0)
+      else explore.g = true
+      break
+    case 'l':
+    case 'ArrowRight':
+    case 'Enter':
+    case 'o':
+      if (!cur) break
+      if (!cur.classList.contains('dir')) {
+        // a file: open it and go on writing; the tree stays until :Explore closes it
+        Promise.resolve(cur.onclick()).then(() => exploreOn() && focusEditor())
+      } else if (isOpen(cur) && /^(l|ArrowRight)$/.test(e.key)) go(i + 1)
+      else cur.onclick()
+      break
+    case 'h':
+    case 'ArrowLeft':
+      if (!cur) break
+      if (isOpen(cur)) cur.onclick()
+      else if (cur.parentElement.classList.contains('tree-kids')) exploreSelect(cur.parentElement.previousElementSibling)
+      break
+    case 'Escape':
+      focusEditor()
+      break
+    default:
+      return
+  }
+  e.preventDefault()
+  e.stopPropagation()
 }
 
 async function renderDir(dir, parent, open, depth) {
@@ -4400,6 +4620,8 @@ function wireUi() {
   // sidebar
   for (const b of document.querySelectorAll('.sb-tabs button')) b.onclick = () => setTab(b.dataset.tab)
   $('#sb-toggle').onclick = () => setSidebar()
+  $('#tree').tabIndex = -1 // takes the keyboard for :Explore
+  $('#tree').addEventListener('keydown', exploreKey)
   $('#btn-openfolder').onclick = openFolderDialog
   $('#btn-closefolder').onclick = closeFolder
   $('#btn-closefolder2').onclick = closeFolder

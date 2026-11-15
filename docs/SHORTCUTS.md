@@ -110,3 +110,5 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Right after an AutoCorrect fix | `Backspace` undoes it |
 | Spelling review panel | number keys pick a suggestion, `Enter` applies the first |
 | Vim mode | `:w`, `:q`, `:wq`, `:e`, `:pre` (back to the rendered view), `Ctrl+A` / `Ctrl+X` on numbers |
+| Vim mode: scrolling | `Ctrl+E` / `Ctrl+Y` line by line, `Ctrl+D` / `Ctrl+U` half a page, `Ctrl+F` / `Ctrl+B` a page, `zz` / `zt` / `zb` |
+| Vim mode: `:Explore` (`:Ex`) | opens the file tree: `j` / `k` move, `l` or `Enter` opens, `h` closes a folder or goes up, `gg` / `G`, `Escape` back to the text; `:Explore` again closes it |
