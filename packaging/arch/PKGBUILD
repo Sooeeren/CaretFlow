@@ -17,7 +17,7 @@ conflicts=('caretflow' 'folio-bin')
 replaces=('folio-bin')
 options=('!strip' '!debug')
 source=("https://github.com/Sooeeren/CaretFlow/releases/download/v${_ver}/CaretFlow_${_ver}_amd64.deb")
-sha256sums=('SKIP')
+sha256sums=('875a4838cac630f2b75997337eb7317d32416c5839da4ff9ca288f2b1506e7de')
 
 package() {
   bsdtar -xf data.tar.* -C "$pkgdir"
