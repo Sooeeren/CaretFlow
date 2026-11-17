@@ -34,14 +34,16 @@ until you click a suggestion or **Change**.
 | xAI (Grok) | console.x.ai | `grok-4-fast` |
 | OpenRouter | openrouter.ai | any model it lists |
 | Groq | console.groq.com | `llama-3.3-70b-versatile` |
+| NVIDIA NIM (build.nvidia.com) | build.nvidia.com (key starts with `nvapi-`) | `meta/llama-3.3-70b-instruct`, any model it lists |
 | Ollama (on this computer) | no key | `llama3.2`, `qwen3`, `gemma3` |
 | LM Studio (on this computer) | no key | the model you loaded |
+| NVIDIA NIM container (on this computer) | no key | the model the container serves (address `http://localhost:8000/v1`) |
 | Other OpenAI-compatible server | if it needs one | llama.cpp, vLLM, LocalAI, a company gateway… |
 
 Model names change often; **Load list** shows what your provider offers. A ChatGPT Plus or Claude Pro
 subscription is not an API key: those work through MCP instead.
 
-**Local models** (Ollama, LM Studio, llama.cpp) keep everything on your computer and cost nothing per
+**Local models** (Ollama, LM Studio, llama.cpp, a NIM container) keep everything on your computer and cost nothing per
 request. Smaller models are faster but less careful; 7–8B models work for spelling and grammar.
 
 ## Settings
@@ -124,4 +126,5 @@ words, the AI's duplicate is not shown.
 | *Rate limit* / *429* | The provider's own limit: wait, or lower Requests per hour |
 | *AI answer could not be read* | The model didn't answer in the expected format. Try a larger model or a lower temperature |
 | *Could not reach http://localhost:11434* | Is Ollama running (`ollama serve`)? |
+| *Could not reach http://localhost:8000* | Is the NIM container running, with port 8000 published (`-p 8000:8000`)? |
 | *Choose a model* | Enter a model name or use **Load list** |

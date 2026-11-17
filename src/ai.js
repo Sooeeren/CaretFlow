@@ -1,7 +1,7 @@
 // AI Writing Help (lazy, an extension): corrections and recommendations from the AI the user chooses.
 // Two request formats cover every provider: Anthropic's Messages API, and OpenAI's Chat Completions,
-// which Gemini, DeepSeek, Mistral, xAI, OpenRouter, Groq and local servers (Ollama, LM Studio,
-// llama.cpp, vLLM) all speak. Requests go through the Rust `cloud_http` command; nothing is sent
+// which Gemini, DeepSeek, Mistral, xAI, OpenRouter, Groq, NVIDIA NIM and local servers (Ollama,
+// LM Studio, llama.cpp, vLLM, a NIM container) all speak. Requests go through the Rust `cloud_http` command; nothing is sent
 // until the user set up a provider. Every request is counted against the user's limits.
 import { invoke } from '@tauri-apps/api/core'
 
@@ -22,8 +22,10 @@ export const PRESETS = [
   ['xai', 'xAI (Grok)', { format: 'openai', base: 'https://api.x.ai/v1', key: true }],
   ['openrouter', 'OpenRouter', { format: 'openai', base: 'https://openrouter.ai/api/v1', key: true }],
   ['groq', 'Groq', { format: 'openai', base: 'https://api.groq.com/openai/v1', key: true }],
+  ['nvidia', 'NVIDIA NIM (build.nvidia.com)', { format: 'openai', base: 'https://integrate.api.nvidia.com/v1', key: true }],
   ['ollama', 'Ollama (on this computer)', { format: 'openai', base: 'http://localhost:11434/v1', key: false }],
   ['lmstudio', 'LM Studio (on this computer)', { format: 'openai', base: 'http://localhost:1234/v1', key: false }],
+  ['nim', 'NVIDIA NIM container (on this computer)', { format: 'openai', base: 'http://localhost:8000/v1', key: false }],
   ['custom', 'Other OpenAI-compatible server', { format: 'openai', base: '', key: false }],
 ]
 export const preset = (id = s().aiProvider) => (PRESETS.find((p) => p[0] === id) || PRESETS[0])[2]
@@ -100,8 +102,12 @@ export async function complete({ system, user, maxTokens = s().aiMaxOut }) {
   }
   const d = await request('POST', '/chat/completions', body)
   const text = d?.choices?.[0]?.message?.content || ''
-  return { text: typeof text === 'string' ? text : '', inTokens: d?.usage?.prompt_tokens || 0, outTokens: d?.usage?.completion_tokens || 0, model: d?.model || model }
+  return { text: typeof text === 'string' ? stripThinking(text) : '', inTokens: d?.usage?.prompt_tokens || 0, outTokens: d?.usage?.completion_tokens || 0, model: d?.model || model }
 }
+
+// Reasoning models (DeepSeek R1, Nemotron, Qwen3 on NIM, Ollama and others) can put their thinking
+// into the answer as <think>…</think>; only what follows is the answer
+const stripThinking = (text) => text.replace(/^\s*<think>[\s\S]*?(<\/think>|$)\s*/, '')
 
 /** Models the provider lists (not every provider has a list; the model can always be typed). */
 export async function listModels() {
