@@ -39,7 +39,9 @@ function compute() {
     const [sha, human = '', body = ''] = rec.trim().split('\x00')
     if (!sha) continue
     const model = manual[sha]?.model || aiCoAuthor(body)
-    authorOf.set(sha, model ? { name: model, kind: 'ai' } : { name: human || 'Unknown', kind: 'human' })
+    // GitHub bots such as "dependabot[bot]" get their own kind, so the About table does not call them a person
+    const kind = /\[bot\]$/i.test(human) ? 'bot' : 'human'
+    authorOf.set(sha, model ? { name: model, kind: 'ai' } : { name: human || 'Unknown', kind })
   }
 
   const files = git('ls-files').split('\n').filter((f) => f && !SKIP(f))

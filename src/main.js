@@ -2539,7 +2539,16 @@ function wirePagePreview() {
 }
 
 // ── about
-const fmtPct = (p) => (p >= 100 ? '100' : (Math.floor(p * 10) / 10).toFixed(1)) + '%'
+// Shares in tenths of a percent, rounded so the shown values add up to exactly 100.0
+// (largest remainder method). Rounding each row on its own could leave the table at 99.8 or 100.1.
+function sharesInTenths(counts, total) {
+  const exact = counts.map((n) => Math.floor((n * 1000) / total))
+  let left = 1000 - exact.reduce((a, b) => a + b, 0)
+  const order = counts.map((n, i) => [((n * 1000) % total) / total, i]).sort((a, b) => b[0] - a[0])
+  for (let k = 0; k < order.length && left > 0; k++, left--) exact[order[k][1]]++
+  return exact
+}
+const fmtTenths = (t) => (t / 10).toFixed(1) + '%'
 function showAbout() {
   const s = aiStats
   const body = el(
@@ -2549,23 +2558,29 @@ function showAbout() {
     el('p', { class: 'about-sub' }, 'Built with Tauri, ProseMirror (Milkdown), CodeMirror, KaTeX, Mermaid and pdf.js.'),
   )
   if (s && !s.unavailable && s.total && s.byAuthor) {
-    const pct = (s.ai / s.total) * 100
     const bar = (p, kind) => el('div', { class: 'ai-bar' }, el('span', { class: kind, style: `width:${Math.min(100, p)}%` }))
     const rows = [...s.byAuthor]
     if (s.uncommitted) rows.push({ name: 'Not committed yet', kind: 'pending', lines: s.uncommitted })
+    const shares = sharesInTenths(
+      rows.map((a) => a.lines),
+      s.total,
+    )
+    // the hero figure is the sum of the AI rows as shown, so it matches the table
+    const aiTenths = rows.reduce((sum, a, i) => sum + (a.kind === 'ai' ? shares[i] : 0), 0)
     const tbl = el('div', { class: 'ai-table' }, el('b', {}, 'Written by'), el('b', {}, 'Lines'), el('b', {}, 'Share'), el('b', {}, ''))
-    for (const a of rows) {
+    rows.forEach((a, i) => {
       const ap = (a.lines / s.total) * 100
+      const label = { human: ' (person)', bot: ' (bot)' }[a.kind]
       tbl.append(
-        el('span', { class: 'ai-who' }, el('i', { class: 'ai-dot ' + a.kind }), a.name, a.kind === 'human' ? el('small', {}, ' (person)') : null),
+        el('span', { class: 'ai-who' }, el('i', { class: 'ai-dot ' + a.kind }), a.name, label ? el('small', {}, label) : null),
         el('span', {}, a.lines.toLocaleString()),
-        el('span', {}, fmtPct(ap)),
+        el('span', {}, fmtTenths(shares[i])),
         bar(ap, a.kind),
       )
-    }
+    })
     body.append(
       el('h4', {}, 'Who wrote CaretFlow'),
-      el('div', { class: 'ai-hero' }, el('b', {}, s.total.toLocaleString()), el('span', {}, `lines of code and docs, ${fmtPct(pct)} of them written by AI models`)),
+      el('div', { class: 'ai-hero' }, el('b', {}, s.total.toLocaleString()), el('span', {}, `lines of code and docs, ${fmtTenths(aiTenths)} of them written by AI models`)),
       tbl,
       el(
         'p',

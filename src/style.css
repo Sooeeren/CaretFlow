@@ -1139,6 +1139,8 @@ button { font: inherit; color: inherit; }
 .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
 .ai-dot.human { background: #4f9a54; }
 .ai-dot.pending { background: var(--muted); }
+.ai-dot.bot { background: #d08a2e; }
+.ai-bar span.bot { background: #d08a2e; }
 .ai-table { display: grid; grid-template-columns: 1fr auto auto 90px; gap: 6px 14px; font-size: 12.5px; align-items: center; }
 .ai-table b { font-size: 11px; color: var(--muted); font-weight: 600; }
 .ai-table > span:nth-child(4n + 2), .ai-table > span:nth-child(4n + 3) { text-align: right; font-variant-numeric: tabular-nums; }
