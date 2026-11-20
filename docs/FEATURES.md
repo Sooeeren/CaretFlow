@@ -106,7 +106,10 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
   lists, and leaves Markdown characters as they are; **Paste as Markdown** (`Ctrl+Alt+Shift+V`)
   reads the copied text as Markdown, even when it came from an editor that adds colored HTML. In
   source mode, Paste as Markdown turns text copied from a web page into Markdown, links included.
-- **HTML** (README headers, `<kbd>`, `<sub>`, `<details>`, `<img width=…>`) is shown rendered. Click
+- **HTML** (README headers, `<kbd>`, `<sub>`, `<details>`, `<img width=…>`) is shown rendered.
+  Markdown between a `<div align="center">` line and its `</div>` line (or `<center>`, or a wrapper
+  with a `style="text-align: …; color: …"`) shows centered or styled and stays editable Markdown; the
+  two tag lines are shown small. Click
   it, or press `Enter` when it is selected, to edit the HTML; `Ctrl+Enter` or clicking elsewhere
   finishes, `Escape` cancels. Scripts, event handlers, forms and frames are removed before showing,
   and the file keeps the HTML exactly as written.

@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify'
 import { $remark, $view, $prose } from '@milkdown/kit/utils'
 import { htmlSchema } from '@milkdown/kit/preset/commonmark'
 import { Plugin, PluginKey, NodeSelection, TextSelection } from '@milkdown/kit/prose/state'
+import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 
 // ───────────────────────────── one node per inline tag pair
 // remark splits `<kbd>Ctrl</kbd>` into html "<kbd>", text, html "</kbd>". Join such pairs into
@@ -208,8 +209,86 @@ const enterKey = $prose(
     }),
 )
 
+// ───────────────────────────── wrappers around Markdown
+// README headers put Markdown between a lone `<div align="center">` line and a lone `</div>` line
+// (blank lines around both, so the Markdown inside is parsed). Markdown sees three separate things;
+// this pairs the two tag lines and gives the blocks between them the wrapper's alignment and text
+// styles, so they show as on GitHub and stay editable Markdown. The file is never changed.
+const WRAP_OPEN = /^<(div|center|p|section|article|span|font)\b([^>]*)>$/i
+const WRAP_CLOSE = /^<\/(div|center|p|section|article|span|font)\s*>$/i
+// only what changes how text looks: nothing that could move a block over the app
+const WRAP_STYLES = ['text-align', 'color', 'font-size', 'font-weight', 'font-style', 'font-family', 'line-height']
+
+/** The lone tag in an html-only paragraph, or null. */
+function loneTag(node) {
+  if (node.type.name !== 'paragraph' || node.childCount !== 1 || node.firstChild.type.name !== 'html') return null
+  const v = node.firstChild.attrs.value.trim()
+  const open = WRAP_OPEN.exec(v)
+  if (open) return { open: true, tag: open[1].toLowerCase(), css: wrapCss(open[1], open[2]) }
+  const close = WRAP_CLOSE.exec(v)
+  return close ? { open: false, tag: close[1].toLowerCase() } : null
+}
+
+/** The CSS a wrapper's attributes give the blocks inside it (`align`, safe parts of `style`). */
+export function wrapCss(tag, attrs) {
+  const tpl = document.createElement('template')
+  tpl.innerHTML = DOMPurify.sanitize(`<div${attrs}></div>`, PURIFY)
+  const src = tpl.content.firstElementChild
+  const probe = document.createElement('div')
+  if (src?.getAttribute('style')) probe.style.cssText = src.getAttribute('style')
+  const out = WRAP_STYLES.filter((p) => probe.style.getPropertyValue(p)).map((p) => `${p}: ${probe.style.getPropertyValue(p)}`)
+  const align = tag.toLowerCase() === 'center' ? 'center' : src?.getAttribute('align')?.toLowerCase()
+  if (align && /^(left|right|center|justify)$/.test(align) && !probe.style.textAlign) out.unshift(`text-align: ${align}`)
+  return out.join('; ')
+}
+
+/** Decorations: wrapper tag lines shown small, the blocks between them styled. */
+export function wrapDecorations(doc) {
+  const decos = []
+  const tagLine = (pos, node) => decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'folio-html-wrap-tag' }))
+  const scan = (parent, base) => {
+    const stack = []
+    parent.forEach((child, offset) => {
+      const pos = base + offset
+      const t = loneTag(child)
+      if (t?.open) {
+        stack.push({ ...t, inner: [] })
+        tagLine(pos, child)
+        return
+      }
+      if (t && stack.length && stack[stack.length - 1].tag === t.tag) {
+        const w = stack.pop()
+        tagLine(pos, child)
+        // one style per block: the outer wrapper's first, so an inner wrapper's own values win
+        for (const b of w.inner) b.css = [w.css, b.css].filter(Boolean).join('; ')
+        if (stack.length) stack[stack.length - 1].inner.push(...w.inner)
+        else for (const b of w.inner) if (b.css) decos.push(Decoration.node(b.pos, b.pos + b.size, { style: b.css }))
+        return
+      }
+      if (stack.length) stack[stack.length - 1].inner.push({ pos, size: child.nodeSize, css: '' })
+      // Markdown inside quotes and lists can hold wrappers too
+      if (!child.isTextblock && child.childCount && child.firstChild.isBlock) scan(child, pos + 1)
+    })
+  }
+  scan(doc, 0)
+  return DecorationSet.create(doc, decos)
+}
+
+const wrapKey = new PluginKey('folio-html-wrap')
+const wrapPlugin = $prose(
+  () =>
+    new Plugin({
+      key: wrapKey,
+      state: {
+        init: (_, { doc }) => wrapDecorations(doc),
+        apply: (tr, old) => (tr.docChanged ? wrapDecorations(tr.doc) : old),
+      },
+      props: { decorations: (state) => wrapKey.getState(state) },
+    }),
+)
+
 /** The plugins for Crepe: `editor.use(htmlRendering({ resolveSrc }))`. */
 export function htmlRendering(opts = {}) {
   const view = $view(htmlSchema.node, () => (node, v, getPos) => new HtmlView(node, v, getPos, opts))
-  return [joinRemark, view, enterKey].flat()
+  return [joinRemark, view, enterKey, wrapPlugin].flat()
 }

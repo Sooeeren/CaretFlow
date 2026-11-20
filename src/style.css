@@ -952,6 +952,11 @@ button { font: inherit; color: inherit; }
   white-space: pre-wrap;
 }
 #wysiwyg .folio-html.editing { cursor: text; box-shadow: none; contain: none; }
+/* the lone `<div align="center">` / `</div>` lines around Markdown (html.js wrapDecorations): kept
+   visible to edit or delete, but small and quiet, since the blocks between them show their effect */
+#wysiwyg .ProseMirror p.folio-html-wrap-tag { margin-top: 0; margin-bottom: 0; line-height: 1.2; }
+#wysiwyg .folio-html-wrap-tag .folio-html.raw { font-size: 0.72em; opacity: 0.55; }
+#wysiwyg .folio-html-wrap-tag .folio-html.raw:hover { opacity: 1; }
 #wysiwyg .folio-html-src {
   display: block;
   width: 100%;

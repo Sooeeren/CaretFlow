@@ -117,7 +117,7 @@ graph LR
 
 ## HTML
 
-HTML in a document is shown rendered, the way GitHub shows a README: press <kbd>Ctrl</kbd>+<kbd>S</kbd>, H<sub>2</sub>O, centered headers. Click it (or press `Enter` when it is selected) to edit the HTML; `Ctrl+Enter` or clicking elsewhere finishes, `Escape` cancels. Scripts and forms are never run or shown, and the file keeps the HTML exactly as written.
+HTML in a document is shown rendered, the way GitHub shows a README: press <kbd>Ctrl</kbd>+<kbd>S</kbd>, H<sub>2</sub>O, centered headers. Markdown between a `<div align="center">` line and a `</div>` line (with blank lines around both) shows centered and stays editable. Click it (or press `Enter` when it is selected) to edit the HTML; `Ctrl+Enter` or clicking elsewhere finishes, `Escape` cancels. Scripts and forms are never run or shown, and the file keeps the HTML exactly as written.
 
 ## Pasting
 

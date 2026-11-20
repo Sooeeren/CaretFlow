@@ -82,7 +82,7 @@ These decide most design questions:
 | `src-tauri/src/cloud.rs` | Cloud Sync commands: HTTP (reqwest, also used by AI), folder scan, sync trash, `secrets.json`, running rclone |
 | `src-tauri/src/android.rs`, `src-tauri/gen/android` | Android: bridge to `CaretFlowPlugin.kt` (content:// files, storage permission, share, print, PDF via `PdfPrint.java`); the Gradle project with manifest, icons and signing |
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
-| `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click |
+| `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click; Markdown between lone `<div align=…>` / `</div>` lines styled like on GitHub |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
 | `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
@@ -183,3 +183,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-17 | AI Writing Help: NVIDIA NIM providers (build.nvidia.com and a local NIM container); `<think>` blocks of reasoning models dropped from answers |
 | Claude Haiku 5.5 | Claude Code | 2026-11-17 | About: shares add up to exactly 100% (largest remainder), GitHub bots such as dependabot listed as "(bot)" in their own color (scripts/ai-stats.mjs, main.js) |
 | Claude Opus 5.5 | Claude Code | 2026-11-20 | Paste as Plain Text / Paste as Markdown (right-click and Edit menu, scripts/checks/contextmenu.mjs ctx-paste); Dependabot PRs #31–#37 merged |
+| Claude Opus 5.5 | Claude Code | 2026-11-20 | Source mode no longer freezes on a line that starts with inline code (spelling loop); Markdown inside `<div align="center">` … `</div>` shows centered (scripts/checks/html.mjs html-wrap) |

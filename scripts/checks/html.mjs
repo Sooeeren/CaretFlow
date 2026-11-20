@@ -23,6 +23,36 @@ Hidden text
 </details>
 `
 
+const WRAP_DOC = `<div align="center">
+
+# Centered Title
+
+> **Note:** a centered quote.
+
+Centered paragraph with \`code\`
+\`api.call\` at the start of a line.
+
+<div align="right" style="color: red; position: fixed; display: none">
+
+Right inside
+
+</div>
+
+</div>
+
+After the wrapper.
+
+<center>
+
+</p>
+
+</center>
+
+<div align="center">
+
+Never closed.
+`
+
 let saved = null
 /** What Ctrl+S writes to disk */
 async function md(page) {
@@ -101,6 +131,45 @@ export const scenes = {
       await page.keyboard.press('Escape')
       await wait(300)
       check('Escape cancels the edit', !(await md(page)).includes('xyz'))
+      summary()
+    },
+  },
+  // a README header: Markdown between a lone `<div align="center">` and `</div>` shows centered
+  'html-wrap': {
+    open: 'Welcome.md',
+    settings: { theme: 'paper', sidebar: false },
+    setup: (page) => stubBackend(page, { read_text: () => WRAP_DOC, write_text: ({ content }) => void (saved = content) }),
+    async run(page) {
+      await wait(600)
+      const r = await run(page, () => {
+        const pm = document.querySelector('#wysiwyg .ProseMirror')
+        const align = (sel) => getComputedStyle(pm.querySelector(sel)).textAlign
+        const para = (t) => [...pm.querySelectorAll('p')].find((p) => p.textContent.includes(t))
+        return {
+          tags: pm.querySelectorAll('p.folio-html-wrap-tag').length,
+          tagSize: parseFloat(getComputedStyle(pm.querySelector('p.folio-html-wrap-tag .folio-html')).fontSize) < parseFloat(getComputedStyle(para('Centered')).fontSize),
+          h1: align('h1'),
+          quote: align('blockquote'),
+          centered: getComputedStyle(para('Centered')).textAlign,
+          right: getComputedStyle(para('Right inside')).textAlign,
+          rightColor: getComputedStyle(para('Right inside')).color,
+          after: getComputedStyle(para('After the wrapper')).textAlign,
+          unclosed: getComputedStyle(para('Never closed')).textAlign,
+          leak: [...pm.querySelectorAll('[style]')].some((e) => /position|display/.test(e.getAttribute('style'))),
+        }
+      })
+      check('the tag lines are shown small', r.tags === 7 && r.tagSize, JSON.stringify(r))
+      check('heading, quote and paragraph between them are centered', r.h1 === 'center' && r.quote === 'center' && r.centered === 'center')
+      check('an inner wrapper wins (align="right" and its color)', r.right === 'right' && r.rightColor === 'rgb(255, 0, 0)', r.right + ' ' + r.rightColor)
+      check('blocks after the closing tag are not centered', r.after !== 'center', r.after)
+      check('a wrapper without its closing tag changes nothing', r.unclosed !== 'center', r.unclosed)
+      check('only text styles are taken from style="…"', !r.leak)
+      check('saving keeps the file as written', (await md(page)) === WRAP_DOC)
+
+      // switching to source mode with a line that starts with `code` used to hang the spelling check
+      await page.keyboard.press('Control+/')
+      const alive = await Promise.race([page.evaluate(() => new Promise((ok) => setTimeout(() => ok(!!document.querySelector('#source .cm-content')), 800))), wait(6000).then(() => false)])
+      check('source mode opens (a line starting with inline code does not freeze it)', alive)
       summary()
     },
   },
