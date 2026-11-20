@@ -505,9 +505,10 @@ function proseOf(src, start, end) {
   const each = (re, fn) => {
     re.lastIndex = 0
     for (let m; (m = re.exec(raw)); ) {
-      if (kind[m.index] === 2) continue
-      fn(m)
+      // step past an empty match first: skipping one (a line that starts with a code span) must
+      // not leave the regex on the same spot, which looped forever and froze source mode
       if (!m[0].length) re.lastIndex++
+      if (kind[m.index] !== 2) fn(m)
     }
   }
   // code spans and math first: their content is never checked
