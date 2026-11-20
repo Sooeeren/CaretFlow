@@ -7,6 +7,7 @@ import { editorViewCtx, serializerCtx, parserCtx, commandsCtx, remarkStringifyOp
 import { callCommand, $prose, $inputRule } from '@milkdown/kit/utils'
 import { Plugin, PluginKey, Selection, TextSelection } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
+import { Slice, Fragment, DOMParser as PMDOMParser } from '@milkdown/kit/prose/model'
 import * as cmk from '@milkdown/kit/preset/commonmark'
 import * as gfm from '@milkdown/kit/preset/gfm'
 import { undoCommand, redoCommand } from '@milkdown/kit/plugin/history'
@@ -3761,6 +3762,9 @@ const MENU = [
       k('Undo', 'Ctrl+Z', undo, { native: true }),
       k('Redo', 'Ctrl+Y', redo, { native: true }),
       '-',
+      k('Paste as Plain Text', 'Ctrl+Shift+V', () => pasteInto(currentEditTarget(), 'plain')),
+      k('Paste as Markdown', 'Ctrl+Alt+Shift+V', () => pasteInto(currentEditTarget(), 'markdown')),
+      '-',
       k('Copy as Markdown', 'Ctrl+Shift+C', copyMarkdown),
       k('Copy as HTML', null, copyHtml),
       '-',
@@ -4182,25 +4186,100 @@ function editTargetOf(t) {
   return null
 }
 
-async function pasteInto(target) {
+// Three ways to paste:
+//  rich      what Ctrl+V does: formatting from the HTML flavour, else the text read as Markdown
+//  plain     the text exactly as it is: no links, bold, headings or lists, and no Markdown parsing
+//  markdown  the rendered view reads the text as Markdown even when there is HTML (code copied from
+//            an editor comes with colored HTML); source mode turns the HTML into Markdown instead,
+//            so links and formatting copied from a web page survive
+async function readClipboard(wantHtml) {
   let html = ''
   let text = ''
   try {
-    for (const item of await navigator.clipboard.read()) {
-      if (!html && item.types.includes('text/html')) html = await (await item.getType('text/html')).text()
-      if (!text && item.types.includes('text/plain')) text = await (await item.getType('text/plain')).text()
+    if (!wantHtml) text = await navigator.clipboard.readText()
+    else {
+      for (const item of await navigator.clipboard.read()) {
+        if (!html && item.types.includes('text/html')) html = await (await item.getType('text/html')).text()
+        if (!text && item.types.includes('text/plain')) text = await (await item.getType('text/plain')).text()
+      }
     }
   } catch {
     text = await navigator.clipboard.readText().catch(() => null)
   }
+  return { html, text }
+}
+
+/** The editor or field a paste from the Edit menu or a shortcut goes into. */
+function currentEditTarget() {
+  const a = document.activeElement
+  if (a && a !== document.body && !view()?.dom.contains(a) && !source?.view.dom.contains(a)) {
+    const t = editTargetOf(a)
+    if (t) return t
+  }
+  if (inSource()) return { kind: 'cm', view: source.view }
+  const pm = view()
+  return pm ? { kind: 'pm', view: pm } : null
+}
+
+/** HTML → Markdown through the editor's own schema and serializer. */
+function htmlToMarkdown(html) {
+  let md = null
+  crepe.editor.action((ctx) => {
+    const v = ctx.get(editorViewCtx)
+    const dom = new DOMParser().parseFromString(html, 'text/html').body
+    const doc = PMDOMParser.fromSchema(v.state.schema).parse(dom)
+    md = ctx.get(serializerCtx)(doc).replace(/\n+$/, '')
+  })
+  return md
+}
+
+/** Text as unformatted nodes: one paragraph per line, or plain lines inside a code block. */
+function insertPlainText(pm, text) {
+  const { state } = pm
+  const { schema } = state
+  text = text.replace(/\r\n?/g, '\n')
+  let tr
+  if (state.selection.$from.parent.type.spec.code) tr = state.tr.insertText(text)
+  else {
+    const lines = text.split('\n')
+    const slice =
+      lines.length === 1
+        ? new Slice(Fragment.from(lines[0] ? schema.text(lines[0]) : []), 0, 0)
+        : new Slice(Fragment.from(lines.map((l) => schema.nodes.paragraph.create(null, l ? schema.text(l) : null))), 1, 1)
+    tr = state.tr.replaceSelection(slice)
+  }
+  pm.dispatch(tr.setStoredMarks([]).scrollIntoView().setMeta('uiEvent', 'paste'))
+}
+
+/** Markdown text parsed by the editor and put in like a paste (text-only clipboards, Paste as Markdown). */
+function insertMarkdown(pm, text) {
+  let doc = null
+  try {
+    doc = crepe.editor.action((ctx) => ctx.get(parserCtx)(text))
+  } catch {}
+  if (!doc || typeof doc === 'string' || pm.state.selection.$from.parent.type.spec.code) return insertPlainText(pm, text)
+  const tr = pm.state.tr.replaceSelection(Slice.maxOpen(doc.content))
+  pm.dispatch(tr.scrollIntoView().setMeta('uiEvent', 'paste'))
+}
+
+async function pasteInto(target, mode = 'rich') {
+  if (!target || (S.readonly && target.kind !== 'field')) return
+  const wantHtml = mode === 'rich' ? target.kind === 'pm' : mode === 'markdown' && target.kind === 'cm'
+  let { html, text } = await readClipboard(wantHtml)
   if (text == null) return toast('Paste with Ctrl+V')
   if (target.kind === 'pm') {
     target.view.focus()
-    if (html) target.view.pasteHTML(html)
-    else target.view.pasteText(text)
+    if (mode === 'plain') insertPlainText(target.view, text)
+    else if (mode === 'rich' && html) target.view.pasteHTML(html)
+    else insertMarkdown(target.view, text)
   } else if (target.kind === 'cm') {
+    if (html) {
+      try {
+        text = htmlToMarkdown(html) ?? text
+      } catch {}
+    }
     target.view.focus()
-    target.view.dispatch(target.view.state.replaceSelection(text))
+    target.view.dispatch(target.view.state.replaceSelection(text), { scrollIntoView: true, userEvent: 'input.paste' })
   } else {
     const f = target.el
     f.focus()
@@ -4208,6 +4287,9 @@ async function pasteInto(target) {
     f.dispatchEvent(new Event('input', { bubbles: true }))
   }
 }
+
+/** The shortcut shown next to a right-click item: the command's current one (custom or default). */
+const keysOf = (label) => ACTIONS.find((a) => a.menu === 'Edit' && a.label === label)?.keys || undefined
 
 function selectAllIn(target) {
   if (target.kind === 'field') return target.el.select()
@@ -4231,7 +4313,13 @@ function appContextMenu(e) {
   showContextMenu(e.clientX, e.clientY, [
     ...(writable ? [['Cut', () => document.execCommand('cut'), 'Ctrl+X', hasSel]] : []),
     ['Copy', () => document.execCommand('copy'), 'Ctrl+C', hasSel],
-    ...(writable ? [['Paste', () => pasteInto(target), 'Ctrl+V']] : []),
+    ...(writable
+      ? [
+          ['Paste', () => pasteInto(target), 'Ctrl+V'],
+          ['Paste as Plain Text', () => pasteInto(target, 'plain'), keysOf('Paste as Plain Text')],
+          ...(target.kind === 'field' ? [] : [['Paste as Markdown', () => pasteInto(target, 'markdown'), keysOf('Paste as Markdown')]]),
+        ]
+      : []),
     '-',
     ['Select All', () => selectAllIn(target), 'Ctrl+A'],
   ])

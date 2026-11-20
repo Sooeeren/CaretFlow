@@ -189,7 +189,7 @@ export const scenes = {
       check('tex image path', tex.includes('\\includegraphics[max width=\\linewidth]{../Users/you/Documents/Notes/assets/box.svg}') || /includegraphics.*box\.svg/.test(tex), (/includegraphics[^\n]*/.exec(tex) || [''])[0])
 
       // ── Plain text
-      const txt = (await exportVia(page, 'Plain Text', 'C:\\out\\Export Test.txt'))?.toString() || ''
+      const txt = (await exportVia(page, 'Plain Text (.txt)', 'C:\\out\\Export Test.txt'))?.toString() || ''
       save('Export Test.txt', txt)
       check('txt has no Markdown marks', txt.includes('Some bold, italic') && !txt.includes('**'))
       check('txt headings underlined', /Introduction\n=+/.test(txt) && /Details\n-+/.test(txt))

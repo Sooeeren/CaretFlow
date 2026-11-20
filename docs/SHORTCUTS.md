@@ -29,6 +29,8 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Action | Keys |
 | --- | --- |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` |
+| Paste as plain text (no links or formatting) | `Ctrl+Shift+V` |
+| Paste as Markdown | `Ctrl+Alt+Shift+V` |
 | Copy as Markdown | `Ctrl+Shift+C` |
 | Find / replace | `Ctrl+F` / `Ctrl+H` |
 | Find next / previous | `F3` / `Shift+F3` |

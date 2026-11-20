@@ -101,6 +101,11 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
   grow it.
 - **Mermaid**: Insert → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
 - **Math** is rendered with KaTeX, inline (`Ctrl+Shift+E`) or as a block (`Ctrl+Shift+M`).
+- **Pasting** (Edit menu or right-click): **Paste** (`Ctrl+V`) keeps links and formatting;
+  **Paste as Plain Text** (`Ctrl+Shift+V`) puts in only the text, without links, bold, headings or
+  lists, and leaves Markdown characters as they are; **Paste as Markdown** (`Ctrl+Alt+Shift+V`)
+  reads the copied text as Markdown, even when it came from an editor that adds colored HTML. In
+  source mode, Paste as Markdown turns text copied from a web page into Markdown, links included.
 - **HTML** (README headers, `<kbd>`, `<sub>`, `<details>`, `<img width=…>`) is shown rendered. Click
   it, or press `Enter` when it is selected, to edit the HTML; `Ctrl+Enter` or clicking elsewhere
   finishes, `Escape` cancels. Scripts, event handlers, forms and frames are removed before showing,

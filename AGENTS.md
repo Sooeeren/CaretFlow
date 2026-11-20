@@ -182,3 +182,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Fable 5.2 | Claude Code | 2026-11-15 | Issues #28–#30: Vim scrolling (Ctrl+E / Ctrl+Y, page keys, zz), `:Explore`, Ctrl+W on indented lines, red only for failed commands, the cursor keeps its place between views, "Open with" on Linux, page preview scrolling (scripts/checks/vim.mjs, preview.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-17 | AI Writing Help: NVIDIA NIM providers (build.nvidia.com and a local NIM container); `<think>` blocks of reasoning models dropped from answers |
 | Claude Haiku 5.5 | Claude Code | 2026-11-17 | About: shares add up to exactly 100% (largest remainder), GitHub bots such as dependabot listed as "(bot)" in their own color (scripts/ai-stats.mjs, main.js) |
+| Claude Opus 5.5 | Claude Code | 2026-11-20 | Paste as Plain Text / Paste as Markdown (right-click and Edit menu, scripts/checks/contextmenu.mjs ctx-paste); Dependabot PRs #31–#37 merged |
