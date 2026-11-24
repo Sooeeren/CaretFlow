@@ -2,7 +2,7 @@
 // https://github.com/<repo>/releases/latest/download/latest.json
 //
 // Usage: node scripts/update-manifest.mjs <dir with release files and .sig files> [--out latest.json]
-//        [--notes notes.md] [--repo Sooeeren/folio] [--version 1.2.3]
+//        [--notes notes.md] [--repo Sooeeren/CaretFlow] [--version 1.2.3]
 // Only files that have a .sig next to them (signed by `tauri build` with createUpdaterArtifacts)
 // end up in the manifest. CaretFlow-portable.exe and the raw Linux binary are left out on purpose:
 // they can't be updated in place, so the app only shows them a download link.
@@ -17,7 +17,7 @@ const opt = (name, def) => {
 const root = path.resolve(import.meta.dirname, '..')
 const out = opt('out', null)
 const notesFile = opt('notes', null)
-const repo = opt('repo', 'Sooeeren/folio')
+const repo = opt('repo', 'Sooeeren/CaretFlow')
 const version = opt('version', JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version)
 const dir = args[0]
 if (!dir) throw new Error('usage: node scripts/update-manifest.mjs <dir> [--out file] [--notes file]')

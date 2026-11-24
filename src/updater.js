@@ -5,7 +5,7 @@ import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { invoke } from '@tauri-apps/api/core'
 
-const RELEASES = 'https://github.com/Sooeeren/folio/releases'
+const RELEASES = 'https://github.com/Sooeeren/CaretFlow/releases'
 // copies the updater can replace; the others (portable, pacman) only get a download link
 const SELF_UPDATING = ['nsis', 'appimage', 'deb', 'rpm']
 // the manifest key to read the version from for those

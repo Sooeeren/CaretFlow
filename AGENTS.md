@@ -7,10 +7,11 @@ the [contributor list](#ai-contributors) when you are done**.
 ## What CaretFlow is
 
 CaretFlow was called Folio until 0.5.0. Use CaretFlow everywhere (author and publisher: Sooeeren).
-Only three names keep the old one on purpose, because changing them would cut users off: the app
-identifier `app.folio.markdown` (settings, recent files, window state and the WebView's storage live
-under it; on Android it is the package name, so a new one would be a different app), and the GitHub
-repository `Sooeeren/folio` (the updater's `latest.json` URL). Storage keys are `caretflow.*`
+Only the app identifier `app.folio.markdown` keeps the old name on purpose: settings, recent files,
+window state and the WebView's storage live under it, and on Android it is the package name, so a
+new one would be a different app. The GitHub repository is `Sooeeren/CaretFlow` (renamed from
+`Sooeeren/folio`; GitHub redirects the old URLs, which older installs still use for updates, so never
+create a new repository named `folio`). Storage keys are `caretflow.*`
 (`index.html` moves old `folio.*` keys once), CSS classes and plugin keys use `cf-`.
 
 

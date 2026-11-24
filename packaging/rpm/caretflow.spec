@@ -12,7 +12,7 @@ Version:        %{_ver}
 Release:        1
 Summary:        A fast, seamless Markdown reader & editor
 License:        LicenseRef-unknown
-URL:            https://github.com/Sooeeren/folio
+URL:            https://github.com/Sooeeren/CaretFlow
 BuildArch:      x86_64
 # CaretFlow was called Folio until 0.5.0. Its packages up to 0.4.1 were called "folio" (versioned, so
 # Fedora's unrelated folio 25.x and later is not affected), 0.4.2 and 0.5.0 were "folio-markdown"

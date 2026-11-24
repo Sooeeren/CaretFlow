@@ -4,7 +4,7 @@ version = "0.12.3"
 description = "CaretFlow - a fast, seamless Markdown reader & editor"
 authors = ["Sooeeren"]
 homepage = "https://caretflow.vercel.app/"
-repository = "https://github.com/Sooeeren/folio"
+repository = "https://github.com/Sooeeren/CaretFlow"
 edition = "2021"
 
 [lib]
