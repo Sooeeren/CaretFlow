@@ -16,7 +16,7 @@ Var FolioHadDesktopLink
   ReadRegStr $R0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Folio" "Publisher"
   ReadRegStr $R1 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\Folio" "DisplayName"
   ${If} $R1 == "Folio"
-  ${AndIf} $R0 == "${MANUFACTURER}"
+  ${AndIf} $R0 == "folio" ; the publisher Tauri took from the identifier app.folio.markdown
   ${AndIf} ${FileExists} "$LOCALAPPDATA\Folio\uninstall.exe"
     DetailPrint "Removing Folio (now CaretFlow)"
     ${If} ${FileExists} "$DESKTOP\Folio.lnk"
@@ -27,6 +27,22 @@ Var FolioHadDesktopLink
     Delete "$LOCALAPPDATA\Folio\uninstall.exe"
     RMDir "$LOCALAPPDATA\Folio"
     StrCpy $FolioRemoved 1
+  ${EndIf}
+
+  ; Up to 0.12.3 the publisher was "folio" (taken from the identifier), now it is "Sooeeren". The
+  ; installer remembers a chosen install folder under Software\<publisher>\CaretFlow, so an update
+  ; would not find it and install a second copy in the default folder. Carry the old one over.
+  ReadRegStr $R0 HKCU "Software\folio\CaretFlow" ""
+  ReadRegStr $R1 HKCU "${MANUPRODUCTKEY}" ""
+  ${If} $R0 != ""
+  ${AndIf} $R1 == ""
+    ${If} $INSTDIR == "$LOCALAPPDATA\${PRODUCTNAME}"
+    ${AndIf} ${FileExists} "$R0\${MAINBINARYNAME}.exe"
+      StrCpy $INSTDIR $R0
+      SetOutPath $INSTDIR
+    ${EndIf}
+    DeleteRegKey HKCU "Software\folio\CaretFlow"
+    DeleteRegKey /ifempty HKCU "Software\folio"
   ${EndIf}
 !macroend
 

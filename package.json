@@ -1,7 +1,8 @@
 {
-  "name": "folio",
+  "name": "caretflow",
   "private": true,
   "version": "0.12.3",
+  "author": "Sooeeren",
   "type": "module",
   "scripts": {
     "dev": "vite",

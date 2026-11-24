@@ -80,7 +80,7 @@ export const scenes = {
       check('Preferences has no Cloud Sync page', !u.prefs.includes('Cloud Sync'), u.prefs.join('|'))
       check('custom key does nothing while removed', !(await typingOpens(page, 'Control+Alt+Y')))
       check('default key does nothing while removed', !(await typingOpens(page, 'Control+Alt+T')))
-      const kb = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).keybindings)
+      const kb = await page.evaluate(() => JSON.parse(localStorage.getItem('caretflow.settings')).keybindings)
       check('custom shortcut is kept (moved from View to Tools)', kb?.['Tools/Typing Test…'] === 'Ctrl+Alt+Y', JSON.stringify(kb))
 
       await page.evaluate(() => sessionStorage.setItem('test.override', JSON.stringify({ extensions: ['cloud', 'typing'] })))
@@ -122,7 +122,7 @@ export const scenes = {
       await wait(200)
       await page.click('.ext-card:nth-child(2) button.ext-act')
       await wait(400)
-      const typing = await page.evaluate(() => ({ ext: JSON.parse(localStorage.getItem('folio.settings')).extensions, btn: document.querySelector('.ext-card:nth-child(2) button.ext-act')?.textContent }))
+      const typing = await page.evaluate(() => ({ ext: JSON.parse(localStorage.getItem('caretflow.settings')).extensions, btn: document.querySelector('.ext-card:nth-child(2) button.ext-act')?.textContent }))
       check('install Typing Test', typing.ext.includes('typing') && typing.btn === 'Remove', JSON.stringify(typing))
       await page.keyboard.press('Escape')
       await wait(200)
@@ -141,7 +141,7 @@ export const scenes = {
       check('removing active Cloud Sync asks first', /Remove Cloud Sync/.test(confirm), confirm)
       await page.click('#modal button:has-text("Remove")')
       await wait(500)
-      const after = await page.evaluate(() => ({ ext: JSON.parse(localStorage.getItem('folio.settings')).extensions, tab: !document.querySelector('#tab-cloud').hidden, btn: !document.querySelector('#st-cloud').hidden }))
+      const after = await page.evaluate(() => ({ ext: JSON.parse(localStorage.getItem('caretflow.settings')).extensions, tab: !document.querySelector('#tab-cloud').hidden, btn: !document.querySelector('#st-cloud').hidden }))
       check('Cloud Sync removed mid-sync: gone, no errors', !after.ext.includes('cloud') && !after.tab && !after.btn && !errors.length, JSON.stringify({ ...after, errors }))
       summary()
     },
@@ -152,18 +152,18 @@ export const scenes = {
     settings: { cloudEnabled: true, cloudUrl: 'https://example.invalid/dav/Notes', cloudLocal: 'C:/Notes', cloudAuto: false },
     setup: (page) => stubBackend(page, { secret_get: () => null }),
     async run(page) {
-      const st = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')))
+      const st = await page.evaluate(() => JSON.parse(localStorage.getItem('caretflow.settings')))
       const notice = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
       check('update keeps Cloud Sync installed (it was on)', JSON.stringify(st.extensions) === '["cloud"]', JSON.stringify(st.extensions))
       check('no notice about it anymore', !notice, notice)
       await page.evaluate(() => {
-        const s = JSON.parse(localStorage.getItem('folio.settings'))
+        const s = JSON.parse(localStorage.getItem('caretflow.settings'))
         sessionStorage.setItem('test.override', JSON.stringify(s))
       })
       await page.reload()
       await page.waitForSelector('#wysiwyg .ProseMirror')
       await wait(800)
-      const again = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).extensions)
+      const again = await page.evaluate(() => JSON.parse(localStorage.getItem('caretflow.settings')).extensions)
       check('Cloud Sync still installed after a restart', JSON.stringify(again) === '["cloud"]', JSON.stringify(again))
       summary()
     },
@@ -172,10 +172,10 @@ export const scenes = {
     open: 'Welcome.md',
     settings: {},
     // a first start: no saved settings at all
-    setup: (page) => page.addInitScript(() => localStorage.removeItem('folio.settings')),
+    setup: (page) => page.addInitScript(() => localStorage.removeItem('caretflow.settings')),
     async run(page) {
       await wait(500)
-      const st = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings') || '{}'))
+      const st = await page.evaluate(() => JSON.parse(localStorage.getItem('caretflow.settings') || '{}'))
       const notice = await page.$eval('#notice', (n) => (n.hidden ? '' : n.textContent))
       check('fresh install: nothing installed', JSON.stringify(st.extensions || []) === '[]', JSON.stringify(st.extensions))
       check('fresh install: no notice', !/Extensions/.test(notice), notice)

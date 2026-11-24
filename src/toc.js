@@ -35,7 +35,7 @@ function remarkToc() {
   return (tree) => convertToc(tree)
 }
 
-const tocRemark = $remark('folioToc', () => remarkToc)
+const tocRemark = $remark('cfToc', () => remarkToc)
 
 export const tocSchema = $nodeSchema('toc', () => ({
   group: 'block',
@@ -43,7 +43,7 @@ export const tocSchema = $nodeSchema('toc', () => ({
   selectable: true,
   draggable: true,
   parseDOM: [{ tag: 'div[data-type="toc"]' }],
-  toDOM: () => ['div', { 'data-type': 'toc', class: 'folio-toc' }],
+  toDOM: () => ['div', { 'data-type': 'toc', class: 'cf-toc' }],
   parseMarkdown: {
     match: (node) => node.type === 'toc',
     runner: (state, _node, type) => {
@@ -84,7 +84,7 @@ class TocView {
     this.view = view
     this.getPos = getPos
     this.opts = opts
-    this.dom = el('div', 'folio-toc')
+    this.dom = el('div', 'cf-toc')
     this.dom.dataset.type = 'toc'
     this.dom.contentEditable = 'false'
     this.key = null
@@ -110,15 +110,15 @@ class TocView {
     const key = JSON.stringify(heads.map((h) => [h.level, h.text, h.pos]))
     if (key === this.key) return
     this.key = key
-    const title = el('div', 'folio-toc-title', 'Contents')
+    const title = el('div', 'cf-toc-title', 'Contents')
     if (!heads.length) {
-      this.dom.replaceChildren(title, el('div', 'folio-toc-empty', 'No headings yet. Lines that start with # are listed here.'))
+      this.dom.replaceChildren(title, el('div', 'cf-toc-empty', 'No headings yet. Lines that start with # are listed here.'))
       return
     }
     const min = Math.min(...heads.map((h) => h.level))
-    const list = el('div', 'folio-toc-list')
+    const list = el('div', 'cf-toc-list')
     for (const h of heads) {
-      const a = el('a', `folio-toc-item l${h.level - min + 1}`, h.text || '(empty heading)')
+      const a = el('a', `cf-toc-item l${h.level - min + 1}`, h.text || '(empty heading)')
       a.dataset.pos = h.pos
       a.style.paddingLeft = `${(h.level - min) * 1.2}em`
       a.title = h.text
@@ -154,7 +154,7 @@ class TocView {
 const refresher = $prose(
   () =>
     new Plugin({
-      key: new PluginKey('folio-toc'),
+      key: new PluginKey('cf-toc'),
       view: () => {
         let timer = 0
         return {

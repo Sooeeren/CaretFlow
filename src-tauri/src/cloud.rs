@@ -71,7 +71,7 @@ fn write_atomic(path: &Path, data: &[u8]) -> Result<(), String> {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
     let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".folio~");
+    tmp.push(".caretflow~");
     let tmp = PathBuf::from(tmp);
     fs::write(&tmp, data).map_err(|e| e.to_string())?;
     if let Err(e) = fs::rename(&tmp, path) {
@@ -141,7 +141,7 @@ fn scan(dir: &Path, prefix: &str, all: bool, depth: u32, out: &mut Vec<LocalFile
     let Ok(rd) = fs::read_dir(dir) else { return };
     for e in rd.flatten() {
         let name = e.file_name().to_string_lossy().to_string();
-        if name.starts_with('.') || name.starts_with('$') || name.ends_with(".folio~") {
+        if name.starts_with('.') || name.starts_with('$') || name.ends_with(".caretflow~") || name.ends_with(".folio~") {
             continue;
         }
         let rel = if prefix.is_empty() { name.clone() } else { format!("{prefix}/{name}") };

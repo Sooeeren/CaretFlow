@@ -98,7 +98,7 @@ pub async fn export_android(html: String, out: String, opts: PdfOptions) -> Resu
 
 fn tmp_path(out: &str) -> PathBuf {
     let mut p = PathBuf::from(out).into_os_string();
-    p.push(".folio-raw.pdf");
+    p.push(".caretflow-raw.pdf");
     PathBuf::from(p)
 }
 
@@ -246,7 +246,7 @@ async fn print_to_pdf(_win: &tauri::WebviewWindow, _path: &Path, _o: &PdfOptions
 #[allow(dead_code)]
 mod log {
     pub fn error(msg: &str) {
-        eprintln!("[folio pdf] {msg}");
+        eprintln!("[caretflow pdf] {msg}");
     }
 }
 
@@ -363,7 +363,7 @@ fn postprocess(raw: &Path, out: &Path, o: &PdfOptions) -> Result<(), String> {
                     "right" => right - w,
                     _ => left,
                 };
-                ops.extend_from_slice(format!("/FolioF1 {size} Tf 1 0 0 1 {x:.2} {y:.2} Tm (").as_bytes());
+                ops.extend_from_slice(format!("/CaretFlowF1 {size} Tf 1 0 0 1 {x:.2} {y:.2} Tm (").as_bytes());
                 ops.extend_from_slice(&escape_pdf(&bytes));
                 ops.extend_from_slice(b") Tj\n");
             };
@@ -429,7 +429,7 @@ fn media_box(doc: &Document, page_id: ObjectId) -> Option<(f64, f64)> {
     None
 }
 
-/// Ensure the page's /Resources /Font dict contains /FolioF1 (resources may be inherited or indirect).
+/// Ensure the page's /Resources /Font dict contains /CaretFlowF1 (resources may be inherited or indirect).
 fn add_font_resource(doc: &mut Document, page_id: ObjectId, font_id: ObjectId) -> Result<(), String> {
     // Resolve the effective resources dictionary and give this page its own copy
     let mut res = Dictionary::new();
@@ -454,7 +454,7 @@ fn add_font_resource(doc: &mut Document, page_id: ObjectId, font_id: ObjectId) -
         Ok(Object::Dictionary(d)) => d.clone(),
         _ => Dictionary::new(),
     };
-    fonts.set("FolioF1", Object::Reference(font_id));
+    fonts.set("CaretFlowF1", Object::Reference(font_id));
     res.set("Font", Object::Dictionary(fonts));
     let page = doc.get_object_mut(page_id).and_then(|o| o.as_dict_mut()).map_err(|e| e.to_string())?;
     page.set("Resources", Object::Dictionary(res));

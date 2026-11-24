@@ -12,9 +12,9 @@ const clearDoc = async (page) => {
 }
 const useServer = (page, url) =>
   page.addInitScript((u) => {
-    const st = JSON.parse(localStorage.getItem('folio.settings'))
-    localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
-    localStorage.removeItem('folio.ai.usage')
+    const st = JSON.parse(localStorage.getItem('caretflow.settings'))
+    localStorage.setItem('caretflow.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
+    localStorage.removeItem('caretflow.ai.usage')
   }, url)
 
 export const scenes = {

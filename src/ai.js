@@ -127,7 +127,7 @@ export async function testConnection() {
 }
 
 // ════════════════════════════════════════ limits & usage
-const USAGE_KEY = 'folio.ai.usage'
+const USAGE_KEY = 'caretflow.ai.usage'
 const pad = (n) => String(n).padStart(2, '0')
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 const hourKey = (d = new Date()) => `${dayKey(d)}T${pad(d.getHours())}`
@@ -186,8 +186,8 @@ const ASPECTS = {
   consistency: 'inconsistent terms, spelling or style',
   tone: 'tone',
 }
-const CACHE_KEY = 'folio.ai.cache'
-const IGNORED_KEY = 'folio.ai.ignored'
+const CACHE_KEY = 'caretflow.ai.cache'
+const IGNORED_KEY = 'caretflow.ai.ignored'
 
 let onChange = () => {} // set by main.js: writing.js sourceChanged
 export const setOnChange = (fn) => (onChange = fn)

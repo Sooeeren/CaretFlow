@@ -12,8 +12,8 @@ let ctx = null // set by initAndroid; see main.js bootAndroid()
 let dirsP = null
 const dirs = () => (dirsP ||= invoke('android_dirs').catch(() => ({ storage: '/storage/emulated/0', documents: '/storage/emulated/0/Documents', library: '' })))
 const storage = () => invoke('android_storage').catch(() => ({ granted: false }))
-const DRAFT_KEY = 'folio.draft'
-const BROWSE_KEY = 'folio.browseDir'
+const DRAFT_KEY = 'caretflow.draft'
+const BROWSE_KEY = 'caretflow.browseDir'
 const narrow = () => innerWidth < 760
 
 // ════════════════════════════════════════ start
@@ -146,7 +146,7 @@ export async function shareDoc() {
 
 /** File → Print…: Android's print dialog (printers, or "Save as PDF") */
 export async function printHtml(html, title) {
-  const tmp = P.join(await invoke('temp_dir'), `print-${Date.now().toString(36)}.folio-tmp.html`)
+  const tmp = P.join(await invoke('temp_dir'), `print-${Date.now().toString(36)}.caretflow-tmp.html`)
   await invoke('write_text', { path: tmp, content: html })
   await invoke('android_print', { html: tmp, title })
   setTimeout(() => invoke('remove_temp', { path: tmp }).catch(() => {}), 120e3)

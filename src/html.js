@@ -48,7 +48,7 @@ export function joinInlineHtml(node, src) {
   node.children = out
 }
 
-const joinRemark = $remark('folioJoinInlineHtml', () => () => (tree, file) => joinInlineHtml(tree, String(file ?? '')))
+const joinRemark = $remark('cfJoinInlineHtml', () => () => (tree, file) => joinInlineHtml(tree, String(file ?? '')))
 
 // ───────────────────────────── cleaning
 // No scripts, event handlers, forms or frames, and nothing that could restyle or take over the
@@ -97,7 +97,7 @@ class HtmlView {
       e.preventDefault()
       this.edit()
     })
-    this.dom.addEventListener('folio-edit-html', () => this.edit())
+    this.dom.addEventListener('cf-edit-html', () => this.edit())
     this.render()
   }
 
@@ -111,7 +111,7 @@ class HtmlView {
   render() {
     const raw = this.node.attrs.value
     const frag = renderHtml(raw, this.opts.resolveSrc)
-    this.dom.className = 'folio-html' + (frag ? '' : ' raw') + (this.isBlock() ? ' block' : '')
+    this.dom.className = 'cf-html' + (frag ? '' : ' raw') + (this.isBlock() ? ' block' : '')
     this.dom.title = frag ? 'HTML – click to edit' : ''
     if (frag) this.dom.replaceChildren(frag)
     else this.dom.textContent = raw
@@ -120,7 +120,7 @@ class HtmlView {
   edit() {
     if (this.ta || !this.view.editable) return
     const ta = (this.ta = document.createElement('textarea'))
-    ta.className = 'folio-html-src'
+    ta.className = 'cf-html-src'
     ta.spellcheck = false
     ta.value = this.node.attrs.value
     const fit = () => {
@@ -197,12 +197,12 @@ class HtmlView {
 const enterKey = $prose(
   () =>
     new Plugin({
-      key: new PluginKey('folio-html-enter'),
+      key: new PluginKey('cf-html-enter'),
       props: {
         handleKeyDown(view, e) {
           const sel = view.state.selection
           if (e.key !== 'Enter' || !(sel instanceof NodeSelection) || sel.node.type.name !== 'html' || !view.editable) return false
-          view.nodeDOM(sel.from)?.dispatchEvent(new Event('folio-edit-html'))
+          view.nodeDOM(sel.from)?.dispatchEvent(new Event('cf-edit-html'))
           return true
         },
       },
@@ -245,7 +245,7 @@ export function wrapCss(tag, attrs) {
 /** Decorations: wrapper tag lines shown small, the blocks between them styled. */
 export function wrapDecorations(doc) {
   const decos = []
-  const tagLine = (pos, node) => decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'folio-html-wrap-tag' }))
+  const tagLine = (pos, node) => decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'cf-html-wrap-tag' }))
   const scan = (parent, base) => {
     const stack = []
     parent.forEach((child, offset) => {
@@ -274,7 +274,7 @@ export function wrapDecorations(doc) {
   return DecorationSet.create(doc, decos)
 }
 
-const wrapKey = new PluginKey('folio-html-wrap')
+const wrapKey = new PluginKey('cf-html-wrap')
 const wrapPlugin = $prose(
   () =>
     new Plugin({

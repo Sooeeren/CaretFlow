@@ -65,7 +65,7 @@ async fn write_text(path: String, content: String) -> Result<u64, String> {
         fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
     let mut tmp = p.clone().into_os_string();
-    tmp.push(".folio~");
+    tmp.push(".caretflow~");
     let tmp = PathBuf::from(tmp);
     fs::write(&tmp, content.as_bytes()).map_err(|e| e.to_string())?;
     if let Err(e) = fs::rename(&tmp, &p) {
@@ -330,10 +330,10 @@ fn restart(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
 fn remove_temp(path: String) -> Result<(), String> {
     let p = Path::new(&path);
     let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-    let preview = name.starts_with("folio-preview-")
+    let preview = name.starts_with("caretflow-preview-")
         && name.ends_with(".pdf")
         && p.parent().map(|d| d == std::env::temp_dir().as_path()).unwrap_or(false);
-    if !(path.ends_with(".folio-tmp.html") || preview) {
+    if !(path.ends_with(".caretflow-tmp.html") || preview) {
         return Err("refusing to delete a non-temporary file".into());
     }
     fs::remove_file(p).map_err(|e| e.to_string())

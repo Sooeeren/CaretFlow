@@ -39,7 +39,7 @@ export const pageBreakSchema = $nodeSchema('page_break', () => ({
     { tag: 'div[data-type="page-break"]' },
     { tag: 'div', getAttrs: (d) => (/(page-break-after|break-after)\s*:\s*(always|page)/i.test(d.getAttribute('style') || '') ? {} : false) },
   ],
-  toDOM: () => ['div', { 'data-type': 'page-break', class: 'folio-page-break', contenteditable: 'false' }, ['span', 'Page break']],
+  toDOM: () => ['div', { 'data-type': 'page-break', class: 'cf-page-break', contenteditable: 'false' }, ['span', 'Page break']],
   parseMarkdown: {
     match: (node) => node.type === 'pageBreak',
     runner: (state, _node, type) => {
@@ -113,7 +113,7 @@ const calloutStringify = (ctx) => {
   }))
 }
 
-const calloutKey = new PluginKey('folio-callouts')
+const calloutKey = new PluginKey('cf-callouts')
 
 function calloutDecorations(state) {
   const decos = []

@@ -112,20 +112,20 @@ export function defineVimCommands(h) {
 
   // Insert-mode CTRL-W as in Vim: on a line that holds only indentation it deletes back to the
   // start of that line. The plugin's own went on into the line above and took its last word too.
-  Vim.defineAction('folioDeleteWordBefore', (cm) => deleteWordBefore(cm.cm6))
-  Vim.mapCommand('<C-w>', 'action', 'folioDeleteWordBefore', {}, { context: 'insert' })
+  Vim.defineAction('cfDeleteWordBefore', (cm) => deleteWordBefore(cm.cm6))
+  Vim.mapCommand('<C-w>', 'action', 'cfDeleteWordBefore', {}, { context: 'insert' })
 
   // Visual-mode number increment, missing from the Vim plugin:
   //   {Visual}CTRL-A / CTRL-X   add/subtract [count] to the first number on every selected line
   //   {Visual}g CTRL-A / g CTRL-X   progressive: line n gets n×[count]
-  Vim.defineAction('folioVisualIncrement', visualIncrement)
+  Vim.defineAction('cfVisualIncrement', visualIncrement)
   for (const [keys, increase, progressive] of [
     ['<C-a>', true, false],
     ['<C-x>', false, false],
     ['g<C-a>', true, true],
     ['g<C-x>', false, true],
   ])
-    Vim.mapCommand(keys, 'action', 'folioVisualIncrement', { increase, progressive }, { context: 'visual', isEdit: true })
+    Vim.mapCommand(keys, 'action', 'cfVisualIncrement', { increase, progressive }, { context: 'visual', isEdit: true })
 }
 
 const isBlank = (c) => /\s/.test(c)

@@ -135,9 +135,9 @@ export const scenes = {
       })
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
-        const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
-        localStorage.removeItem('folio.ai.usage')
+        const st = JSON.parse(localStorage.getItem('caretflow.settings'))
+        localStorage.setItem('caretflow.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
+        localStorage.removeItem('caretflow.ai.usage')
       }, this.srv.url + '/v1')
     },
     async run(page) {
@@ -225,7 +225,7 @@ export const scenes = {
       await page.click('#ctxmenu .menu-item:has-text("Ignore")')
       await wait(500)
       m = await marks()
-      const ign = await page.evaluate(() => localStorage.getItem('folio.ai.ignored') || '')
+      const ign = await page.evaluate(() => localStorage.getItem('caretflow.ai.ignored') || '')
       check('Ignore removes it and is remembered', !m.includes('the parcel yesterday') && /parcel/.test(ign), JSON.stringify(m))
       srv.close()
       summary()
@@ -238,8 +238,8 @@ export const scenes = {
       this.srv = await fakeAi(() => openaiAnswer('{"findings":[]}'))
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
-        const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
+        const st = JSON.parse(localStorage.getItem('caretflow.settings'))
+        localStorage.setItem('caretflow.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
       }, this.srv.url + '/v1')
     },
     async run(page) {
@@ -261,8 +261,8 @@ export const scenes = {
       this.srv = await fakeAi(() => openaiAnswer(JSON.stringify({ findings: [{ quote: 'Thier', replacement: 'Their', kind: 'spelling', message: 'Spelling.' }] })))
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
-        const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
+        const st = JSON.parse(localStorage.getItem('caretflow.settings'))
+        localStorage.setItem('caretflow.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
       }, this.srv.url + '/v1')
     },
     async run(page) {
@@ -292,9 +292,9 @@ export const scenes = {
       })
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
-        const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
-        localStorage.removeItem('folio.ai.usage')
+        const st = JSON.parse(localStorage.getItem('caretflow.settings'))
+        localStorage.setItem('caretflow.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
+        localStorage.removeItem('caretflow.ai.usage')
       }, this.srv.url + '/v1')
     },
     async run(page) {
@@ -368,7 +368,7 @@ export const scenes = {
       await wait(300)
       await page.click('#ctxmenu .menu-item:has-text("Ignore this kind")')
       await wait(300)
-      const aspects = await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).aiRecAspects)
+      const aspects = await page.evaluate(() => JSON.parse(localStorage.getItem('caretflow.settings')).aiRecAspects)
       check('Ignore this kind turns that aspect off', JSON.stringify(aspects) === '["clarity"]', JSON.stringify(aspects))
 
       // removing the extension while a request is on its way
@@ -402,9 +402,9 @@ export const scenes = {
       this.srv = await fakeAi(() => openaiAnswer('{"findings":[]}'))
       await stubBackend(page, aiBackend({}))
       await page.addInitScript((u) => {
-        const st = JSON.parse(localStorage.getItem('folio.settings'))
-        localStorage.setItem('folio.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
-        localStorage.removeItem('folio.ai.usage')
+        const st = JSON.parse(localStorage.getItem('caretflow.settings'))
+        localStorage.setItem('caretflow.settings', JSON.stringify({ ...st, aiBaseUrls: { custom: u } }))
+        localStorage.removeItem('caretflow.ai.usage')
       }, this.srv.url + '/v1')
     },
     async run(page) {
@@ -464,7 +464,7 @@ export const scenes = {
       const subs = await page.$$eval('.prefs-page:not([hidden]) .pref-sub', (xs) => xs.map((x) => x.firstChild.textContent))
       check('sections in order', JSON.stringify(subs.slice(0, 6)) === JSON.stringify(['Connection', 'AI spelling & grammar', 'Recommendations', 'Both', 'Limits & usage', 'MCP server']), JSON.stringify(subs))
       check('MCP help banner at the top', await page.$eval('.prefs-page:not([hidden])', (p) => /Need help setting up MCP\?/.test(p.firstElementChild.nextElementSibling?.textContent || '')))
-      check('off by default', !(await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).aiEnabled)))
+      check('off by default', !(await page.evaluate(() => JSON.parse(localStorage.getItem('caretflow.settings')).aiEnabled)))
 
       await page.click('.prefs-page:not([hidden]) .pref-row:has-text("Provider") button.fsel')
       await page.click('#ctxmenu .menu-item:has-text("Ollama")')
@@ -494,7 +494,7 @@ export const scenes = {
       await openAi()
       await page.click('.prefs-page:not([hidden]) .ai-banner .ai-banner-x')
       await wait(200)
-      check('banner can be dismissed', !(await page.evaluate(() => JSON.parse(localStorage.getItem('folio.settings')).aiGuideBanner)))
+      check('banner can be dismissed', !(await page.evaluate(() => JSON.parse(localStorage.getItem('caretflow.settings')).aiGuideBanner)))
       await page.keyboard.press('Escape')
       await wait(200)
       const menu = async (label) => {

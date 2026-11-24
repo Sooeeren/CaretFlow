@@ -38,14 +38,14 @@ export const scenes = {
       await wait(600)
       const r = await run(page, () => {
         const pm = document.querySelector('#wysiwyg .ProseMirror')
-        const fm = pm.querySelector('.folio-frontmatter')
+        const fm = pm.querySelector('.cf-frontmatter')
         const dt = [...(fm?.querySelectorAll('dt') || [])].map((d) => d.textContent)
         const dd = [...(fm?.querySelectorAll('dd') || [])].map((d) => d.textContent)
         return {
-          first: pm.firstElementChild?.classList.contains('folio-frontmatter'),
+          first: pm.firstElementChild?.classList.contains('cf-frontmatter'),
           dt,
           dd,
-          chips: [...(fm?.querySelectorAll('.folio-fm-chip') || [])].map((c) => c.textContent),
+          chips: [...(fm?.querySelectorAll('.cf-fm-chip') || [])].map((c) => c.textContent),
           headings: [...pm.querySelectorAll('h1, h2')].map((h) => h.textContent),
           hr: pm.querySelectorAll('hr').length,
           outline: document.querySelector('#outline')?.textContent || '',
@@ -61,18 +61,18 @@ export const scenes = {
       const untouched = await md(page)
       check('saving keeps the front matter as written', untouched.startsWith(`---\n${FM}\n---\n`), untouched.slice(0, 300))
 
-      await page.click('.folio-frontmatter')
+      await page.click('.cf-frontmatter')
       await wait(200)
-      const ta = await page.$('.folio-fm-src')
+      const ta = await page.$('.cf-fm-src')
       check('click opens the YAML', !!ta && (await ta.inputValue()) === FM)
       await page.keyboard.type('\nstatus: draft')
       await page.keyboard.press('Control+Enter')
       await wait(400)
       const after = await md(page)
       check('the edit is saved', after.startsWith(`---\n${FM}\nstatus: draft\n---\n`), after.slice(0, 300))
-      check('shown as a panel again', !(await page.$('.folio-fm-src')) && (await page.$$eval('.folio-frontmatter dt', (d) => d.length)) === 8)
+      check('shown as a panel again', !(await page.$('.cf-fm-src')) && (await page.$$eval('.cf-frontmatter dt', (d) => d.length)) === 8)
 
-      await page.click('.folio-frontmatter')
+      await page.click('.cf-frontmatter')
       await wait(150)
       await page.keyboard.type('xyz')
       await page.keyboard.press('Escape')
@@ -90,7 +90,7 @@ export const scenes = {
       await page.click('#wysiwyg .ProseMirror p')
       await page.keyboard.press('Control+Alt+F')
       await wait(300)
-      check('Ctrl+Alt+F adds front matter and opens it', !!(await page.$('.folio-fm-src')))
+      check('Ctrl+Alt+F adds front matter and opens it', !!(await page.$('.cf-fm-src')))
       await page.keyboard.type('Notes\ntags: [a]')
       await page.keyboard.press('Control+Enter')
       await wait(400)

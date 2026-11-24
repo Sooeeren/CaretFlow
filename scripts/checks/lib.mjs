@@ -16,7 +16,7 @@ export function summary() {
 /**
  * Backend commands implemented in Node (handlers: { cmd: (args) => result }), available to the page
  * through the stub's window.__stubExtra. Also lets a test change settings across a reload:
- * sessionStorage['test.override'] is merged into folio.settings before the app starts.
+ * sessionStorage['test.override'] is merged into caretflow.settings before the app starts.
  */
 export async function stubBackend(page, handlers = {}) {
   await page.exposeFunction('__node', (cmd, args) => handlers[cmd](args))
@@ -26,8 +26,8 @@ export async function stubBackend(page, handlers = {}) {
   await page.addInitScript(() => {
     const o = sessionStorage.getItem('test.override')
     if (!o) return
-    const st = JSON.parse(localStorage.getItem('folio.settings') || '{}')
-    localStorage.setItem('folio.settings', JSON.stringify({ ...st, ...JSON.parse(o) }))
+    const st = JSON.parse(localStorage.getItem('caretflow.settings') || '{}')
+    localStorage.setItem('caretflow.settings', JSON.stringify({ ...st, ...JSON.parse(o) }))
   })
 }
 

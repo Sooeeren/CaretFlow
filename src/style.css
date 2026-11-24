@@ -877,7 +877,7 @@ button { font: inherit; color: inherit; }
 #wysiwyg .milkdown .milkdown-code-block .language-list-item.kb-active { background: var(--accent-soft); outline: none; }
 
 /* ───────────── Page break ───────────── */
-#wysiwyg .folio-page-break {
+#wysiwyg .cf-page-break {
   position: relative;
   margin: 1.6em -24px;
   height: 0;
@@ -886,7 +886,7 @@ button { font: inherit; color: inherit; }
   cursor: default;
   user-select: none;
 }
-#wysiwyg .folio-page-break span {
+#wysiwyg .cf-page-break span {
   position: relative;
   top: -0.8em;
   padding: 1px 10px;
@@ -898,11 +898,11 @@ button { font: inherit; color: inherit; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-#wysiwyg .folio-page-break.ProseMirror-selectednode { border-top-color: var(--accent); }
-#wysiwyg .folio-page-break.ProseMirror-selectednode span { color: var(--accent); border-color: var(--accent); }
+#wysiwyg .cf-page-break.ProseMirror-selectednode { border-top-color: var(--accent); }
+#wysiwyg .cf-page-break.ProseMirror-selectednode span { color: var(--accent); border-color: var(--accent); }
 
 /* ───────────── Table of contents ([TOC], toc.js) ───────────── */
-#wysiwyg .folio-toc {
+#wysiwyg .cf-toc {
   margin: 1em 0 1.4em;
   padding: 0.6em 1em;
   border: 1px solid var(--border);
@@ -910,9 +910,9 @@ button { font: inherit; color: inherit; }
   cursor: default;
   user-select: none;
 }
-#wysiwyg .folio-toc.ProseMirror-selectednode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-#wysiwyg .folio-toc-title { font-weight: 650; color: var(--fg-strong); margin-bottom: 0.3em; }
-#wysiwyg .milkdown .ProseMirror .folio-toc-item {
+#wysiwyg .cf-toc.ProseMirror-selectednode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+#wysiwyg .cf-toc-title { font-weight: 650; color: var(--fg-strong); margin-bottom: 0.3em; }
+#wysiwyg .milkdown .ProseMirror .cf-toc-item {
   display: block;
   border-bottom: 0;
   padding: 0.1em 0;
@@ -922,12 +922,12 @@ button { font: inherit; color: inherit; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#wysiwyg .milkdown .ProseMirror .folio-toc-item:hover { text-decoration: underline; }
-#wysiwyg .folio-toc-item.l1 { font-weight: 600; }
-#wysiwyg .folio-toc-empty { color: var(--muted); font-size: 0.92em; }
+#wysiwyg .milkdown .ProseMirror .cf-toc-item:hover { text-decoration: underline; }
+#wysiwyg .cf-toc-item.l1 { font-weight: 600; }
+#wysiwyg .cf-toc-empty { color: var(--muted); font-size: 0.92em; }
 
 /* HTML in Markdown (html.js): rendered, contained so it can't cover the app, click to edit */
-#wysiwyg .folio-html {
+#wysiwyg .cf-html {
   display: inline-block;
   max-width: 100%;
   vertical-align: baseline;
@@ -936,28 +936,28 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
   white-space: normal; /* ProseMirror keeps every space; HTML collapses them */
 }
-#wysiwyg .folio-html.block { display: block; contain: none; position: relative; } /* lets align="right" images float beside the next paragraph, like GitHub; html.js drops fixed/sticky positions */
+#wysiwyg .cf-html.block { display: block; contain: none; position: relative; } /* lets align="right" images float beside the next paragraph, like GitHub; html.js drops fixed/sticky positions */
 /* the surrounding paragraph already spaces the block: no margins of its own at the edges
    (beats Crepe's paragraph margins), and no empty lines for ProseMirror's separators and trailing <br> (its CSS forces them inline) */
-#wysiwyg .ProseMirror .folio-html > :first-child { margin-top: 0; }
-#wysiwyg .ProseMirror .folio-html > :last-child { margin-bottom: 0; }
-#wysiwyg .ProseMirror p:has(> .folio-html.block) > :is(br.ProseMirror-trailingBreak, img.ProseMirror-separator) { display: none !important; }
-#wysiwyg .folio-html img { max-width: 100%; }
-#wysiwyg .folio-html:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
-#wysiwyg .folio-html.ProseMirror-selectednode { box-shadow: 0 0 0 2px var(--accent); }
-#wysiwyg .folio-html.raw {
+#wysiwyg .ProseMirror .cf-html > :first-child { margin-top: 0; }
+#wysiwyg .ProseMirror .cf-html > :last-child { margin-bottom: 0; }
+#wysiwyg .ProseMirror p:has(> .cf-html.block) > :is(br.ProseMirror-trailingBreak, img.ProseMirror-separator) { display: none !important; }
+#wysiwyg .cf-html img { max-width: 100%; }
+#wysiwyg .cf-html:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+#wysiwyg .cf-html.ProseMirror-selectednode { box-shadow: 0 0 0 2px var(--accent); }
+#wysiwyg .cf-html.raw {
   font-family: var(--font-mono);
   font-size: 0.85em;
   color: var(--muted);
   white-space: pre-wrap;
 }
-#wysiwyg .folio-html.editing { cursor: text; box-shadow: none; contain: none; }
+#wysiwyg .cf-html.editing { cursor: text; box-shadow: none; contain: none; }
 /* the lone `<div align="center">` / `</div>` lines around Markdown (html.js wrapDecorations): kept
    visible to edit or delete, but small and quiet, since the blocks between them show their effect */
-#wysiwyg .ProseMirror p.folio-html-wrap-tag { margin-top: 0; margin-bottom: 0; line-height: 1.2; }
-#wysiwyg .folio-html-wrap-tag .folio-html.raw { font-size: 0.72em; opacity: 0.55; }
-#wysiwyg .folio-html-wrap-tag .folio-html.raw:hover { opacity: 1; }
-#wysiwyg .folio-html-src {
+#wysiwyg .ProseMirror p.cf-html-wrap-tag { margin-top: 0; margin-bottom: 0; line-height: 1.2; }
+#wysiwyg .cf-html-wrap-tag .cf-html.raw { font-size: 0.72em; opacity: 0.55; }
+#wysiwyg .cf-html-wrap-tag .cf-html.raw:hover { opacity: 1; }
+#wysiwyg .cf-html-src {
   display: block;
   width: 100%;
   box-sizing: border-box;
@@ -975,7 +975,7 @@ button { font: inherit; color: inherit; }
   overflow-x: auto;
   outline: none;
 }
-#wysiwyg .folio-html:not(.block) .folio-html-src { display: inline-block; vertical-align: middle; }
+#wysiwyg .cf-html:not(.block) .cf-html-src { display: inline-block; vertical-align: middle; }
 #wysiwyg kbd {
   font: 0.85em var(--font-mono);
   padding: 1px 5px;
@@ -986,7 +986,7 @@ button { font: inherit; color: inherit; }
 }
 
 /* ───────────── Front matter (frontmatter.js): properties panel, click to edit ───────────── */
-#wysiwyg .folio-frontmatter {
+#wysiwyg .cf-frontmatter {
   margin: 0 0 1.4em;
   padding: 10px 14px;
   border: 1px solid var(--border);
@@ -997,17 +997,17 @@ button { font: inherit; color: inherit; }
   cursor: pointer;
   user-select: none;
 }
-#wysiwyg .folio-frontmatter:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
-#wysiwyg .folio-frontmatter.ProseMirror-selectednode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-#wysiwyg .folio-fm-props {
+#wysiwyg .cf-frontmatter:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+#wysiwyg .cf-frontmatter.ProseMirror-selectednode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+#wysiwyg .cf-fm-props {
   display: grid;
   grid-template-columns: minmax(70px, max-content) minmax(0, 1fr);
   gap: 3px 18px;
   margin: 0;
 }
-#wysiwyg .folio-fm-props dt { color: var(--muted); overflow-wrap: anywhere; }
-#wysiwyg .folio-fm-props dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
-#wysiwyg .folio-fm-chip {
+#wysiwyg .cf-fm-props dt { color: var(--muted); overflow-wrap: anywhere; }
+#wysiwyg .cf-fm-props dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+#wysiwyg .cf-fm-chip {
   display: inline-block;
   margin: 0 4px 2px 0;
   padding: 0 8px;
@@ -1016,11 +1016,11 @@ button { font: inherit; color: inherit; }
   color: var(--fg-strong);
   font-size: 12px;
 }
-#wysiwyg .folio-fm-none, #wysiwyg .folio-fm-empty { color: var(--muted); }
-#wysiwyg .folio-fm-raw { margin: 0; font: 12.5px/1.5 var(--font-mono); white-space: pre-wrap; color: var(--fg); }
-#wysiwyg .folio-frontmatter.editing { cursor: text; user-select: text; border-color: var(--accent); }
-#wysiwyg .folio-fm-fence { font: 12.5px/1.5 var(--font-mono); color: var(--muted); }
-#wysiwyg .folio-fm-src {
+#wysiwyg .cf-fm-none, #wysiwyg .cf-fm-empty { color: var(--muted); }
+#wysiwyg .cf-fm-raw { margin: 0; font: 12.5px/1.5 var(--font-mono); white-space: pre-wrap; color: var(--fg); }
+#wysiwyg .cf-frontmatter.editing { cursor: text; user-select: text; border-color: var(--accent); }
+#wysiwyg .cf-fm-fence { font: 12.5px/1.5 var(--font-mono); color: var(--muted); }
+#wysiwyg .cf-fm-src {
   display: block;
   width: 100%;
   box-sizing: border-box;
@@ -1036,8 +1036,8 @@ button { font: inherit; color: inherit; }
   outline: none;
 }
 @media (max-width: 520px) {
-  #wysiwyg .folio-fm-props { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  #wysiwyg .folio-fm-props dd { margin-bottom: 4px; }
+  #wysiwyg .cf-fm-props { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  #wysiwyg .cf-fm-props dd { margin-bottom: 4px; }
 }
 
 /* ───────────── Callouts ( > [!NOTE] … ) ───────────── */

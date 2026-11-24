@@ -24,6 +24,9 @@
   },
   "bundle": {
     "active": true,
+    "publisher": "Sooeeren",
+    "copyright": "Copyright © Sooeeren",
+    "homepage": "https://caretflow.vercel.app/",
     "targets": [
       "nsis"
     ],

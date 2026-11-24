@@ -170,14 +170,14 @@ const DEFAULTS = {
 // No saved settings yet: CaretFlow's very first start (shows the welcome page)
 const FIRST_RUN = (() => {
   try {
-    return localStorage.getItem('folio.settings') === null
+    return localStorage.getItem('caretflow.settings') === null
   } catch {
     return false
   }
 })()
-const SAVED = readJSON('folio.settings', {}) // as stored, to tell what an older version didn't know yet
+const SAVED = readJSON('caretflow.settings', {}) // as stored, to tell what an older version didn't know yet
 const settings = { ...DEFAULTS, ...SAVED }
-let recent = readJSON('folio.recent', [])
+let recent = readJSON('caretflow.recent', [])
 /** Is this extension installed? Things without an extension (id undefined) always are. */
 const extOn = (id) => !id || isInstalled(settings, id)
 
@@ -191,7 +191,7 @@ function readJSON(k, d) {
 function saveSettings() {
   if (S.cli) return
   try {
-    localStorage.setItem('folio.settings', JSON.stringify(settings))
+    localStorage.setItem('caretflow.settings', JSON.stringify(settings))
   } catch {}
 }
 
@@ -329,7 +329,7 @@ async function confirmDiscard() {
 }
 
 // ════════════════════════════════════════ editor (WYSIWYG)
-const folioKey = new PluginKey('folio')
+const findKey = new PluginKey('find')
 const find = { query: '', cs: false, word: false, regex: false }
 
 function buildRegex(q, o) {
@@ -374,14 +374,14 @@ function findMatches(doc, re) {
   return res
 }
 
-const folioPlugin = $prose(
+const findPlugin = $prose(
   () =>
     new Plugin({
-      key: folioKey,
+      key: findKey,
       state: {
         init: () => ({ re: null, matches: [], current: -1, deco: DecorationSet.empty }),
         apply(tr, prev, _old, state) {
-          const meta = tr.getMeta(folioKey) || {}
+          const meta = tr.getMeta(findKey) || {}
           let { re, matches, current } = prev
           if ('re' in meta) re = meta.re
           if ('re' in meta || tr.docChanged) matches = findMatches(state.doc, re)
@@ -399,7 +399,7 @@ const folioPlugin = $prose(
         },
       },
       props: {
-        decorations: (state) => folioKey.getState(state).deco,
+        decorations: (state) => findKey.getState(state).deco,
         handlePaste(view, event) {
           const files = [...(event.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/'))
           if (!files.length || S.readonly) return false
@@ -516,7 +516,7 @@ async function createEditor(markdown) {
   // write list bullets and rules the way this document already does (`-` unless it uses `*` or `+`)
   const style = markdownStyle(markdown)
   c.editor.config((ctx) => ctx.update(remarkStringifyOptionsCtx, (o) => ({ ...o, ...style })))
-  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(folioPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
+  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(findPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -976,7 +976,7 @@ function addRecent(p) {
   if (S.cli) return // headless exports must not touch the user's recent files
   recent = [p, ...recent.filter((r) => !P.samePath(r, p))].slice(0, 20)
   try {
-    localStorage.setItem('folio.recent', JSON.stringify(recent))
+    localStorage.setItem('caretflow.recent', JSON.stringify(recent))
   } catch {}
 }
 
@@ -1248,7 +1248,7 @@ async function renderTree() {
     tree.append(el('div', { class: 'tree-empty' }, 'Open a file or folder (Ctrl+Shift+O) to browse documents here.'))
     return
   }
-  const open = new Set(readJSON('folio.openDirs', []))
+  const open = new Set(readJSON('caretflow.openDirs', []))
   const frag = document.createDocumentFragment()
   await renderDir(root, frag, open, 0)
   tree.innerHTML = ''
@@ -1366,7 +1366,7 @@ async function renderDir(dir, parent, open, depth) {
     }
     row.onclick = async () => {
       if (!e.dir) return openFile(e.path)
-      const o = new Set(readJSON('folio.openDirs', []))
+      const o = new Set(readJSON('caretflow.openDirs', []))
       if (o.has(e.path)) {
         o.delete(e.path)
         kids.hidden = true
@@ -1378,7 +1378,7 @@ async function renderDir(dir, parent, open, depth) {
         kids.hidden = false
         row.firstChild.textContent = '▾'
       }
-      localStorage.setItem('folio.openDirs', JSON.stringify([...o].slice(-200)))
+      localStorage.setItem('caretflow.openDirs', JSON.stringify([...o].slice(-200)))
     }
     row.oncontextmenu = (ev) => {
       ev.preventDefault()
@@ -1507,7 +1507,7 @@ function closeFind() {
   if (S.mode === 'source') source?.search('', {})
   else {
     const v = view()
-    v?.dispatch(v.state.tr.setMeta(folioKey, { re: null, current: -1 }))
+    v?.dispatch(v.state.tr.setMeta(findKey, { re: null, current: -1 }))
   }
   focusEditor()
 }
@@ -1537,8 +1537,8 @@ function runFind(jump = true) {
       const from = v.state.selection.from
       current = Math.max(0, ms.findIndex((m) => m.from >= from))
     }
-    v.dispatch(v.state.tr.setMeta(folioKey, { re, current }))
-    const st = folioKey.getState(v.state)
+    v.dispatch(v.state.tr.setMeta(findKey, { re, current }))
+    const st = findKey.getState(v.state)
     total = st.matches.length
     index = st.current
     if (jump && index >= 0) revealMatch(index)
@@ -1553,9 +1553,9 @@ function showFindCount(total, index) {
 
 function revealMatch(i) {
   const v = view()
-  const m = folioKey.getState(v.state).matches[i]
+  const m = findKey.getState(v.state).matches[i]
   if (!m) return
-  v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, m.from, m.to)).setMeta(folioKey, { current: i }))
+  v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, m.from, m.to)).setMeta(findKey, { current: i }))
   const c = v.coordsAtPos(m.from)
   const r = scroller.getBoundingClientRect()
   if (c.top < r.top + 60 || c.bottom > r.bottom - 60) centerAt(c)
@@ -1569,7 +1569,7 @@ function findStep(dir) {
     return showFindCount(total, index)
   }
   const v = view()
-  const st = folioKey.getState(v.state)
+  const st = findKey.getState(v.state)
   if (!st.matches.length) return
   const i = (st.current + dir + st.matches.length) % st.matches.length
   revealMatch(i)
@@ -1592,14 +1592,14 @@ function replaceOne() {
     return showFindCount(total, index)
   }
   const v = view()
-  const st = folioKey.getState(v.state)
+  const st = findKey.getState(v.state)
   const m = st.matches[st.current]
   if (!m) return
   const text = expandReplacement(m, rep)
   v.dispatch(text ? v.state.tr.insertText(text, m.from, m.to) : v.state.tr.delete(m.from, m.to))
-  const st2 = folioKey.getState(v.state)
+  const st2 = findKey.getState(v.state)
   if (st2.matches.length) revealMatch(Math.min(st.current, st2.matches.length - 1))
-  showFindCount(st2.matches.length, folioKey.getState(v.state).current)
+  showFindCount(st2.matches.length, findKey.getState(v.state).current)
 }
 
 function replaceAllMatches() {
@@ -1612,7 +1612,7 @@ function replaceAllMatches() {
     return showFindCount(total, index)
   }
   const v = view()
-  const ms = folioKey.getState(v.state).matches
+  const ms = findKey.getState(v.state).matches
   if (!ms.length) return
   let tr = v.state.tr
   for (let i = ms.length - 1; i >= 0; i--) {
@@ -1621,7 +1621,7 @@ function replaceAllMatches() {
   }
   v.dispatch(tr)
   toast(`Replaced ${ms.length} occurrence${ms.length === 1 ? '' : 's'}`)
-  showFindCount(folioKey.getState(v.state).matches.length, -1)
+  showFindCount(findKey.getState(v.state).matches.length, -1)
 }
 
 // ════════════════════════════════════════ formatting commands
@@ -2222,7 +2222,7 @@ async function exportPdfTo(out, options) {
     inlineKatex: true,
     forPdf: true,
   })
-  const tmp = out.replace(/\.pdf$/i, '') + '.folio-tmp.html'
+  const tmp = out.replace(/\.pdf$/i, '') + '.caretflow-tmp.html'
   await invoke('write_text', { path: tmp, content: htmlDoc })
   try {
     await invoke('export_pdf', { url: convertFileSrc(tmp), out, options, html: tmp })
@@ -2363,7 +2363,7 @@ async function refreshPreview() {
   PV.busy = true
   pvStatus('Updating…')
   try {
-    PV.file ||= P.join(await invoke('temp_dir'), `folio-preview-${Math.random().toString(36).slice(2, 10)}.pdf`)
+    PV.file ||= P.join(await invoke('temp_dir'), `caretflow-preview-${Math.random().toString(36).slice(2, 10)}.pdf`)
     await exportPdfTo(PV.file, pdfOptionsFor(settings.pdf))
     if (!PV.open) return
     const bytes = await invoke('read_bytes', { path: PV.file })
@@ -2635,10 +2635,10 @@ async function startupUpdateCheck() {
 // every window is its own process: only one of them checks (and pops up) per half hour
 function autoCheck() {
   if (!settings.updateCheck) return
-  const last = +localStorage.getItem('folio.updateChecked') || 0
+  const last = +localStorage.getItem('caretflow.updateChecked') || 0
   if (Date.now() - last < 30 * 60e3) return
   try {
-    localStorage.setItem('folio.updateChecked', String(Date.now()))
+    localStorage.setItem('caretflow.updateChecked', String(Date.now()))
   } catch {}
   checkUpdates(false)
 }
@@ -2777,7 +2777,7 @@ const toggle = (k) => () => {
     toast({ spellcheck: 'Spelling & grammar check', wcGrammar: 'Grammar check', wcStyle: 'Style suggestions', autocorrect: 'AutoCorrect' }[k] + (settings[k] ? ' on' : ' off'))
   }
   const v = view()
-  if (k === 'focus' && v) v.dispatch(v.state.tr.setMeta(folioKey, {}))
+  if (k === 'focus' && v) v.dispatch(v.state.tr.setMeta(findKey, {}))
   if (k === 'typewriter' || k === 'focus') toast(`${k === 'focus' ? 'Focus' : 'Typewriter'} mode ${settings[k] ? 'on' : 'off'}`)
 }
 
@@ -3303,7 +3303,7 @@ function openPrefs(section) {
     }
     pages.scrollTop = 0
     try {
-      localStorage.setItem('folio.prefsPage', id)
+      localStorage.setItem('caretflow.prefsPage', id)
     } catch {}
   }
   for (const [id, label, rows] of PAGES.filter(Boolean)) {
@@ -3324,7 +3324,7 @@ function openPrefs(section) {
   })
   let last = 'general'
   try {
-    last = localStorage.getItem('folio.prefsPage') || last
+    last = localStorage.getItem('caretflow.prefsPage') || last
   } catch {}
   show(section || last)
 
@@ -3950,7 +3950,7 @@ function recentMenu() {
     '-',
     k('Clear Recent', null, () => {
       recent = []
-      localStorage.setItem('folio.recent', '[]')
+      localStorage.setItem('caretflow.recent', '[]')
     }),
   ]
 }
@@ -4865,9 +4865,9 @@ function wireUi() {
 // ════════════════════════════════════════ boot
 /**
  * Headless command-line export (window stays hidden):
- *   folio --export-pdf  input.md output.pdf
- *   folio --export-html input.md output.html
- *   folio --export-docx input.md output.docx   (also --export-odt, --export-epub, --export-tex, --export-txt)
+ *   caretflow --export-pdf  input.md output.pdf
+ *   caretflow --export-html input.md output.html
+ *   caretflow --export-docx input.md output.docx   (also --export-odt, --export-epub, --export-tex, --export-txt)
  * Uses the PDF options saved in the app. Exit code 0 on success, 1 on failure.
  */
 const CLI_EXPORTS = ['--export-pdf', '--export-html', ...Object.keys(FORMATS).map((f) => '--export-' + f)]
@@ -4878,7 +4878,7 @@ async function runCliExport(args) {
   const input = await invoke('initial_path')
   const output = args[i + 2]
   try {
-    if (!input || !output) throw new Error('usage: folio --export-pdf <input.md> <output.pdf>')
+    if (!input || !output) throw new Error('usage: caretflow --export-pdf <input.md> <output.pdf>')
     S.readonly = false
     settings.startInSource = false
     if (!(await openFile(input, { force: true }))) throw new Error('could not open ' + input)
@@ -5005,7 +5005,7 @@ async function boot() {
   if (alive.includes(false)) {
     recent = recent.filter((_, i) => alive[i])
     try {
-      localStorage.setItem('folio.recent', JSON.stringify(recent))
+      localStorage.setItem('caretflow.recent', JSON.stringify(recent))
     } catch {}
   }
   if (!path && settings.reopenLast && recent[0]) path = recent[0]
@@ -5029,7 +5029,7 @@ async function boot() {
   else focusEditor() // not on Android: the keyboard would pop up on every start
   if (args.includes('--preview')) {
     PV.debug = true // logs one line once the first page is drawn (used by tests)
-    openPagePreview() // `folio --preview file.md`
+    openPagePreview() // `caretflow --preview file.md`
   }
   if (args.includes('--about')) showAbout()
   migrateExtensions()

@@ -9,7 +9,7 @@ import { Plugin, PluginKey, NodeSelection, TextSelection } from '@milkdown/kit/p
 const KINDS = ['yaml', 'toml']
 const FENCE = { yaml: '---', toml: '+++' }
 
-const frontmatterRemark = $remark('folioFrontmatter', () => remarkFrontmatter, KINDS)
+const frontmatterRemark = $remark('cfFrontmatter', () => remarkFrontmatter, KINDS)
 
 export const frontmatterSchema = $nodeSchema('front_matter', () => ({
   group: 'block',
@@ -94,14 +94,14 @@ class FrontmatterView {
     this.node = node
     this.view = view
     this.getPos = getPos
-    this.dom = el('div', 'folio-frontmatter')
+    this.dom = el('div', 'cf-frontmatter')
     this.dom.contentEditable = 'false'
     this.dom.addEventListener('mousedown', (e) => {
       if (e.button !== 0 || !view.editable || this.ta) return
       e.preventDefault()
       this.edit()
     })
-    this.dom.addEventListener('folio-edit-frontmatter', () => this.edit())
+    this.dom.addEventListener('cf-edit-frontmatter', () => this.edit())
     this.render()
   }
 
@@ -111,15 +111,15 @@ class FrontmatterView {
     this.dom.title = this.view.editable ? 'Front matter – click to edit' : 'Front matter'
     this.dom.classList.toggle('raw', !props?.length)
     if (!props?.length) {
-      this.dom.replaceChildren(value.trim() ? el('pre', 'folio-fm-raw', value) : el('div', 'folio-fm-empty', 'Empty front matter'))
+      this.dom.replaceChildren(value.trim() ? el('pre', 'cf-fm-raw', value) : el('div', 'cf-fm-empty', 'Empty front matter'))
       return
     }
-    const table = el('dl', 'folio-fm-props')
+    const table = el('dl', 'cf-fm-props')
     for (const { key, value: v } of props) {
       table.append(el('dt', null, key))
       const dd = el('dd')
-      if (Array.isArray(v)) dd.append(...v.map((s) => el('span', 'folio-fm-chip', s)))
-      else if (v === '') dd.append(el('span', 'folio-fm-none', '—'))
+      if (Array.isArray(v)) dd.append(...v.map((s) => el('span', 'cf-fm-chip', s)))
+      else if (v === '') dd.append(el('span', 'cf-fm-none', '—'))
       else dd.textContent = v
       table.append(dd)
     }
@@ -129,7 +129,7 @@ class FrontmatterView {
   edit() {
     if (this.ta || !this.view.editable) return
     const fence = FENCE[this.node.attrs.kind] || '---'
-    const ta = (this.ta = el('textarea', 'folio-fm-src'))
+    const ta = (this.ta = el('textarea', 'cf-fm-src'))
     ta.spellcheck = false
     ta.value = this.node.attrs.value
     const fit = () => (ta.rows = Math.max(1, ta.value.split('\n').length))
@@ -148,7 +148,7 @@ class FrontmatterView {
     })
     ta.addEventListener('blur', () => this.close(false))
     this.dom.classList.add('editing')
-    this.dom.replaceChildren(el('div', 'folio-fm-fence', fence), ta, el('div', 'folio-fm-fence', fence))
+    this.dom.replaceChildren(el('div', 'cf-fm-fence', fence), ta, el('div', 'cf-fm-fence', fence))
     requestAnimationFrame(() => {
       ta.focus()
       ta.setSelectionRange(ta.value.length, ta.value.length)
@@ -202,13 +202,13 @@ class FrontmatterView {
 
 const frontmatterView = $view(frontmatterSchema.node, () => (node, v, getPos) => new FrontmatterView(node, v, getPos))
 
-const editAt = (view, pos) => view.nodeDOM(pos)?.dispatchEvent(new Event('folio-edit-frontmatter'))
+const editAt = (view, pos) => view.nodeDOM(pos)?.dispatchEvent(new Event('cf-edit-frontmatter'))
 
 // Enter on the selected panel edits it, as a click does
 const enterKey = $prose(
   () =>
     new Plugin({
-      key: new PluginKey('folio-frontmatter-enter'),
+      key: new PluginKey('cf-frontmatter-enter'),
       props: {
         handleKeyDown(view, e) {
           const sel = view.state.selection
@@ -221,7 +221,7 @@ const enterKey = $prose(
 )
 
 /** Insert → Front Matter: edit the document's front matter, adding an empty one at the top first. */
-export const frontmatterCommand = $command('FolioFrontmatter', (ctx) => () => (state, dispatch, view) => {
+export const frontmatterCommand = $command('CfFrontmatter', (ctx) => () => (state, dispatch, view) => {
   const first = state.doc.firstChild
   if (first?.type.name !== 'front_matter') {
     if (!dispatch) return true

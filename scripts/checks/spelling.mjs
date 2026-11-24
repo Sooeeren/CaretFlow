@@ -46,7 +46,7 @@ const backend = {
 
 /** Underlined words in the editor. */
 const marked = (page) => run(page, () => [...document.querySelectorAll('#wysiwyg .wc-err')].map((x) => x.textContent))
-const settings = (page) => run(page, () => JSON.parse(localStorage.getItem('folio.settings') || '{}'))
+const settings = (page) => run(page, () => JSON.parse(localStorage.getItem('caretflow.settings') || '{}'))
 async function menuFor(page, word) {
   const box = await page.locator('#wysiwyg .wc-err', { hasText: word }).first().boundingBox()
   if (!box) return []

@@ -37,7 +37,7 @@ export const scenes = {
       check('eight color swatches (no wallpaper color off Android)', swatches === 8, swatches)
       await page.click('.m-seeds .m-seed[title="#006a60"]')
       await wait(150)
-      const saved = await run(page, () => JSON.parse(localStorage.getItem('folio.settings')).materialSeed)
+      const saved = await run(page, () => JSON.parse(localStorage.getItem('caretflow.settings')).materialSeed)
       check('picking a swatch saves the seed', saved === '#006a60', saved)
       check('…and recolors the app', (await accent(page)) !== '#634ca0', await accent(page))
     },

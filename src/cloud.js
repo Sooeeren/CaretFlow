@@ -15,8 +15,8 @@ import { IS_ANDROID, pickFolder, openPath, reveal as revealItemInDir, canReveal 
 import * as P from './paths.js'
 
 let ctx // { settings, saveSettings, el, toast, dialog, log, customSelect, showContextMenu, openFile, openPrefs, fileChanged, showCloudTab }
-const STATE_KEY = 'folio.cloud'
-const OPEN_DIRS_KEY = 'folio.cloud.openDirs'
+const STATE_KEY = 'caretflow.cloud'
+const OPEN_DIRS_KEY = 'caretflow.cloud.openDirs'
 
 export const PROVIDERS = [
   ['webdav', 'WebDAV (Nextcloud, ownCloud, NAS, …)'],

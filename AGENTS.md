@@ -6,9 +6,12 @@ the [contributor list](#ai-contributors) when you are done**.
 
 ## What CaretFlow is
 
-CaretFlow was called Folio until 0.5.0. Internal names keep the old one on purpose: the app
-identifier `app.folio.markdown` (settings, recent files and window state live under it), the
-`folio.*` localStorage keys and temp file names, and the GitHub repository `Sooeeren/folio`.
+CaretFlow was called Folio until 0.5.0. Use CaretFlow everywhere (author and publisher: Sooeeren).
+Only three names keep the old one on purpose, because changing them would cut users off: the app
+identifier `app.folio.markdown` (settings, recent files, window state and the WebView's storage live
+under it; on Android it is the package name, so a new one would be a different app), and the GitHub
+repository `Sooeeren/folio` (the updater's `latest.json` URL). Storage keys are `caretflow.*`
+(`index.html` moves old `folio.*` keys once), CSS classes and plugin keys use `cf-`.
 
 
 CaretFlow is a Markdown reader and editor for Windows, Linux and Android, in the spirit of Typora:
@@ -184,3 +187,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Haiku 5.5 | Claude Code | 2026-11-17 | About: shares add up to exactly 100% (largest remainder), GitHub bots such as dependabot listed as "(bot)" in their own color (scripts/ai-stats.mjs, main.js) |
 | Claude Opus 5.5 | Claude Code | 2026-11-20 | Paste as Plain Text / Paste as Markdown (right-click and Edit menu, scripts/checks/contextmenu.mjs ctx-paste); Dependabot PRs #31–#37 merged |
 | Claude Opus 5.5 | Claude Code | 2026-11-20 | Source mode no longer freezes on a line that starts with inline code (spelling loop); Markdown inside `<div align="center">` … `</div>` shows centered (scripts/checks/html.mjs html-wrap) |
+| Claude Opus 5.5 | Claude Code | 2026-11-24 | Folio name removed: publisher/author Sooeeren (installer, packages), `caretflow.*` storage keys moved over once, `cf-` classes, CaretFlow temp files and PDF font name |

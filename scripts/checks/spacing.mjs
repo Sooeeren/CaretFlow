@@ -53,7 +53,7 @@ Last paragraph.
 function layout(root) {
   const blocks = []
   for (const c of root.children) {
-    if (c.matches('.prosemirror-virtual-cursor, .ProseMirror-trailingBreak, .folio-fm, br, style, script')) continue
+    if (c.matches('.prosemirror-virtual-cursor, .ProseMirror-trailingBreak, .cf-fm, br, style, script')) continue
     const tag = c.classList.contains('milkdown-code-block') ? 'PRE' : c.classList.contains('milkdown-table-block') ? 'TABLE' : c.tagName
     // list items one by one (nested ones too, in document order)
     if (/^(UL|OL)$/.test(tag)) for (const li of c.querySelectorAll('li')) blocks.push({ tag: li.parentElement.closest('li') ? 'LI2' : 'LI', el: li, text: (li.querySelector('p') || li).textContent.trim() })

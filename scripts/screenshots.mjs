@@ -5,7 +5,7 @@
 //   node scripts/screenshots.mjs editor writing  only these scenes
 //   node scripts/screenshots.mjs --out <dir>     somewhere else (handy for checking UI changes)
 //
-// Needs Chrome, Edge or Chromium installed (set FOLIO_BROWSER to the executable to pick one).
+// Needs Chrome, Edge or Chromium installed (set CARETFLOW_BROWSER to the executable to pick one).
 // The demo documents live in scripts/shots/demo/.
 import { createServer, preview } from 'vite'
 import { chromium } from 'playwright-core'
@@ -28,7 +28,8 @@ const demoFiles = Object.fromEntries(
 
 function findBrowser() {
   const c = [
-    process.env.FOLIO_BROWSER,
+    process.env.CARETFLOW_BROWSER,
+    process.env.FOLIO_BROWSER, // the old name
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
     'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
@@ -38,7 +39,7 @@ function findBrowser() {
     '/usr/bin/microsoft-edge',
   ]
   const exe = c.find((p) => p && existsSync(p))
-  if (!exe) throw new Error('No Chrome/Edge/Chromium found; set FOLIO_BROWSER')
+  if (!exe) throw new Error('No Chrome/Edge/Chromium found; set CARETFLOW_BROWSER')
   return exe
 }
 
@@ -69,7 +70,7 @@ function tauriStub({ files, dir, open }) {
     // Advanced Grammar: downloaded, with German and English n-grams; the server "runs" on 8010
     lt_status: () => ({ installed: true, running: 8010, ngrams: ['de', 'en'], busy: null, bytes: 11.6e9, dir: '' }),
     lt_start: () => 8010,
-    log_line: ({ line }) => console.log('[folio]', line),
+    log_line: ({ line }) => console.log('[caretflow]', line),
     'plugin:window|is_maximized': () => false,
     'plugin:window|is_fullscreen': () => false,
     'plugin:event|listen': () => ++cb,
@@ -131,7 +132,7 @@ const SCENES = {
     open: 'Welcome.md',
     settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
-      await page.evaluate(() => localStorage.setItem('folio.typing.cfg', JSON.stringify({ mode: 'time', time: 30, punct: false, nums: false })))
+      await page.evaluate(() => localStorage.setItem('caretflow.typing.cfg', JSON.stringify({ mode: 'time', time: 30, punct: false, nums: false })))
       await key(page, 'Control+Alt+T')
       await settle(page)
       const words = await page.$$eval('#tt .tt-word', (ws) => ws.slice(0, 9).map((w) => w.textContent))
@@ -145,7 +146,7 @@ const SCENES = {
     open: 'Welcome.md',
     settings: { theme: 'ink', sidebar: false, extensions: ['typing'] },
     run: async (page) => {
-      await page.evaluate(() => localStorage.setItem('folio.typing.cfg', JSON.stringify({ mode: 'words', words: 25, punct: false, nums: false })))
+      await page.evaluate(() => localStorage.setItem('caretflow.typing.cfg', JSON.stringify({ mode: 'words', words: 25, punct: false, nums: false })))
       await key(page, 'Control+Alt+T')
       await settle(page)
       const words = await page.$$eval('#tt .tt-word', (ws) => ws.map((w) => w.textContent))
@@ -198,8 +199,8 @@ const SCENES = {
         add('Draft.md', 'up')
         add('Journal/2026-11-06.md', 'cloud')
         add('Projects/Garden.md', 'down')
-        localStorage.setItem('folio.cloud', JSON.stringify({ id: `webdav|https://cloud.example.com/remote.php/dav/files/you/Notes|you|${dir}|notes`, files, local, remote, last: now - 4 * 60e3, error: null }))
-        localStorage.setItem('folio.cloud.openDirs', JSON.stringify(['Journal', 'Projects', 'Projects/CaretFlow']))
+        localStorage.setItem('caretflow.cloud', JSON.stringify({ id: `webdav|https://cloud.example.com/remote.php/dav/files/you/Notes|you|${dir}|notes`, files, local, remote, last: now - 4 * 60e3, error: null }))
+        localStorage.setItem('caretflow.cloud.openDirs', JSON.stringify(['Journal', 'Projects', 'Projects/CaretFlow']))
       }, DEMO_DIR),
   },
   // only for the Extensions page (public/extensions/cloud-2.webp)
@@ -465,8 +466,8 @@ try {
     const open = DEMO_DIR + '\\' + scene.open
     await page.addInitScript(tauriStub, { files: demoFiles, dir: DEMO_DIR, open })
     await page.addInitScript((s) => {
-      localStorage.setItem('folio.settings', JSON.stringify({ reopenLast: false, ...s }))
-      localStorage.setItem('folio.recent', '[]')
+      localStorage.setItem('caretflow.settings', JSON.stringify({ reopenLast: false, ...s }))
+      localStorage.setItem('caretflow.recent', '[]')
     }, scene.settings || {})
     if (scene.setup) await scene.setup(page)
     await page.goto(url)

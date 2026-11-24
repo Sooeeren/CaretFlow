@@ -640,7 +640,7 @@ function adapter() {
 }
 
 // ════════════════════════════════════════ rendered editor (ProseMirror)
-const pmKey = new PluginKey('folio-writing')
+const pmKey = new PluginKey('cf-writing')
 
 function pmDeco(doc, list, sel) {
   const hide = Date.now() - typingAt < 1500 && sel.empty ? sel.head : -1

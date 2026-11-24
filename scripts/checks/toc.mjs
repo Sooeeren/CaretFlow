@@ -30,7 +30,7 @@ async function md(page) {
   return saved ?? ''
 }
 
-const items = (page) => run(page, () => [...document.querySelectorAll('#wysiwyg .folio-toc-item')].map((a) => a.textContent))
+const items = (page) => run(page, () => [...document.querySelectorAll('#wysiwyg .cf-toc-item')].map((a) => a.textContent))
 
 export const scenes = {
   toc: {
@@ -41,19 +41,19 @@ export const scenes = {
       await wait(700)
       const r = await run(page, () => {
         const pm = document.querySelector('#wysiwyg .ProseMirror')
-        return { toc: pm.querySelectorAll('.folio-toc').length, text: pm.textContent.includes('[TOC]') }
+        return { toc: pm.querySelectorAll('.cf-toc').length, text: pm.textContent.includes('[TOC]') }
       })
       check('[TOC] shows as a contents block, not text', r.toc === 1 && !r.text, JSON.stringify(r))
       const list = await items(page)
       check('lists every heading in order', list.join('|') === 'Guide|Install|On Linux|Use|Last part', list.join('|'))
-      const pad = await run(page, () => [...document.querySelectorAll('#wysiwyg .folio-toc-item')].map((a) => a.style.paddingLeft))
+      const pad = await run(page, () => [...document.querySelectorAll('#wysiwyg .cf-toc-item')].map((a) => a.style.paddingLeft))
       check('nested headings are indented', pad[0] === '0em' && pad[2] === '2.4em', pad.join())
 
       const out = await md(page)
       check('saving keeps the [TOC] line', out.includes('\n[TOC]\n') && !out.includes('\\[TOC]'), out.slice(0, 80))
 
       // clicking an entry scrolls to the heading
-      await page.click('#wysiwyg .folio-toc-item:last-child')
+      await page.click('#wysiwyg .cf-toc-item:last-child')
       await wait(900)
       const jumped = await run(page, () => {
         const h = [...document.querySelectorAll('#wysiwyg h2')].find((h) => h.textContent === 'Last part')

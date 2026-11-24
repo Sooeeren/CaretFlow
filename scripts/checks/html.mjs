@@ -71,23 +71,23 @@ export const scenes = {
       await wait(500)
       const r = await run(page, () => {
         const pm = document.querySelector('#wysiwyg .ProseMirror')
-        const nodes = [...pm.querySelectorAll('.folio-html')]
+        const nodes = [...pm.querySelectorAll('.cf-html')]
         return {
           count: nodes.length,
-          centered: !!pm.querySelector('.folio-html.block p[align="center"] a b'),
-          kbd: pm.querySelectorAll('.folio-html kbd').length,
-          sub: !!pm.querySelector('.folio-html sub'),
+          centered: !!pm.querySelector('.cf-html.block p[align="center"] a b'),
+          kbd: pm.querySelectorAll('.cf-html kbd').length,
+          sub: !!pm.querySelector('.cf-html sub'),
           u: !!pm.querySelector('u'),
-          script: !!pm.querySelector('.folio-html script'),
-          onclick: !!pm.querySelector('.folio-html [onclick], .folio-html [onerror]'),
-          idClass: !!pm.querySelector('.folio-html #modal, .folio-html .menu-pop'),
+          script: !!pm.querySelector('.cf-html script'),
+          onclick: !!pm.querySelector('.cf-html [onclick], .cf-html [onerror]'),
+          idClass: !!pm.querySelector('.cf-html #modal, .cf-html .menu-pop'),
           safe: pm.textContent.includes('safe text'),
           comment: nodes.some((n) => n.classList.contains('raw') && n.textContent.includes('<!-- a comment -->')),
-          details: !!pm.querySelector('.folio-html details summary'),
-          pinned: [...pm.querySelectorAll('.folio-html div')].find((d) => d.textContent === 'pinned')?.style.position,
+          details: !!pm.querySelector('.cf-html details summary'),
+          pinned: [...pm.querySelectorAll('.cf-html div')].find((d) => d.textContent === 'pinned')?.style.position,
           // the paragraph around block HTML is exactly as tall as the HTML: no empty lines, no margins
           gap: (() => {
-            const h = pm.querySelector('.folio-html.block p[align]').closest('.folio-html')
+            const h = pm.querySelector('.cf-html.block p[align]').closest('.cf-html')
             return Math.round(h.parentElement.getBoundingClientRect().height - h.getBoundingClientRect().height) + '/' + getComputedStyle(h.querySelector('p')).marginTop
           })(),
           rawTags: /<p align|<kbd>|<b>/.test(pm.textContent),
@@ -111,9 +111,9 @@ export const scenes = {
       check('saving without edits keeps every HTML part as written', htmlParts.every((p) => untouched.includes(p)), untouched)
 
       // click to edit the source, change it, Ctrl+Enter saves it back
-      await page.click('.folio-html.block p[align="center"]', { position: { x: 5, y: 5 } })
+      await page.click('.cf-html.block p[align="center"]', { position: { x: 5, y: 5 } })
       await wait(200)
-      const ta = await page.$('.folio-html-src')
+      const ta = await page.$('.cf-html-src')
       check('click opens the source', !!ta && (await ta.inputValue()).startsWith('<p align="center">'))
       await page.keyboard.press('Control+End')
       await page.keyboard.type('\n<!-- edited -->')
@@ -121,11 +121,11 @@ export const scenes = {
       await wait(400)
       const after = await md(page)
       check('the edit is saved to Markdown', /<\/p>\n<!-- edited -->/.test(after || ''), after?.slice(0, 200))
-      check('rendered again after editing', !(await page.$('.folio-html-src')))
+      check('rendered again after editing', !(await page.$('.cf-html-src')))
       check('everything else unchanged', (after || '').includes('Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save, H<sub>2</sub>O, and <u>underline</u>'), after)
 
       // Escape cancels
-      await page.click('.folio-html kbd >> nth=0')
+      await page.click('.cf-html kbd >> nth=0')
       await wait(150)
       await page.keyboard.type('xyz')
       await page.keyboard.press('Escape')
@@ -146,8 +146,8 @@ export const scenes = {
         const align = (sel) => getComputedStyle(pm.querySelector(sel)).textAlign
         const para = (t) => [...pm.querySelectorAll('p')].find((p) => p.textContent.includes(t))
         return {
-          tags: pm.querySelectorAll('p.folio-html-wrap-tag').length,
-          tagSize: parseFloat(getComputedStyle(pm.querySelector('p.folio-html-wrap-tag .folio-html')).fontSize) < parseFloat(getComputedStyle(para('Centered')).fontSize),
+          tags: pm.querySelectorAll('p.cf-html-wrap-tag').length,
+          tagSize: parseFloat(getComputedStyle(pm.querySelector('p.cf-html-wrap-tag .cf-html')).fontSize) < parseFloat(getComputedStyle(para('Centered')).fontSize),
           h1: align('h1'),
           quote: align('blockquote'),
           centered: getComputedStyle(para('Centered')).textAlign,

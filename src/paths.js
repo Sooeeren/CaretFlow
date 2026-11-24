@@ -7,7 +7,7 @@ export const isUri = (p) => typeof p === 'string' && p.startsWith('content://')
 // The names Android reports for content:// links. The link itself often ends in an ID
 // (Downloads: msf:1000012345, Drive: an encoded key), so the name has to come from Android.
 // Kept across restarts for the Recent list.
-const URI_NAMES_KEY = 'folio.uriNames'
+const URI_NAMES_KEY = 'caretflow.uriNames'
 let uriNames = null
 const names = () => {
   if (!uriNames)

@@ -5,9 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CaretFlow</title>
     <script>
+      // CaretFlow was called Folio: move its storage keys (folio.*) to caretflow.* once. Runs before
+      // anything reads them; custom CSS that styled the old folio-* classes follows the new cf-* ones.
+      try {
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i)
+          if (!k || k.indexOf('folio.') !== 0) continue
+          var nk = 'caretflow.' + k.slice(6)
+          var v = localStorage.getItem(k)
+          if (nk === 'caretflow.settings') {
+            var o = JSON.parse(v)
+            if (o && o.customCSS) o.customCSS = o.customCSS.replace(/\.folio-/g, '.cf-')
+            v = JSON.stringify(o)
+          }
+          if (localStorage.getItem(nk) === null) localStorage.setItem(nk, v)
+          localStorage.removeItem(k)
+        }
+      } catch (e) {}
       // Apply theme before first paint (no flash)
       try {
-        var s = JSON.parse(localStorage.getItem('folio.settings') || '{}')
+        var s = JSON.parse(localStorage.getItem('caretflow.settings') || '{}')
         var t = s.theme || 'paper'
         if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'ink' : 'paper'
         document.documentElement.dataset.theme = t

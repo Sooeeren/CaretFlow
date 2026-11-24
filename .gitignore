@@ -14,6 +14,7 @@ src-tauri/gen/*
 *.log
 npm-debug.log*
 .vite/
+*.caretflow~
 *.folio~
 
 # Editors / OS

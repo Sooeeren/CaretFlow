@@ -29,7 +29,7 @@ minute remember purpose test fight watch situation south ago difference stage fa
 
 const TIME_OPTS = [15, 30, 60, 120]
 const WORD_OPTS = [10, 25, 50, 100]
-const PB_KEY = 'folio.typing'
+const PB_KEY = 'caretflow.typing'
 
 /** @type {{ el, docText: () => string, onKey: (key: string) => void, onClose: () => void }} */
 let H = null
@@ -74,7 +74,7 @@ function build() {
   const close = el('button', { class: 'tt-close', title: 'Close (Esc)' }, '✕')
   close.onclick = closeTypingTest
   root.append(
-    el('div', { class: 'tt-top' }, el('div', { class: 'tt-logo' }, el('b', {}, 'folio'), ' type'), cfgEl, close),
+    el('div', { class: 'tt-top' }, el('div', { class: 'tt-logo' }, el('b', {}, 'caretflow'), ' type'), cfgEl, close),
     el('div', { class: 'tt-stage' }, liveEl, wordsEl, resultEl),
     hintEl,
     input,
