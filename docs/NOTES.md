@@ -35,9 +35,9 @@ CaretFlow sends nothing anywhere unless you turn something on. There is no telem
 
 | What | Where |
 | --- | --- |
-| Settings, recent files, window state | The app's web storage and config folder (`app.folio.markdown`, the name from before the rename) |
-| Passwords, API keys, the MCP token | `secrets.json` in the config folder (`%APPDATA%\app.folio.markdown` on Windows, `~/.config/app.folio.markdown` on Linux) |
-| Cloud Sync trash | `sync-trash` in the data folder (`%APPDATA%\app.folio.markdown`, `~/.local/share/app.folio.markdown`); also Cloud tab → Sync trash |
+| Settings, recent files, window state | The app's web storage and config folder (`app.caretflow.markdown`) |
+| Passwords, API keys, the MCP token | `secrets.json` in the config folder (`%APPDATA%\app.caretflow.markdown` on Windows, `~/.config/app.caretflow.markdown` on Linux) |
+| Cloud Sync trash | `sync-trash` in the data folder (`%APPDATA%\app.caretflow.markdown`, `~/.local/share/app.caretflow.markdown`); also Cloud tab → Sync trash |
 | MCP port and token for `caretflow --mcp` | `mcp.json` in the config folder, while the MCP server runs |
 | AI answers cache, usage counter | The app's web storage (`caretflow.ai.*`) |
 | Logs | `%TEMP%\caretflow.log` (`/tmp/caretflow.log` on Linux), errors only |

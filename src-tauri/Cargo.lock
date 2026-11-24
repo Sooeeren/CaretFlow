@@ -436,6 +436,7 @@ name = "caretflow"
 version = "0.12.3"
 dependencies = [
  "base64 0.23.1",
+ "dirs",
  "flate2",
  "gtk",
  "lopdf",

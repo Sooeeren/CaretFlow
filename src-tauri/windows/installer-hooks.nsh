@@ -8,7 +8,7 @@ Var FolioRemoved
 Var FolioHadDesktopLink
 
 ; Before installing: remove Folio. Its uninstaller runs silently and keeps the app data (settings,
-; recent files: they belong to the identifier, which didn't change). It must run before CaretFlow
+; recent files: they live in the identifier's folders, which CaretFlow moves itself, src/migrate.rs). It must run before CaretFlow
 ; registers .md files, because it unregisters the same "Markdown" file type.
 !macro NSIS_HOOK_PREINSTALL
   StrCpy $FolioRemoved 0

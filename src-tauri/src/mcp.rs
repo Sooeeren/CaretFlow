@@ -278,13 +278,12 @@ fn pending() -> &'static Mutex<HashMap<u64, mpsc::Sender<Result<Value, String>>>
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
 /// Where the bridge finds the port and token: <config dir>/mcp.json, the same folder Tauri uses.
+/// The old identifier's folder counts too, for a CaretFlow from before the move (crate::migrate).
 fn bridge_file() -> Option<PathBuf> {
-    let base = if cfg!(windows) {
-        std::env::var_os("APPDATA").map(PathBuf::from)
-    } else {
-        std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
-    };
-    base.map(|b| b.join("app.folio.markdown").join("mcp.json"))
+    let base = crate::migrate::base_dirs().into_iter().next()?;
+    let new = base.join(crate::migrate::NEW_ID).join("mcp.json");
+    let old = base.join(crate::migrate::OLD_ID).join("mcp.json");
+    Some(if !new.exists() && old.exists() { old } else { new })
 }
 
 #[derive(Serialize)]

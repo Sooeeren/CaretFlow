@@ -27,6 +27,8 @@ tokio = { version = "1", features = ["sync", "time"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 base64 = "0.23"
+# the folders Tauri keeps app data in, for moving the old identifier's (src/migrate.rs); Tauri already uses it
+dirs = "7"
 
 # Native print-to-PDF backends (same versions Tauri itself uses)
 [target.'cfg(windows)'.dependencies]

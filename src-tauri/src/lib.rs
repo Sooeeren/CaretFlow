@@ -11,6 +11,8 @@ mod cloud;
 mod discord;
 mod langtool;
 mod mcp;
+#[cfg_attr(mobile, allow(dead_code))]
+mod migrate;
 mod pdf;
 
 #[derive(Serialize)]
@@ -457,6 +459,9 @@ pub fn run() {
         mcp::bridge();
         return;
     }
+    // before any plugin or the WebView opens the data folders
+    #[cfg(desktop)]
+    migrate::move_old_folders();
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init());

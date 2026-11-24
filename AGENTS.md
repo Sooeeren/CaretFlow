@@ -7,11 +7,12 @@ the [contributor list](#ai-contributors) when you are done**.
 ## What CaretFlow is
 
 CaretFlow was called Folio until 0.5.0. Use CaretFlow everywhere (author and publisher: Sooeeren).
-Only the app identifier `app.folio.markdown` keeps the old name on purpose: settings, recent files,
-window state and the WebView's storage live under it, and on Android it is the package name, so a
-new one would be a different app. The GitHub repository is `Sooeeren/CaretFlow` (renamed from
-`Sooeeren/folio`; GitHub redirects the old URLs, which older installs still use for updates, so never
-create a new repository named `folio`). Storage keys are `caretflow.*`
+The desktop identifier is `app.caretflow.markdown` (it was `app.folio.markdown` up to 0.12.3;
+`src-tauri/src/migrate.rs` moves the old data folders on the first start). Android keeps
+`app.folio.markdown` in `tauri.android.conf.json` because it is the package name there: a new one
+would be a different app that can't update the old one. The GitHub repository is `Sooeeren/CaretFlow`
+(renamed from `Sooeeren/folio`; GitHub redirects the old URLs, which older installs still use for
+updates, so never create a new repository named `folio`). Storage keys are `caretflow.*`
 (`index.html` moves old `folio.*` keys once), CSS classes and plugin keys use `cf-`.
 
 
@@ -83,6 +84,7 @@ These decide most design questions:
 | `src-tauri/windows/installer-hooks.nsh` | Windows installer hooks: remove an old Folio install, recreate its shortcuts |
 | `src-tauri/linux/caretflow.desktop` | Desktop file of the `.deb`, `.rpm` and Arch package: the Markdown file type and `%f`, so file managers offer CaretFlow under "Open with" |
 | `src-tauri/src/lib.rs`, `pdf.rs` | Tauri commands (file I/O, folder search, windows), PDF stamping |
+| `src-tauri/src/migrate.rs` | Moves the data folders of the old identifier `app.folio.markdown` to `app.caretflow.markdown` once (desktop) |
 | `src-tauri/src/cloud.rs` | Cloud Sync commands: HTTP (reqwest, also used by AI), folder scan, sync trash, `secrets.json`, running rclone |
 | `src-tauri/src/android.rs`, `src-tauri/gen/android` | Android: bridge to `CaretFlowPlugin.kt` (content:// files, storage permission, share, print, PDF via `PdfPrint.java`); the Gradle project with manifest, icons and signing |
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
@@ -189,3 +191,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-20 | Paste as Plain Text / Paste as Markdown (right-click and Edit menu, scripts/checks/contextmenu.mjs ctx-paste); Dependabot PRs #31–#37 merged |
 | Claude Opus 5.5 | Claude Code | 2026-11-20 | Source mode no longer freezes on a line that starts with inline code (spelling loop); Markdown inside `<div align="center">` … `</div>` shows centered (scripts/checks/html.mjs html-wrap) |
 | Claude Opus 5.5 | Claude Code | 2026-11-24 | Folio name removed: publisher/author Sooeeren (installer, packages), `caretflow.*` storage keys moved over once, `cf-` classes, CaretFlow temp files and PDF font name |
+| Claude Opus 5.5 | Claude Code | 2026-11-24 | Repository links to Sooeeren/CaretFlow; desktop identifier `app.caretflow.markdown` with the old data folders moved on first start (src-tauri/src/migrate.rs), Android keeps its package name |
