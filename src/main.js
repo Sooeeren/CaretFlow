@@ -33,7 +33,7 @@ import { toc as tocPlugin, insertTocCommand, TOC_MARKDOWN, slugify } from './toc
 import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor, languagesEditor, WORDS_FILE } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
-import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
+import { initCompanion, companionSettingsChanged, companionKey, CAT_STYLES, catPreview } from './companion.js'
 import { isInstalled, setInstalled, EXTENSIONS } from './extensions.js'
 import { applyMaterial, SEEDS as MATERIAL_SEEDS, ripples } from './material.js'
 import { applyCustomTheme, findCustomTheme, baseTheme, editTheme, BUILT_IN_THEMES } from './themes.js'
@@ -88,6 +88,8 @@ const DEFAULTS = {
   autoCapitalize: false,
   wpm: false, // typing-speed meter in the status bar
   bongo: false, // the typing cat
+  catStyle: 'classic', // its look (companion.js CAT_STYLES)
+  customCat: null, // your own cat: colors, marks, blush (catmaker.js)
   reopenLast: true,
   readonlyDefault: false,
   imageDir: 'assets',
@@ -3359,6 +3361,54 @@ function isTypingKey(e) {
   return true
 }
 
+/** Your own cat: the editor (catmaker.js, lazy). Saving picks it and shows the cat. */
+async function makeCat() {
+  const { editCat } = await import('./catmaker.js')
+  const start = settings.catStyle === 'custom' ? null : settings.catStyle
+  const c = await editCat({ el, dialog, customSelect }, settings.customCat, start)
+  if (!c) return false
+  settings.customCat = c
+  setCatStyle('custom')
+  return true
+}
+/** Picking a style also shows the cat: you want to see the one you picked. */
+function setCatStyle(id) {
+  if (id === 'custom' && !settings.customCat) return makeCat() // nothing made yet
+  settings.catStyle = id
+  settings.bongo = true
+  applySettings()
+}
+function catStylePicker() {
+  const box = el('span', { class: 'cat-styles' })
+  // the cat editor is a dialog, like Preferences: step out of Preferences and come back
+  const maker = async () => {
+    closePrefs?.(true)
+    await makeCat()
+    openPrefs('typing')
+  }
+  const draw = () => {
+    box.replaceChildren(
+      ...CAT_STYLES.map(([id, label]) =>
+        el(
+          'button',
+          {
+            type: 'button',
+            class: 'cat-style' + (settings.catStyle === id ? ' on' : ''),
+            title: label,
+            'aria-label': label,
+            onclick: () => (id === 'custom' && !settings.customCat ? maker() : (setCatStyle(id), draw())),
+          },
+          catPreview(id, 56),
+          el('small', {}, label),
+        ),
+      ),
+      el('button', { type: 'button', class: 'cat-style cat-make', title: 'Make your own cat', onclick: maker }, el('span', { class: 'cat-make-icon' }, '✎'), el('small', {}, settings.customCat ? 'Edit Your Own…' : 'Make Your Own…')),
+    )
+  }
+  draw()
+  return box
+}
+
 // ════════════════════════════════════════ preferences
 function openPrefs(section) {
   const row = (label, hint, control) => el('div', { class: 'pref-row' }, el('label', {}, label, hint ? el('small', {}, hint) : null), control)
@@ -3451,6 +3501,7 @@ function openPrefs(section) {
     ['typing', 'Typing', [
       row('Show typing speed (WPM)', 'Words per minute over the last 10 seconds, in the status bar', chk('wpm')),
       row('Typing cat', 'A cat in the corner that taps along while you type', chk('bongo')),
+      row('Cat style', null, catStylePicker()),
     ]],
     extOn('cloud') ? ['cloud', 'Cloud Sync', [cloudPrefs(row)]] : null,
     extOn('discord') && !IS_ANDROID ? ['discord', 'Discord', [discordPrefs(row, chk)]] : null,
@@ -4087,6 +4138,10 @@ const MENU = [
       k('Typing Test…', 'Ctrl+Alt+T', typingTest, { ext: 'typing' }),
       k('Typing Speed (WPM)', null, toggle('wpm'), { checked: () => settings.wpm }),
       k('Typing Cat', null, toggle('bongo'), { checked: () => settings.bongo }),
+      {
+        label: 'Cat Style',
+        sub: [...CAT_STYLES.map(([id, l]) => k(l, null, () => setCatStyle(id), { checked: () => settings.catStyle === id })), '-', k('Make Your Own Cat…', null, () => makeCat())],
+      },
       '-',
       k('Cloud Sync…', null, () => openPrefs('cloud'), { checked: () => settings.cloudEnabled, ext: 'cloud' }),
       k('Discord Status', null, toggleDiscord, { checked: () => settings.discordEnabled, ext: 'discord' }),

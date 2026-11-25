@@ -36,7 +36,9 @@ Bigger optional features are extensions: **Tools → Extensions…** installs th
 
 ## Typing test
 
-With the Typing Test extension installed, `Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **Tools → Typing Speed (WPM)** shows your speed while you write, and **Tools → Typing Cat** adds a small companion.
+With the Typing Test extension installed, `Ctrl+Alt+T` opens a typing test: 15–120 seconds or 10–100 words, optionally with punctuation and numbers, or with text from the open document. **Tools → Typing Speed (WPM)** shows your speed while you write, and **Tools → Typing Cat** adds a small companion (eight styles under **Tools → Cat Style**, or **Make Your Own Cat…** in your own colors).
+
+**View → Theme → New Custom Theme…** makes a theme in your own colors, with a preview; edit or delete your themes in Preferences → Appearance.
 
 ## Cloud Sync
 

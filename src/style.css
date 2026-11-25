@@ -1356,23 +1356,73 @@ button { font: inherit; color: inherit; }
 
 #bongo { position: absolute; right: 18px; bottom: 0; z-index: 40; pointer-events: none; line-height: 0; transition: transform 0.25s; }
 #bongo svg { display: block; overflow: visible; }
-#bongo .fur, #bongo .ear, #bongo .paw ellipse { fill: #fff; stroke: #2a2a2e; stroke-width: 3; stroke-linejoin: round; }
-#bongo .ear-in { fill: #f6b3c0; }
-#bongo .blush { fill: #f59ab0; opacity: 0.5; }
-#bongo .eyes-open circle { fill: #2a2a2e; }
-#bongo .eyes-happy path, #bongo .mouth { fill: none; stroke: #2a2a2e; stroke-width: 2.4; stroke-linecap: round; }
-#bongo .eyes-happy { display: none; }
+/* the cat's colors, one set per style (companion.js CAT_STYLES); the preview uses the same rules */
+.cat-preview { display: inline-block; line-height: 0; }
+.cat-preview svg { display: block; overflow: visible; }
+:is(#bongo, .cat-preview) {
+  --cat-fur: #fff; --cat-line: #2a2a2e; --cat-ear: var(--cat-fur); --cat-ear-in: #f6b3c0; --cat-eye: #2a2a2e; --cat-mouth: #2a2a2e;
+  --cat-paw: var(--cat-fur); --cat-mark: transparent; --cat-mark-2: transparent; --cat-blush: 0.5;
+}
+:is(#bongo, .cat-preview)[data-style='midnight'] { --cat-fur: #2e2e36; --cat-line: #121216; --cat-ear-in: #6b4a5a; --cat-eye: #f2c94c; --cat-mouth: #c9c9d3; --cat-blush: 0; }
+:is(#bongo, .cat-preview)[data-style='ginger'] { --cat-fur: #f3a64b; --cat-line: #5a3415; --cat-ear-in: #f8c9a6; --cat-eye: #3a2410; --cat-mouth: #3a2410; --cat-mark: #c96f22; --cat-blush: 0.35; }
+:is(#bongo, .cat-preview)[data-style='blue'] { --cat-fur: #8e9cad; --cat-line: #353d48; --cat-ear-in: #c9a6b4; --cat-eye: #6cc584; --cat-mouth: #2a3038; --cat-blush: 0.25; }
+:is(#bongo, .cat-preview)[data-style='calico'] { --cat-mark: #f0a24e; --cat-mark-2: #3b3b42; }
+:is(#bongo, .cat-preview)[data-style='siamese'] { --cat-fur: #f4e8d2; --cat-line: #4a3a2c; --cat-ear: #6b4a35; --cat-ear-in: #8f6a52; --cat-eye: #4ba3e3; --cat-mouth: #f4e8d2; --cat-paw: #6b4a35; --cat-mark: #8a6550; --cat-blush: 0; }
+:is(#bongo, .cat-preview)[data-style='tuxedo'] { --cat-fur: #26262c; --cat-line: #111114; --cat-ear-in: #6b4a5a; --cat-eye: #9fd36b; --cat-mouth: #2a2a2e; --cat-paw: #fff; --cat-mark: #fff; --cat-blush: 0.45; }
+:is(#bongo, .cat-preview)[data-style='cookie'] { --cat-fur: #a9764c; --cat-line: #43291a; --cat-ear-in: #e9bfa6; --cat-eye: #2a1a0e; --cat-mouth: #2a1a0e; --cat-paw: #f3e1c6; --cat-mark: #7a4f2d; --cat-mark-2: #f3e1c6; --cat-blush: 0.4; }
+:is(#bongo, .cat-preview) .fur, :is(#bongo, .cat-preview) .paw ellipse { fill: var(--cat-fur); stroke: var(--cat-line); stroke-width: 3; stroke-linejoin: round; }
+:is(#bongo, .cat-preview) .paw ellipse { fill: var(--cat-paw); }
+:is(#bongo, .cat-preview) .ear { fill: var(--cat-ear); stroke: var(--cat-line); stroke-width: 3; stroke-linejoin: round; }
+:is(#bongo, .cat-preview) .fur-line { fill: none; stroke: var(--cat-line); stroke-width: 3; stroke-linejoin: round; }
+:is(#bongo, .cat-preview) .ear-in { fill: var(--cat-ear-in); }
+:is(#bongo, .cat-preview) .blush { fill: #f59ab0; opacity: var(--cat-blush); }
+:is(#bongo, .cat-preview) .eyes-open circle { fill: var(--cat-eye); }
+:is(#bongo, .cat-preview) .eyes-happy path { fill: none; stroke: var(--cat-eye); stroke-width: 2.4; stroke-linecap: round; }
+:is(#bongo, .cat-preview) .mouth { fill: none; stroke: var(--cat-mouth); stroke-width: 2.4; stroke-linecap: round; }
+/* markings: only those of the chosen style */
+:is(#bongo, .cat-preview) .marks > * { display: none; }
+:is(#bongo, .cat-preview) .m-patch-1, :is(#bongo, .cat-preview) .m-mask { fill: var(--cat-mark); }
+:is(#bongo, .cat-preview) .m-patch-2 { fill: var(--cat-mark-2); }
+:is(#bongo, .cat-preview) .m-bib { fill: var(--cat-mark); }
+:is(#bongo, .cat-preview) .m-stripes path { fill: none; stroke: var(--cat-mark); stroke-width: 4; stroke-linecap: round; }
+:is(#bongo, .cat-preview)[data-style='ginger'] .m-stripes,
+:is(#bongo, .cat-preview)[data-style='calico'] :is(.m-patch-1, .m-patch-2),
+:is(#bongo, .cat-preview)[data-style='siamese'] .m-mask,
+:is(#bongo, .cat-preview)[data-style='tuxedo'] .m-bib,
+:is(#bongo, .cat-preview)[data-style='cookie'] :is(.m-stripes, .m-bib) { display: inline; }
+:is(#bongo, .cat-preview)[data-style='cookie'] .m-bib { fill: var(--cat-mark-2); }
+/* your own cat (catmaker.js): the markings it has are listed in data-marks */
+:is(#bongo, .cat-preview)[data-marks~='stripes'] .m-stripes,
+:is(#bongo, .cat-preview)[data-marks~='patches'] :is(.m-patch-1, .m-patch-2),
+:is(#bongo, .cat-preview)[data-marks~='mask'] .m-mask,
+:is(#bongo, .cat-preview)[data-marks~='bib'] .m-bib { display: inline; }
+:is(#bongo, .cat-preview)[data-style='custom'] .m-bib { fill: var(--cat-mark-2); }
+:is(#bongo, .cat-preview) .eyes-happy { display: none; }
+.cat-preview .down, .cat-preview .hit { display: none; }
 #bongo.typing .eyes-happy { display: inline; }
 #bongo.typing .eyes-open { display: none; }
-#bongo .desk { fill: var(--chrome-2); stroke: var(--border); stroke-width: 1.5; }
-#bongo .kbd { fill: #3b3e46; }
-#bongo .kbd-keys rect { fill: #9096a1; }
+:is(#bongo, .cat-preview) .desk { fill: var(--chrome-2); stroke: var(--border); stroke-width: 1.5; }
+:is(#bongo, .cat-preview) .kbd { fill: #3b3e46; }
+:is(#bongo, .cat-preview) .kbd-keys rect { fill: #9096a1; }
 #bongo .hit { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round; }
 #bongo .down { display: none; }
 #bongo.l .paw-l.up, #bongo.both .paw-l.up, #bongo.r .paw-r.up, #bongo.both .paw-r.up { display: none; }
 #bongo.l .paw-l.down, #bongo.both .paw-l.down, #bongo.r .paw-r.down, #bongo.both .paw-r.down { display: inline; }
 #bongo.typing .cat-body { transform: translateY(1px); }
 .app-zen #bongo { bottom: 4px; }
+.cat-styles { display: grid; grid-template-columns: repeat(5, auto); gap: 6px; justify-content: end; }
+.cat-styles .cat-make { justify-content: center; border-style: dashed; }
+.cat-make-icon { font-size: 22px; line-height: 36px; color: var(--muted); }
+/* the cat editor (catmaker.js), laid out like the theme editor */
+.cat-maker .cm-left { flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px; }
+.cat-maker .cm-marks { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+.cat-maker .cm-marks label { display: flex; align-items: center; gap: 5px; }
+.cat-maker .cm-stage { flex: 1 1 240px; display: flex; align-items: flex-end; justify-content: center; min-height: 200px; padding: 20px 10px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--chrome); }
+.cat-styles .cat-style { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 6px 4px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--fg); cursor: pointer; min-width: 0; }
+.cat-styles .cat-style:hover { border-color: var(--muted); }
+.cat-styles .cat-style.on { border-color: var(--accent); background: var(--accent-soft); }
+.cat-styles .cat-style small { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.cat-styles .cat-style.on small { color: var(--fg); }
 
 /* ───────────── Typing test ───────────── */
 #app { position: relative; }
@@ -1831,3 +1881,7 @@ body.material {
 .material ::-webkit-scrollbar-thumb { border-radius: 999px; }
 .material ::selection { background: var(--m-primary-container); color: var(--m-on-primary-container); }
 .material .pref-row span:has(> input[type='range']) { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 720px) {
+  .cat-styles { grid-template-columns: repeat(3, auto); }
+  .theme-editor .te-top label { flex-basis: 100%; }
+}

@@ -132,7 +132,22 @@ punctuation and numbers, or practice on the text of the document you have open. 
 accuracy, raw speed, consistency and a per-second chart, and personal bests are kept.
 
 While writing, **Tools → Typing Speed (WPM)** shows your speed in the status bar and
-**Tools → Typing Cat** adds a small companion that taps along. Both are off by default.
+**Tools → Typing Cat** adds a small companion that taps along. Both are off by default. The cat
+comes in eight styles: Classic, Midnight, Ginger Tabby, Russian Blue, Calico, Siamese, Tuxedo and
+Cookie. Pick one under **Tools → Cat Style** or in **Preferences → Typing**, where each is shown.
+**Make Your Own Cat…** (same places) opens an editor with a big preview: colors for the fur, outline,
+ears, eyes, mouth, paws and markings, which markings it has (stripes, patches, a mask, a bib) and
+blush. Start from any of the eight styles; your cat is then the **Your Own** style.
+
+## Custom themes
+
+**View → Theme → New Custom Theme…** makes a theme of your own, starting from the colors you use
+now. Set the background, text, headings, secondary text, accent, links, sidebar, panels, borders,
+code, quote bar and selection with a color picker or as `#rrggbb`, and the document font; a preview
+shows the result before you save. A dark background makes it a dark theme, so code colors, diagrams
+and the title bar follow. Your themes are listed under **View → Theme → Custom Themes** and in
+**Preferences → Appearance**, where you can also edit or delete them. Material You and Custom CSS
+still apply on top, and exports use a custom theme when the export theme is "Same as editor".
 
 ## Material You style
 

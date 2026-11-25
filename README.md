@@ -78,7 +78,7 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
 - **Extensions you add when you want them**: Cloud Sync with your own server, AI writing help with
   the AI you choose, a typing test, and your writing status on Discord. Until installed they stay
   out of your menus.
-- **Optional extras**: a live WPM meter and a typing cat (View menu).
+- **Optional extras**: a live WPM meter and a typing cat in eight styles, or one you make yourself (Tools menu).
 
 ## Writing check
 
@@ -117,7 +117,9 @@ extension adds corrections and suggestions from the AI you choose. More in
 ## Typing cat and WPM meter
 
 **Tools → Typing Speed (WPM)** shows your speed in the status bar and **Tools → Typing Cat** adds a
-small companion that taps along while you write. Both are off by default.
+small companion that taps along while you write, in eight styles (Classic, Midnight, Ginger Tabby,
+Russian Blue, Calico, Siamese, Tuxedo, Cookie; **Tools → Cat Style**), or one you color yourself with
+**Make Your Own Cat…**. Both are off by default.
 
 ![The typing cat in the corner and the WPM meter in the status bar](docs/screenshots/bongo.png)
 
