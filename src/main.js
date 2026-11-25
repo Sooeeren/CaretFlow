@@ -26,6 +26,7 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { htmlRendering } from './html.js'
+import { watchCodeTools } from './codetools.js'
 import { imageSizeConfig, imageSizeRemark, imageSizePlugin, selectedImage, setImageZoom, setImageWidth, stepZoom, zoomOf, IMAGE_ZOOMS, MAX_WIDTH } from './imagesize.js'
 import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
@@ -4421,10 +4422,49 @@ function buildMenubar() {
       openMenu === root ? closeMenus() : showMenu(root, m.items)
     }
     btn.onmouseenter = () => openMenu && openMenu !== root && showMenu(root, m.items)
+    root._menu = m
     bar.append(root)
   }
+  fitMenubar()
+}
+
+/** The window buttons always stay visible: menus that don't fit beside them (a narrow window, many
+ *  custom menus) move into a » menu at the end, as submenus. The title gives way first. */
+function fitMenubar() {
+  const bar = $('#menus')
+  const roots = [...bar.children].filter((r) => r._menu)
+  const was = roots.filter((r) => r.hidden).length
+  bar.querySelector('.menu-more')?.remove()
+  for (const r of roots) r.hidden = false
+  const head = $('#menubar')
+  const controls = $('#win-controls').getBoundingClientRect().width
+  const pad = parseFloat(getComputedStyle(head).paddingLeft) || 0
+  const room = head.clientWidth - controls - pad - (document.body.classList.contains('custom-titlebar') ? 16 : 0)
+  if (bar.scrollWidth > room && roots.length) {
+    const more = el('div', { class: 'menu-root menu-more' })
+    const btn = el('button', { title: 'More menus' }, '»')
+    more.append(btn)
+    bar.append(more)
+    const hidden = []
+    for (let i = roots.length - 1; i > 0 && bar.scrollWidth > room; i--) {
+      roots[i].hidden = true
+      hidden.unshift(roots[i]._menu)
+    }
+    if (!hidden.length) more.remove()
+    else {
+      const items = hidden.map((m) => ({ label: m.label, sub: m.items }))
+      btn.onmousedown = (e) => {
+        e.preventDefault()
+        openMenu === more ? closeMenus() : showMenu(more, items)
+      }
+      btn.onmouseenter = () => openMenu && openMenu !== more && showMenu(more, items)
+    }
+  }
+  // an open menu whose button just moved or disappeared
+  if (openMenu && (openMenu.hidden || was !== roots.filter((r) => r.hidden).length)) closeMenus()
 }
 function listenMenus() {
+  new ResizeObserver(() => fitMenubar()).observe($('#menubar'))
   document.addEventListener('mousedown', (e) => {
     if (openMenu && !e.target.closest('.menu-root')) closeMenus()
     if (!e.target.closest('#ctxmenu')) $('#ctxmenu').hidden = true
@@ -4479,9 +4519,31 @@ function showMenu(root, items) {
   root.append(pop)
   fitPop(pop)
 }
-/** A menu taller than the window (File on a small screen) gets tighter rows. */
+/** A menu taller than the window (File on a small screen) gets tighter rows; one that would leave
+ *  the window on the right (the » menu, a submenu near the edge) moves left until it fits. */
 function fitPop(pop) {
   if (pop.getBoundingClientRect().bottom > innerHeight) pop.classList.add('tight')
+  let r = pop.getBoundingClientRect()
+  const sub = !!pop.parentElement.closest('.menu-pop')
+  // too narrow for a menu and its submenu side by side: the menu goes to the left edge, so a
+  // submenu laid over it at the right still leaves the labels to point at
+  if (!sub && r.right > innerWidth - 4 && innerWidth < r.width * 2 + 12) {
+    pop.style.right = 'auto'
+    pop.style.left = pop.offsetLeft + 4 - r.left + 'px'
+    return
+  }
+  if (r.right <= innerWidth - 4) return
+  // a submenu first tries the other side of its menu
+  if (sub) {
+    pop.classList.add('flip')
+    if (pop.getBoundingClientRect().left >= 4) return
+    pop.classList.remove('flip')
+  }
+  // then it moves left until it fits, lying over the right part of its menu
+  pop.style.right = 'auto'
+  pop.style.left = pop.offsetLeft - (r.right - (innerWidth - 4)) + 'px'
+  const l = pop.getBoundingClientRect().left
+  if (l < 4) pop.style.left = pop.offsetLeft + 4 - l + 'px'
 }
 function closeMenus() {
   if (!openMenu) return
@@ -5365,6 +5427,7 @@ async function boot() {
   if (IS_ANDROID) systemSeed = await invoke('android_system_color').catch(() => null)
   ripples()
   scaleImagesWithWidth($('#wysiwyg'))
+  watchCodeTools($('#wysiwyg'))
   applySettings()
   applyMenuLayout()
   listenMenus()

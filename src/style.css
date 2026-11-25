@@ -144,7 +144,10 @@ button { font: inherit; color: inherit; }
   flex: none;
 }
 .app-zen #menubar, .app-zen #statusbar { display: none; }
-#menus { display: flex; align-items: center; height: 100%; }
+#menus { display: flex; align-items: center; height: 100%; flex: none; }
+.menu-root[hidden] { display: none; }
+.custom-titlebar #tb-title { min-width: 0; }
+#win-controls { flex: none; }
 #tb-title, #win-controls { display: none; }
 
 /* Custom title bar (default on Linux) */
@@ -235,6 +238,8 @@ button { font: inherit; color: inherit; }
 .menu-item.has-sub::after { content: '›'; position: absolute; right: 10px; }
 .menu-sep { height: 1px; margin: 5px 6px; background: var(--border); }
 .menu-pop .menu-pop { top: -6px; left: 100%; }
+.menu-pop .menu-pop.flip { left: auto; right: 100%; }
+.menu-more > button { font-size: 15px; }
 .menu-pop.tight > .menu-item { padding-top: 2px; padding-bottom: 2px; }
 .menu-pop.tight > .menu-sep { margin: 3px 6px; }
 .menu-empty { padding: 6px 12px; color: var(--muted); }
@@ -844,6 +849,13 @@ button { font: inherit; color: inherit; }
 #wysiwyg .milkdown .milkdown-code-block .tools .language-button { margin: 0; background: var(--bg); border: 1px solid var(--border); }
 #wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button { opacity: 1; background: var(--bg); border: 1px solid var(--border); }
 #wysiwyg .milkdown .milkdown-code-block .language-picker { right: 0; padding-top: 6px; }
+/* the open language list lies over every other block and its tools (all have z-index 3) */
+#wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) { z-index: 60; }
+/* the tools never cover code (codetools.js): the first line ends before them, or they get a row
+   of their own above a long first line; Copy shows only its icon, so they take less room */
+#wysiwyg .milkdown .milkdown-code-block .cm-line:first-child { padding-right: var(--cf-tools-w, 0px); }
+#wysiwyg .milkdown .milkdown-code-block.cf-tools-above { padding-top: calc(var(--cf-tools-h, 26px) + 12px); }
+#wysiwyg .milkdown .milkdown-code-block .tools .copy-button { font-size: 0; gap: 0; padding: 0 7px; }
 #wysiwyg .milkdown .milkdown-code-block .cm-editor,
 #wysiwyg .milkdown .milkdown-code-block .cm-gutters { background: transparent; }
 #wysiwyg .milkdown .milkdown-code-block .cm-content { padding: 0; }

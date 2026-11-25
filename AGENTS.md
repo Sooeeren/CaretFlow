@@ -75,6 +75,7 @@ These decide most design questions:
 | `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
 | `src/menutemplates.js` | Menu templates (Minimal, Writer, Student & Academic, Developer, Note-taker) by command id; `scripts/checks/menus.mjs` menu-templates fails if one names a command that doesn't exist |
 | `src/menueditor.js` | Customize Menus (lazy): the menu bar as a drag-and-drop tree; the layout (`settings.menuLayout`) is applied by `applyMenuLayout()` in `main.js`, which keeps command ids so shortcuts are unaffected |
+| `src/codetools.js` | Keeps a code block's language button and Copy off the code: right padding on the first line, or a row of their own above a long unwrapped first line |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/imagesize.js` | Image size: right-click sizes and Format → Image Size, saved as Typora's `<img style="zoom:50%">` or a pixel `width`; keeps the alt text Milkdown's image block dropped |
 | `src/toc.js` | Table of contents: a `[TOC]` line shown as a live heading list, linked in exports (`renderToc`) |
@@ -94,7 +95,7 @@ These decide most design questions:
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click; Markdown between lone `<div align=…>` / `</div>` lines styled like on GitHub |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines, Customize Menus) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines, Customize Menus, code block tools and the title bar in narrow windows) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -203,3 +204,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Customize Menus (Help menu, Preferences → Menus): drag commands in and out, new menus and submenus, rename, keyboard moves, undo; new commands placed by their default neighbor (src/menueditor.js, scripts/checks/menus.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Menu templates for kinds of users (Minimal, Writer, Student & Academic, Developer & Technical Writer, Note-taker) in Customize Menus and Preferences → Menus (src/menutemplates.js) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | 0.13.1 release: version bump, notes, draft and publish, PKGBUILD checksum, website redeploy |
+| Claude Opus 5.5 | Claude Code | 2026-11-25 | Code block language button never over code, its list above other blocks; window buttons always visible, menus that don't fit go into » (src/codetools.js, scripts/checks/codetools.mjs) |

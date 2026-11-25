@@ -88,7 +88,9 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
   differently.
 - **Code blocks** wrap long lines onto the next line instead of scrolling sideways, in the editor
   and in exports (PDF, HTML, print). Turn it off with View → Wrap Code Lines (`Alt+Z`) or
-  Preferences → Editing → Wrap long code lines.
+  Preferences → Editing → Wrap long code lines. The language button and Copy sit beside the first
+  line and never over code: a first line too long for that (with wrapping off) moves them into a
+  row of their own.
 - **Front matter** (the `---` YAML block at the top of a file, used by Jekyll, Hugo, Obsidian and
   Pandoc; TOML `+++` too) shows as a properties panel: keys on the left, lists as chips. Click it, or
   press `Enter` when it is selected, to edit the YAML; `Ctrl+Enter` or clicking elsewhere finishes,
@@ -151,7 +153,8 @@ A template opens in the editor, so you can change it before saving; Undo brings 
 Every template keeps Preferences… and Customize Menus…. A command that is in no menu still works with its shortcut and from the command
 palette (`F1`). **Reset to Default** brings back the menus CaretFlow comes with. Commands added by a
 later version show up next to where they are in the default menus. On Android the menu drawer shows
-the same menus.
+the same menus. In a narrow window the window buttons always stay visible: menus that don't fit move
+into a **»** menu at the end of the menu bar.
 
 ## Typing test and extras
 
