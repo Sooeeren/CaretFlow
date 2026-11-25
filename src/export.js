@@ -173,6 +173,12 @@ export { highlightCss }
  * @param md markdown source
  * @param o { title, docDir, targetDir, resolveForView, themeVars, dark, inlineKatex }
  */
+/** Classes on the exported <body>: the same switches as the editor's (nested lists, wrapped code). */
+function bodyClass(o) {
+  const c = [o.nestedLists && 'nested-lists', o.wrapCode && 'wrap-code'].filter(Boolean).join(' ')
+  return c ? ` class="${c}"` : ''
+}
+
 export async function toHtml(md, o) {
   let html = await bodyHtml(md, o)
 
@@ -220,6 +226,7 @@ a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 code{font-family:var(--font-mono);font-size:.88em;background:var(--code-bg);color:var(--code-fg);padding:.1em .35em;border-radius:4px}
 pre{background:var(--code-bg);padding:12px 16px;border-radius:8px;overflow:auto;margin:1em 0;line-height:calc(var(--doc-size)*1.4)}
 pre code{background:none;color:var(--fg);padding:0;font-size:.88em}
+.wrap-code pre,.wrap-code pre code{white-space:pre-wrap;overflow-wrap:anywhere}
 blockquote{margin:.9em 0;padding:0 0 0 calc(1.1em - 3px);color:var(--quote);border-left:3px solid var(--quote-bar)}
 table{border-collapse:collapse;margin:1em 0;width:100%;table-layout:fixed;overflow-wrap:anywhere}
 th,td{border:1px solid var(--border);padding:6px 13px;line-height:1.5}th:not([align]){text-align:left}th{background:var(--chrome)}
@@ -231,7 +238,7 @@ li>input[type=checkbox],li>p:first-child>input[type=checkbox]{width:18px;height:
 ${o.forPdf ? '' : '@page{margin:18mm 16mm}'}
 ${o.forPdf ? 'body{padding:0;max-width:none}' : ''}
 </style></head>
-<body${o.nestedLists ? ' class="nested-lists"' : ''}>
+<body${bodyClass(o)}>
 ${html}
 </body></html>`
 }

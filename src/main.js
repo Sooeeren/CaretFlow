@@ -95,6 +95,7 @@ const DEFAULTS = {
   imageDir: 'assets',
   copyImages: true,
   nestedLists: true, // sub-points get their own bullet shapes and a softer color
+  wrapCode: true, // long code lines continue on the next line instead of scrolling sideways (editor and exports)
   drawnCaret: IS_LINUX, // CaretFlow draws the caret in the rendered view (WebKitGTK leaves stale carets behind)
   sidebar: true,
   sidebarTab: 'outline',
@@ -2177,6 +2178,7 @@ async function exportHtmlTo(target) {
   const { toHtml } = await import('./export.js')
   const out = await toHtml(currentText(), {
     nestedLists: settings.nestedLists,
+    wrapCode: settings.wrapCode,
     title: docTitle(),
     docDir: S.path && P.dirname(S.path),
     targetDir: P.dirname(target),
@@ -2309,6 +2311,7 @@ async function exportPdfTo(out, options) {
   const { toHtml } = await import('./export.js')
   const htmlDoc = await toHtml(currentText(), {
     nestedLists: settings.nestedLists,
+    wrapCode: settings.wrapCode,
     title: options.title || docTitle(),
     docDir: S.path && P.dirname(S.path),
     resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,
@@ -2744,6 +2747,7 @@ async function printDoc() {
   const title = S.path ? P.stem(S.path) : firstHeading() || 'Document'
   const out = await toHtml(currentText(), {
     nestedLists: settings.nestedLists,
+    wrapCode: settings.wrapCode,
     title,
     docDir: S.path && P.dirname(S.path),
     resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,
@@ -2792,6 +2796,7 @@ function applySettings() {
   document.body.classList.toggle('no-sidebar', !settings.sidebar)
   document.body.classList.toggle('drawn-caret', settings.drawnCaret)
   document.body.classList.toggle('nested-lists', settings.nestedLists)
+  document.body.classList.toggle('wrap-code', settings.wrapCode)
   view()?.dispatch(view().state.tr) // show or hide the drawn caret
   $('#wysiwyg').spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (source) {
@@ -3486,6 +3491,7 @@ function openPrefs(section) {
       row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
       row('Copy dropped images into image folder', null, chk('copyImages')),
       row('Style sub-points differently', 'Nested list items get hollow or square bullets, numbers in a softer color and slightly smaller text', chk('nestedLists')),
+      row('Wrap long code lines', 'Lines in code blocks continue on the next line instead of scrolling sideways, also in exports (Alt+Z)', chk('wrapCode')),
       row('Draw the text cursor', 'CaretFlow draws the blinking cursor itself instead of the system. On by default on Linux, where the system cursor can leave copies behind', chk('drawnCaret')),
     ]],
     ['source', 'Source & Vim', [
@@ -4107,6 +4113,7 @@ const MENU = [
           .concat(['-', k('Material You Style', null, toggle('material'), { checked: () => settings.material, hint: 'Colors and color choice: Preferences → Appearance' })]),
       },
       k('Full-width Content', null, toggle('wide'), { checked: () => settings.wide }),
+      k('Wrap Code Lines', 'Alt+Z', toggle('wrapCode'), { checked: () => settings.wrapCode }),
       k('Zoom In', 'Ctrl+Shift+=', () => zoom(1)),
       k('Zoom Out', 'Ctrl+Shift+-', () => zoom(-1)),
       k('Actual Size', 'Ctrl+Shift+9', () => zoom(0)),

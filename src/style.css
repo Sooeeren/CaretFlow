@@ -852,6 +852,9 @@ button { font: inherit; color: inherit; }
 #wysiwyg .milkdown .milkdown-code-block .cm-scroller { font-family: var(--font-mono); }
 #wysiwyg .milkdown .milkdown-code-block :is(.cm-content, .cm-line, .cm-gutterElement) { line-height: calc(var(--doc-size) * 1.4); }
 #wysiwyg .milkdown .milkdown-code-block .cm-line { padding: 0 4px 0 0; }
+/* Wrap Code Lines: the same rules as CodeMirror's own .cm-lineWrapping, as a body class so one
+   setting reaches every code block without reconfiguring each editor */
+body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space: pre-wrap; word-break: normal; overflow-wrap: anywhere; flex-shrink: 1; }
 #wysiwyg .milkdown .milkdown-code-block .preview-panel .preview { padding: 4px 0; }
 #wysiwyg .milkdown .milkdown-code-block .preview-divider { margin: 10px 0 6px; }
 

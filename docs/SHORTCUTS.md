@@ -83,6 +83,7 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Sidebar | `Ctrl+Shift+L` |
 | Outline / Files / Search / Cloud tab *(Cloud Sync extension)* | `Ctrl+Shift+1` / `2` / `3` / `4` |
 | Focus mode / typewriter mode | `F8` / `F9` |
+| Wrap long lines in code blocks | `Alt+Z` |
 | Zen mode (hide everything but the text) | `Ctrl+Shift+J` |
 | Zoom in / out / actual size | `Ctrl+Shift+=` / `Ctrl+Shift+-` / `Ctrl+Shift+9` |
 | Full screen | `F11` |

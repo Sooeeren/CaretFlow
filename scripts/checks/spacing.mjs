@@ -103,7 +103,7 @@ const SCENE = (settings) => ({
           .map((v) => `${v}:${cs.getPropertyValue(v)}`)
           .join(';')
         const { toHtml } = await import('/src/export.js')
-        const html = await toHtml(await window.__TAURI_INTERNALS__.invoke('read_text', {}), { themeVars: vars, inlineKatex: true, nestedLists: true })
+        const html = await toHtml(await window.__TAURI_INTERNALS__.invoke('read_text', {}), { themeVars: vars, inlineKatex: true, nestedLists: true, wrapCode: true })
         const f = document.createElement('iframe')
         f.style.cssText = `position:fixed;left:0;top:0;width:${pm.getBoundingClientRect().width}px;height:3000px;border:0;z-index:99999;background:#fff`
         document.body.append(f)

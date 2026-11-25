@@ -102,6 +102,8 @@ function greet(name) {
 }
 ```
 
+Long code lines continue on the next line. To scroll sideways instead, turn off **View → Wrap Code Lines** (`Alt+Z`).
+
 ## Math
 
 $$

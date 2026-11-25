@@ -92,7 +92,7 @@ These decide most design questions:
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click; Markdown between lone `<div align=…>` / `</div>` lines styled like on GitHub |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -197,3 +197,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Image size like Typora: right-click 10 %–200 %, custom size, Format → Image Size with shortcuts, `<img style="zoom:…">` read and written, used by exports; image alt text no longer lost on save (scripts/checks/imagesize.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Typing cat in eight styles (Tools → Cat Style, Preferences → Typing with previews); custom themes with a color editor and preview (View → Theme, Preferences → Appearance) (scripts/checks/themes.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Image Custom Size in percent or pixels (`<img width=…>`); Make Your Own Cat editor with live preview (scripts/checks/imagesize.mjs, themes.mjs custom-cat) |
+| Claude Opus 5.5 | Claude Code | 2026-11-25 | Wrap Code Lines (on by default, View menu / `Alt+Z` / Preferences → Editing): long code lines continue on the next line in the editor and exports (scripts/checks/codewrap.mjs) |
