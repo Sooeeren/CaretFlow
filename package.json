@@ -1,7 +1,7 @@
 {
   "name": "caretflow",
   "private": true,
-  "version": "0.13.0",
+  "version": "0.13.1",
   "author": "Sooeeren",
   "type": "module",
   "scripts": {
