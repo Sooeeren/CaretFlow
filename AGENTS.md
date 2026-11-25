@@ -202,3 +202,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Wrap Code Lines (on by default, View menu / `Alt+Z` / Preferences → Editing): long code lines continue on the next line in the editor and exports (scripts/checks/codewrap.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Customize Menus (Help menu, Preferences → Menus): drag commands in and out, new menus and submenus, rename, keyboard moves, undo; new commands placed by their default neighbor (src/menueditor.js, scripts/checks/menus.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Menu templates for kinds of users (Minimal, Writer, Student & Academic, Developer & Technical Writer, Note-taker) in Customize Menus and Preferences → Menus (src/menutemplates.js) |
+| Claude Opus 5.5 | Claude Code | 2026-11-25 | 0.13.1 release: version bump, notes, draft and publish, PKGBUILD checksum, website redeploy |
