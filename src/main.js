@@ -36,6 +36,7 @@ import { autocorrectRule } from './autocorrect.js'
 import { initCompanion, companionSettingsChanged, companionKey } from './companion.js'
 import { isInstalled, setInstalled, EXTENSIONS } from './extensions.js'
 import { applyMaterial, SEEDS as MATERIAL_SEEDS, ripples } from './material.js'
+import { applyCustomTheme, findCustomTheme, baseTheme, editTheme, BUILT_IN_THEMES } from './themes.js'
 import aiStats from './ai-stats.json'
 import { version as APP_VERSION } from '../package.json'
 
@@ -52,7 +53,8 @@ const win = getCurrentWindow()
 
 const IS_LINUX = /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent)
 const DEFAULTS = {
-  theme: 'paper',
+  theme: 'paper', // paper | sepia | ink | slate | system | custom:<id>
+  customThemes: [], // your own themes: { id, name, colors: { bg, fg, … }, font } (themes.js)
   material: false, // Material You style over the theme (material.js)
   materialSeed: '#6750a4', // its seed color
   materialSystem: true, // Android 12+: the seed comes from the wallpaper colors
@@ -2142,6 +2144,9 @@ const DARK_THEMES = ['ink', 'slate']
 function themeVars(theme = exportThemeName()) {
   // Read the palette of `theme` by switching the root attribute for one synchronous style read
   const prev = html.dataset.theme
+  // a custom theme lies over its base theme; only "Same as editor" exports it
+  const custom = html.dataset.custom
+  if (custom && settings.exportTheme !== 'current') delete html.dataset.custom
   if (theme !== prev) html.dataset.theme = theme
   const cs = getComputedStyle(html)
   const vars = [
@@ -2152,6 +2157,7 @@ function themeVars(theme = exportThemeName()) {
     .map((v) => `${v}:${cs.getPropertyValue(v)}`)
     .join(';')
   if (theme !== prev) html.dataset.theme = prev
+  if (custom) html.dataset.custom = custom
   return vars + `;color-scheme:${DARK_THEMES.includes(theme) ? 'dark' : 'light'}`
 }
 
@@ -2765,7 +2771,11 @@ const wvLines = createLineNumbers($('#wysiwyg'), $('#scroller'))
 function applySettings() {
   let t = settings.theme
   if (t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'ink' : 'paper'
+  const custom = findCustomTheme(settings.customThemes, t)
+  if (custom) t = baseTheme(custom)
+  else if (!BUILT_IN_THEMES.some(([id]) => id === t)) t = 'paper' // a deleted custom theme
   html.dataset.theme = t
+  applyCustomTheme(custom)
   applyMaterial(settings.material, materialSeed(), DARK_THEMES.includes(t))
   const st = html.style
   st.setProperty('--doc-size', settings.fontSize + 'px')
@@ -2837,6 +2847,79 @@ function updateFlags() {
   if (settings.focus) f.append(el('span', { title: 'Focus mode (F8)' }, 'Focus'))
   if (settings.typewriter) f.append(el('span', { title: 'Typewriter mode (F9)' }, 'Typewriter'))
   if (settings.autoSave) f.append(el('span', { title: 'Auto-save is on' }, 'Auto-save'))
+}
+
+// ── custom themes (themes.js)
+const themeHost = () => ({ el, dialog, customSelect, toast })
+const activeCustom = () => findCustomTheme(settings.customThemes, settings.theme)
+
+function customThemeMenu() {
+  if (!settings.customThemes.length) return [{ label: 'None yet', enabled: () => false }]
+  return settings.customThemes.map((t) => k(t.name, null, () => setTheme('custom:' + t.id), { checked: () => settings.theme === 'custom:' + t.id }))
+}
+/** A new theme, starting from the colors you see now. */
+async function newCustomTheme() {
+  const cur = activeCustom()
+  const from = cur || (settings.theme === 'system' ? html.dataset.theme : settings.theme)
+  const t = await editTheme(themeHost(), null, from)
+  if (!t) return
+  settings.customThemes = [...settings.customThemes, t]
+  setTheme('custom:' + t.id)
+}
+async function editCustomTheme(id = activeCustom()?.id) {
+  const old = settings.customThemes.find((t) => t.id === id)
+  if (!old) return toast('Pick a custom theme first')
+  const t = await editTheme(themeHost(), old)
+  if (!t) return
+  settings.customThemes = settings.customThemes.map((x) => (x.id === id ? t : x))
+  setTheme('custom:' + t.id)
+}
+async function deleteCustomTheme(id) {
+  const t = settings.customThemes.find((x) => x.id === id)
+  if (!t) return
+  const ok = await dialog({
+    title: `Delete “${t.name}”?`,
+    body: 'The theme is removed from CaretFlow. Your documents are not changed.',
+    buttons: [
+      { label: 'Cancel', value: false, cancel: true },
+      { label: 'Delete', value: true, primary: true },
+    ],
+  })
+  if (!ok) return
+  settings.customThemes = settings.customThemes.filter((x) => x.id !== id)
+  if (settings.theme === 'custom:' + id) setTheme(baseTheme(t))
+  else saveSettings()
+}
+
+/** Preferences is a dialog itself: step out of it for the theme dialog, then come back. */
+const fromPrefs = (fn) => async () => {
+  closePrefs?.(true)
+  await fn()
+  openPrefs('appearance')
+}
+/** Preferences → Appearance: the theme choice and your custom themes. */
+function themePrefs(row) {
+  const selBox = el('span', {})
+  const list = el('div', { class: 'ct-list' })
+  const draw = () => {
+    const opts = [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ...settings.customThemes.map((t) => ['custom:' + t.id, t.name]), ['system', 'Follow system']]
+    selBox.replaceChildren(customSelect(opts, settings.theme, (v) => (setTheme(v), draw())))
+    list.replaceChildren(
+      ...settings.customThemes.map((t) =>
+        el(
+          'div',
+          { class: 'ct-item' + (settings.theme === 'custom:' + t.id ? ' on' : '') },
+          el('span', { class: 'ct-swatch', style: `--a:${t.colors.bg};--b:${t.colors.fg};--c:${t.colors.accent}`, title: 'Use this theme', onclick: () => (setTheme('custom:' + t.id), draw()) }),
+          el('span', { class: 'ct-name' }, t.name),
+          el('button', { type: 'button', onclick: fromPrefs(() => editCustomTheme(t.id)) }, 'Edit…'),
+          el('button', { type: 'button', onclick: fromPrefs(() => deleteCustomTheme(t.id)) }, 'Delete'),
+        ),
+      ),
+      el('button', { type: 'button', class: 'ct-new', onclick: fromPrefs(newCustomTheme) }, 'New Theme…'),
+    )
+  }
+  draw()
+  return [row('Theme', null, selBox), row('Custom themes', 'Your own colors. New themes start from the one you use now', list)]
 }
 
 function setTheme(t) {
@@ -3337,7 +3420,7 @@ function openPrefs(section) {
     ]],
     ['extensions', 'Extensions', [extensionsPage()]],
     ['appearance', 'Appearance', [
-      row('Theme', null, sel('theme', [['paper', 'Paper'], ['sepia', 'Sepia'], ['ink', 'Ink (dark)'], ['slate', 'Slate (dark)'], ['system', 'Follow system']], setTheme)),
+      ...themePrefs(row),
       row('Material You style', 'Rounded shapes and colors made from one color, in the light or dark of the theme above', chk('material')),
       row('Material color', systemSeed ? 'The first one follows your wallpaper' : null, materialColors()),
       row('Document font', null, sel('font', [['auto', 'Theme default'], ['sans', 'Sans-serif'], ['serif', 'Serif'], ['mono', 'Monospace']])),
@@ -3964,6 +4047,12 @@ const MENU = [
           ['system', 'Follow System'],
         ]
           .map(([id, l]) => k(l, null, () => setTheme(id), { checked: () => settings.theme === id }))
+          .concat([
+            '-',
+            { label: 'Custom Themes', sub: () => customThemeMenu() },
+            k('New Custom Theme…', null, () => newCustomTheme()),
+            k('Edit Custom Theme…', null, () => editCustomTheme(), { enabled: () => !!findCustomTheme(settings.customThemes, settings.theme) }),
+          ])
           .concat(['-', k('Material You Style', null, toggle('material'), { checked: () => settings.material, hint: 'Colors and color choice: Preferences → Appearance' })]),
       },
       k('Full-width Content', null, toggle('wide'), { checked: () => settings.wide }),

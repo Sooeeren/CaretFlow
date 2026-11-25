@@ -72,7 +72,7 @@ not ruled out. Tauri supports macOS, so it depends on someone being able to buil
   (.odt), EPUB e-books, LaTeX, HTML and plain text.
 - **Files and folders**: sidebar with outline, file tree and folder search; quick open (`Ctrl+P`);
   command palette (`F1`).
-- **Four themes** (Paper, Sepia, Ink, Slate) plus custom CSS, focus, typewriter and zen modes, and an
+- **Four themes** (Paper, Sepia, Ink, Slate), **your own themes** made in a color editor, custom CSS, focus, typewriter and zen modes, and an
   optional **Material You style** (View → Theme) with colors made from one color, or from your
   wallpaper on Android 12+.
 - **Extensions you add when you want them**: Cloud Sync with your own server, AI writing help with

@@ -60,6 +60,7 @@ These decide most design questions:
 | `src/companion.js` | WPM meter and typing cat |
 | `src/source.js` | Source mode + Vim (lazy) |
 | `src/material.js` | Material You style: a Material 3 color scheme from one seed color (OKLCH tonal palettes), laid over the theme; shapes in `style.css` under `body.material` |
+| `src/themes.js` | Custom themes: the color editor with a preview, applied as one CSS rule over Paper or Ink (`settings.customThemes`, theme `custom:<id>`) |
 | `src/codestyle.js` | Syntax colors shared by code blocks, source mode and exports (`--tok-*` per theme) |
 | `src/export.js` | HTML export and print-to-PDF (lazy) |
 | `src/docmodel.js` | The document as blocks and runs (from the export HTML), with images read and converted; shared by the writers below (lazy) |
