@@ -73,6 +73,7 @@ These decide most design questions:
 | `src/discord.js`, `src-tauri/src/discord.rs` | Discord Status (lazy, an extension, desktop only): Rich Presence over Discord's local IPC pipe/socket, Preferences → Discord with a preview |
 | `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
+| `src/imagesize.js` | Image size: right-click sizes and Format → Image Size, saved as Typora's `<img style="zoom:50%">` or a pixel `width`; keeps the alt text Milkdown's image block dropped |
 | `src/toc.js` | Table of contents: a `[TOC]` line shown as a live heading list, linked in exports (`renderToc`) |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |

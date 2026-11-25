@@ -313,6 +313,10 @@ class Builder {
     const src = node.getAttribute('src') || ''
     const run = { imgMissing: alt || src, src, ...(link || /^https?:/i.test(src) ? { link: link || src } : {}) }
     const want = { w: +node.getAttribute('width') || 0, h: +node.getAttribute('height') || 0 }
+    // style="zoom:50%" (Format → Image Size): a share of the size the image would have, applied by
+    // the writers after they fit it to the page
+    const z = (node.getAttribute('style') || '').match(/(?:^|;)\s*zoom\s*:\s*(\d+(?:\.\d+)?)\s*(%?)/i)
+    const zoom = z ? (z[2] ? +z[1] / 100 : +z[1]) : 0
     this.pending.push(async () => {
       try {
         const s = await readSource(src, this.o)
@@ -322,7 +326,7 @@ class Builder {
         if (want.w && !want.h) [img.h, img.w] = [(img.h * want.w) / img.w, want.w]
         else if (want.h && !want.w) [img.w, img.h] = [(img.w * want.h) / img.h, want.h]
         else if (want.w && want.h) [img.w, img.h] = [want.w, want.h]
-        run.img = { ...img, alt }
+        run.img = { ...img, alt, ...(zoom > 0 && zoom !== 1 ? { zoom } : {}) }
         delete run.imgMissing
       } catch {}
     })

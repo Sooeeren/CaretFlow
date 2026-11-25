@@ -26,6 +26,7 @@ import { codeStyle, TOKEN_VARS } from './codestyle.js'
 import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { htmlRendering } from './html.js'
+import { imageSizeConfig, imageSizeRemark, imageSizePlugin, selectedImage, setImageZoom, setImageWidth, stepZoom, zoomOf, IMAGE_ZOOMS, MAX_WIDTH } from './imagesize.js'
 import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { toc as tocPlugin, insertTocCommand, TOC_MARKDOWN, slugify } from './toc.js'
@@ -481,6 +482,7 @@ const caretProse = $prose(() => drawnCaretPlugin(scroller, () => settings.drawnC
 const isEnglishCheck = () => settings.wcEngine !== 'languagetool' || /^en/i.test(settings.ltLanguage || '')
 const autocorrectInput = $inputRule(() => autocorrectRule(() => ({ enabled: settings.autocorrect, capitalize: settings.autoCapitalize, english: isEnglishCheck() })))
 const run = (cmd, payload) => crepe?.editor.action(callCommand(cmd.key, payload))
+const imageSizeProse = imageSizePlugin({ onMenu: (v, pos, e) => imageMenu(e.clientX, e.clientY, pos) })
 
 async function createEditor(markdown) {
   if (crepe) {
@@ -516,7 +518,7 @@ async function createEditor(markdown) {
   // write list bullets and rules the way this document already does (`-` unless it uses `*` or `+`)
   const style = markdownStyle(markdown)
   c.editor.config((ctx) => ctx.update(remarkStringifyOptionsCtx, (o) => ({ ...o, ...style })))
-  c.editor.config(calloutConfig).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(findPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
+  c.editor.config(calloutConfig).config(imageSizeConfig).use(imageSizeRemark).use(imageSizeProse).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(findPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
   c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
   await c.create()
   crepe = c
@@ -1060,6 +1062,91 @@ function insertImage(src, alt = '', pos) {
   if (!v) return
   if (pos != null) v.dispatch(v.state.tr.setSelection(TextSelection.near(v.state.doc.resolve(pos))))
   run(cmk.insertImageCommand, { src, alt })
+}
+
+// ── image size (imagesize.js): the clicked image, right-click or Format → Image Size
+const imageTarget = () => (inSource() ? null : selectedImage(view()))
+const hasImage = () => !S.readonly && !!imageTarget()
+const imageZoom = () => {
+  const t = imageTarget()
+  return t ? zoomOf(t.node) : null
+}
+/** The image's own size in pixels, once it has loaded. */
+function naturalSize(pos) {
+  const img = view()?.nodeDOM(pos)?.querySelector?.('img')
+  return img?.naturalWidth ? { w: img.naturalWidth, h: img.naturalHeight } : null
+}
+/** The size as a percentage; for a width in pixels, what that is of the image's own width. */
+function percentOf(node, pos) {
+  const z = zoomOf(node)
+  if (z != null) return z
+  const n = naturalSize(pos)
+  return n ? Math.round((node.attrs.width / n.w) * 100) : 100
+}
+/** zoom: a percentage, or a function of the current one */
+function resizeImage(zoom, pos = imageTarget()?.pos) {
+  const v = view()
+  const node = pos == null ? null : v?.state.doc.nodeAt(pos)
+  if (S.readonly || node?.type.name !== 'image-block') return toast('Click an image first')
+  setImageZoom(v, pos, typeof zoom === 'function' ? zoom(percentOf(node, pos)) : zoom)
+  v.focus()
+}
+/** Custom Size…: a percentage or a width in pixels (written as width="…", which GitHub shows too). */
+async function customImageSize(pos = imageTarget()?.pos) {
+  const node = pos == null ? null : view()?.state.doc.nodeAt(pos)
+  if (S.readonly || node?.type.name !== 'image-block') return toast('Click an image first')
+  const nat = naturalSize(pos)
+  let unit = node.attrs.width ? 'px' : '%'
+  const input = el('input', { type: 'number', min: 1, step: 1, class: 'is-num', value: String(node.attrs.width || zoomOf(node)) })
+  const hint = el('small', { class: 'is-hint' })
+  const showHint = () => {
+    const n = parseFloat(input.value) || 0
+    if (!nat) return (hint.textContent = unit === '%' ? '5 to 400 % of the normal size' : 'Width in pixels')
+    const w = unit === '%' ? Math.round((nat.w * n) / 100) : Math.round(n)
+    hint.textContent = `Original ${nat.w} × ${nat.h} px` + (n > 0 ? ` · now ${w} × ${Math.round((w * nat.h) / nat.w)} px` : '')
+  }
+  // switching the unit converts the number, so the size stays the same
+  const unitSel = customSelect([['%', 'Percent'], ['px', 'Pixels wide']], unit, (u) => {
+    const n = parseFloat(input.value) || 0
+    if (nat && n > 0) input.value = String(u === 'px' ? Math.round((nat.w * n) / 100) : Math.round((n / nat.w) * 100))
+    unit = u
+    showHint()
+  })
+  input.oninput = showHint
+  showHint()
+  const ok = await dialog({
+    title: 'Image size',
+    body: el('div', { class: 'image-size-dlg' }, el('div', { class: 'is-row' }, input, unitSel), hint),
+    buttons: [
+      { label: 'Cancel', value: false, cancel: true },
+      { label: 'Resize', value: true, primary: true },
+    ],
+    onMount: () => setTimeout(() => input.select()),
+  })
+  if (!ok) return
+  const n = parseFloat(String(input.value).replace(',', '.'))
+  if (!(n > 0)) return toast(unit === '%' ? 'Enter a number, like 40' : 'Enter a width, like 320')
+  const v = view()
+  if (v.state.doc.nodeAt(pos)?.type.name !== 'image-block') return
+  if (unit === 'px') setImageWidth(v, pos, Math.min(n, MAX_WIDTH))
+  else setImageZoom(v, pos, n)
+  v.focus()
+}
+function imageMenu(x, y, pos) {
+  const node = view().state.doc.nodeAt(pos)
+  const cur = zoomOf(node) // null: a width in pixels
+  const keys = (label) => ACTIONS.find((a) => a.group === 'Format › Image Size' && a.label === label)?.keys || undefined
+  showContextMenu(x, y, [
+    { title: 'Image size', chips: IMAGE_ZOOMS.map((z) => [`${z}%`, () => resizeImage(z, pos), z === cur]) },
+    ['Zoom Image In', () => resizeImage((z) => stepZoom(z, 1), pos), keys('Zoom Image In')],
+    ['Zoom Image Out', () => resizeImage((z) => stepZoom(z, -1), pos), keys('Zoom Image Out')],
+    ['Custom Size…', () => customImageSize(pos)],
+    ['Original Size', () => resizeImage(100, pos), keys('100%'), cur !== 100],
+    '-',
+    ['Copy', () => document.execCommand('copy'), 'Ctrl+C'],
+    ['Cut', () => document.execCommand('cut'), 'Ctrl+X'],
+    ['Delete Image', () => view().dispatch(view().state.tr.delete(pos, pos + view().state.doc.nodeAt(pos).nodeSize))],
+  ])
 }
 
 async function insertImageDialog() {
@@ -3833,6 +3920,17 @@ const MENU = [
       k('Inline Code', 'Ctrl+Shift+`', mark(cmk.toggleInlineCodeCommand, ['`'])),
       k('Inline Math', 'Ctrl+Shift+E', inlineMath),
       '-',
+      {
+        label: 'Image Size',
+        sub: [
+          ...IMAGE_ZOOMS.map((z) => k(`${z}%`, z === 100 ? 'Ctrl+Alt+0' : null, () => resizeImage(z), { enabled: hasImage, checked: () => imageZoom() === z })),
+          '-',
+          k('Zoom Image In', 'Ctrl+Alt+=', () => resizeImage((z) => stepZoom(z, 1)), { enabled: hasImage }),
+          k('Zoom Image Out', 'Ctrl+Alt+-', () => resizeImage((z) => stepZoom(z, -1)), { enabled: hasImage }),
+          k('Custom Image Size…', null, () => customImageSize(), { enabled: hasImage }),
+        ],
+      },
+      '-',
       k('Clear Formatting', 'Ctrl+\\', clearFormat),
     ],
   },
@@ -4145,10 +4243,24 @@ function showContextMenu(x, y, items) {
   $('#ctxmenu').dataset.owner = ''
   const m = $('#ctxmenu')
   m.innerHTML = ''
-  // items: '-' or [label, fn, keys?, enabled?]
+  // items: '-', [label, fn, keys?, enabled?] or { title, chips: [[label, fn, on?]] } (a row of
+  // small buttons, like the image sizes)
   for (const it of items) {
     if (it === '-') {
       m.append(el('div', { class: 'menu-sep' }))
+      continue
+    }
+    if (it.chips) {
+      m.append(
+        el('div', { class: 'menu-chips-title' }, it.title || ''),
+        el(
+          'div',
+          { class: 'menu-chips' },
+          ...it.chips.map(([label, fn, on]) =>
+            el('button', { class: 'menu-chip' + (on ? ' on' : ''), onmousedown: (e) => e.preventDefault(), onclick: () => ((m.hidden = true), fn()) }, label),
+          ),
+        ),
+      )
       continue
     }
     m.append(

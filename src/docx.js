@@ -66,6 +66,8 @@ class Writer {
     let w = img.w || 300
     let h = img.h || 200
     if (w > this.maxPx) [w, h] = [this.maxPx, (h * this.maxPx) / w]
+    if (img.zoom) [w, h] = [w * img.zoom, h * img.zoom]
+    if (w > this.maxPx) [w, h] = [this.maxPx, (h * this.maxPx) / w]
     const cx = Math.round(w * EMU)
     const cy = Math.round(h * EMU)
     const n = ++this.drawingId

@@ -118,7 +118,12 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
 
 The sidebar has an outline, a file tree and folder search; with Cloud Sync on, a **Cloud** tab too.
 `Ctrl+P` jumps to any file in the open folder. Pasted or dropped images are copied into an `assets`
-folder next to the document (Preferences → Editing).
+folder next to the document (Preferences → Editing). Right-click an image to resize it (10 % to
+200 % or any size you type; Format → Image Size and `Ctrl+Alt+=` / `Ctrl+Alt+-` / `Ctrl+Alt+0` do
+the same for the clicked image). The size is saved as `<img … style="zoom:50%;" />` like Typora
+does, and PDF, HTML, Word, OpenDocument and LaTeX exports use it. **Custom Size…** takes a percentage
+or a width in pixels (it shows the image's own size), saved as `<img … width="300" />`, which GitHub
+shows at that size too.
 
 ## Typing test and extras
 

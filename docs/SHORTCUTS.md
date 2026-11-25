@@ -71,6 +71,8 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Inline code | ``Ctrl+Shift+` `` |
 | Inline math | `Ctrl+Shift+E` |
 | Clear formatting | `Ctrl+\` |
+| Clicked image larger / smaller | `Ctrl+Alt+=` / `Ctrl+Alt+-` |
+| Clicked image at original size | `Ctrl+Alt+0` |
 
 ## View
 

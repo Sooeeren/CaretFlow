@@ -238,6 +238,20 @@ button { font: inherit; color: inherit; }
 .menu-pop.tight > .menu-item { padding-top: 2px; padding-bottom: 2px; }
 .menu-pop.tight > .menu-sep { margin: 3px 6px; }
 .menu-empty { padding: 6px 12px; color: var(--muted); }
+/* a row of small buttons in a right-click menu (image sizes) */
+.menu-chips-title { padding: 4px 10px 2px 26px; font-size: 12px; color: var(--muted); }
+.menu-chips { display: grid; grid-template-columns: repeat(5, auto); gap: 4px; padding: 3px 10px 6px 26px; }
+.menu-chip { border: 1px solid var(--border); background: none; color: inherit; border-radius: 5px; padding: 3px 6px; font-size: 12px; font-variant-numeric: tabular-nums; cursor: default; }
+.menu-chip:hover { border-color: var(--accent); color: var(--accent); }
+.menu-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* resized images (imagesize.js): CSS zoom like Typora's style="zoom:50%"; above 100 % never wider than the page */
+.milkdown .milkdown-image-block.cf-zoomed > .image-wrapper img { zoom: var(--cf-zoom); max-width: calc(100% / max(1, var(--cf-zoom))); }
+.milkdown .milkdown-image-block.cf-sized > .image-wrapper img { width: var(--cf-width); max-width: 100%; min-height: 0; }
+/* Custom Size… dialog */
+.image-size-dlg .is-row { display: flex; gap: 8px; align-items: center; }
+.modal-box .image-size-dlg .is-num { width: 110px; flex: none; margin: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+.image-size-dlg .is-hint { display: block; margin: 8px 0 14px; color: var(--muted); font-size: 12px; }
 
 #main { flex: 1; display: flex; min-height: 0; }
 #content { min-width: 280px; }
@@ -1647,6 +1661,8 @@ body.material {
 .material .menu-item:hover { background: var(--m-state); color: var(--fg-strong); }
 .material .menu-item:hover .kbd { color: var(--muted); }
 .material .menu-item.sub-open { background: var(--m-primary-container); color: var(--m-on-primary-container); }
+.material .menu-chip { border-radius: 999px; }
+.material .menu-chip.on { background: var(--m-primary-container); border-color: transparent; color: var(--m-on-primary-container); }
 .material .menu-root > button { border-radius: 999px; padding: 4px 12px; }
 .material .menu-root > button:hover, .material .menu-root.open > button { background: var(--m-state); }
 

@@ -95,6 +95,8 @@ class Writer {
     let w = (img.w || 300) * CM
     let h = (img.h || 200) * CM
     if (w > this.maxCm) [w, h] = [this.maxCm, (h * this.maxCm) / w]
+    if (img.zoom) [w, h] = [w * img.zoom, h * img.zoom]
+    if (w > this.maxCm) [w, h] = [this.maxCm, (h * this.maxCm) / w]
     const n = ++this.frame
     return (
       `<draw:frame draw:style-name="Graphics" draw:name="Image${n}" text:anchor-type="as-char" svg:width="${w.toFixed(3)}cm" svg:height="${h.toFixed(3)}cm" draw:z-index="0">` +

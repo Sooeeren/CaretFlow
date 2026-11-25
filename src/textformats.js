@@ -22,7 +22,7 @@ class TexWriter {
       else if (r.math !== undefined) out += `$${r.math}$`
       else if (r.img || r.imgMissing !== undefined) {
         const path = r.src && this.o.imagePath?.(r.src)
-        out += path ? `\\includegraphics[max width=\\linewidth]{${path.replace(/\\/g, '/')}}` : `[${tesc(r.img?.alt || r.imgMissing || 'image')}]`
+        out += path ? `\\includegraphics[${r.img?.zoom ? `scale=${+r.img.zoom.toFixed(3)},` : ''}max width=\\linewidth]{${path.replace(/\\/g, '/')}}` : `[${tesc(r.img?.alt || r.imgMissing || 'image')}]`
       } else {
         let t = tesc(r.text)
         if (r.code) t = `\\texttt{${t}}`
