@@ -112,6 +112,7 @@ const DEFAULTS = {
   nativeTitlebar: false, // mirrored from Rust's ui.json at startup (decides decorations)
   customCSS: '',
   keybindings: {}, // action id ('Group/Label') → shortcut, '' = none; only changed ones are stored
+  menuLayout: null, // your own menu bar (Customize Menus): { menus: [{ label, items: [id | '-' | { label, items }] }], known: [ids] }; null = the default
   updateCheck: null, // look for new versions on startup: null = not asked yet (no network until the user agrees)
   updateSkip: '', // version the user chose to skip
   updatedFrom: '', // set right before installing an update; shows "updated" once on the next start
@@ -2899,10 +2900,10 @@ async function deleteCustomTheme(id) {
 }
 
 /** Preferences is a dialog itself: step out of it for the theme dialog, then come back. */
-const fromPrefs = (fn) => async () => {
+const fromPrefs = (fn, page = 'appearance') => async () => {
   closePrefs?.(true)
   await fn()
-  openPrefs('appearance')
+  openPrefs(page)
 }
 /** Preferences → Appearance: the theme choice and your custom themes. */
 function themePrefs(row) {
@@ -3502,6 +3503,7 @@ function openPrefs(section) {
       row('Number every fifth line', 'Like Word: in the rendered view, and in source mode without Vim', chk('fifthLineNumbers')),
     ]],
     ['keys', 'Keyboard', [keyboardPrefs()]],
+    ['menus', 'Menus', menuPrefs(row)],
     ['writing', 'Writing', [writingPrefs(row, chk, sel)]],
     extOn('ai') ? ['ai', 'AI', [aiPrefs(row)]] : null,
     ['typing', 'Typing', [
@@ -3684,6 +3686,22 @@ function cloudPrefs(row) {
   // loading it does nothing on the network: sync only starts once it is turned on and set up
   loadCloud().then((m) => box.replaceWith(m.prefsPage(row)))
   return box
+}
+
+/** Preferences → Menus: the button to the menu editor, and the way back to the default menus. */
+function menuPrefs(row) {
+  const custom = !!settings.menuLayout
+  const note = el('span', {}, custom ? 'You use your own menus.' : 'You use the default menus.')
+  const reset = el('button', { type: 'button', class: 'fsel', disabled: !custom }, 'Reset to Default')
+  reset.onclick = () => {
+    resetMenus()
+    reset.disabled = true
+    note.textContent = 'You use the default menus.'
+  }
+  return [
+    el('p', { class: 'about-note' }, 'Drag commands into the menus and out of them, make your own menus and submenus, rename and reorder them. Commands that are in no menu still work with their shortcut and from the command palette (F1).'),
+    row('Menu bar', note, el('span', { class: 'me-pref-btns' }, el('button', { type: 'button', class: 'fsel', onclick: fromPrefs(customizeMenus, 'menus') }, 'Customize Menus…'), reset)),
+  ]
 }
 
 /** Preferences → Keyboard: every menu command with its shortcut; click one and press new keys. */
@@ -4166,6 +4184,7 @@ const MENU = [
       k('Command Palette…', 'F1', () => commandPalette()),
       k('Keyboard Shortcuts', 'Shift+F1', showShortcuts),
       k('Customize Shortcuts…', null, () => openPrefs('keys')),
+      k('Customize Menus…', null, () => customizeMenus()),
       '-',
       k('Check for Updates…', null, () => checkUpdates(true)),
       k('Check for Updates Automatically', null, toggle('updateCheck'), { checked: () => settings.updateCheck }),
@@ -4243,6 +4262,120 @@ function collectActions(items, menu, path, group) {
 }
 for (const m of MENU) collectActions(m.items, m.label, m.label, m.label)
 
+// ── custom menus (Customize Menus, menueditor.js). What can be placed: every command, by the same
+// id as its shortcut (its default menu path), and every submenu filled when it opens (Open Recent,
+// Custom Themes). Fixed submenus are just folders of those. Commands left out of every menu still
+// work from their shortcut and the command palette.
+const UNITS = new Map()
+function collectUnits(items, path) {
+  for (const it of items) {
+    if (typeof it !== 'object') continue
+    if (it.fn) UNITS.set(it.id, it)
+    else if (typeof it.sub === 'function') {
+      it.id = `${path}/${it.label}`
+      it.group = path.replaceAll('/', ' › ')
+      UNITS.set(it.id, it)
+    } else if (Array.isArray(it.sub)) collectUnits(it.sub, `${path}/${it.label}`)
+  }
+}
+for (const m of MENU) collectUnits(m.items, m.label)
+
+/** The default menus in the saved form, made fresh each time (the editor changes what it gets). */
+function defaultLayout() {
+  const conv = (items) =>
+    items.flatMap((it) => {
+      if (it === '-') return ['-']
+      if (it.id && UNITS.has(it.id)) return [it.id]
+      if (Array.isArray(it.sub)) return [it.ext ? { label: it.label, items: conv(it.sub), ext: it.ext } : { label: it.label, items: conv(it.sub) }]
+      return []
+    })
+  return MENU.map((m) => ({ label: m.label, items: conv(m.items) }))
+}
+const layoutIds = (items, out = []) => {
+  for (const x of items) typeof x === 'string' ? x !== '-' && out.push(x) : x && layoutIds(x.items, out)
+  return out
+}
+
+/** Commands that came with a newer version than your layout: placed after the command or submenu
+ *  they follow in the default menus (at the same level), else at the end of the menu that has their
+ *  default menu's name. */
+function addNewCommands(l) {
+  const known = new Set(l.known || [])
+  const fresh = new Set([...UNITS.keys()].filter((id) => !known.has(id)))
+  if (!fresh.size) return false
+  const placed = new Set(layoutIds(l.menus))
+  // where an id, or a submenu by its name, sits in your layout: [list, index]
+  const find = (x, list) => {
+    for (let i = 0; i < list.length; i++) {
+      const y = list[i]
+      if (typeof x === 'string' ? y === x : y?.label === x.label && y.items) return [list, i]
+      const r = y && typeof y === 'object' && find(x, y.items)
+      if (r) return r
+    }
+    return null
+  }
+  const walk = (items, parent) => {
+    items.forEach((x, i) => {
+      if (x && typeof x === 'object') return walk(x.items, x)
+      if (!fresh.has(x) || placed.has(x)) return
+      let at = null
+      for (let j = i - 1; j >= 0 && !at; j--) if (items[j] !== '-') at = find(items[j], l.menus)
+      if (at) at[0].splice(at[1] + 1, 0, x)
+      else {
+        const home = find(parent, l.menus) // the menu or submenu of that name
+        home?.[0][home[1]].items.push(x)
+      }
+      placed.add(x)
+    })
+  }
+  for (const m of defaultLayout()) walk(m.items, m)
+  l.known = [...new Set([...known, ...UNITS.keys()])]
+  return true
+}
+
+/** A saved layout as menu items: ids become the commands themselves (their checks, keys, enabled
+ *  state), folders become submenus. Ids this version or platform doesn't have are skipped. */
+function fromLayout(items) {
+  const out = []
+  for (const x of items) {
+    if (x === '-') out.push('-')
+    else if (typeof x === 'string') UNITS.has(x) && out.push(UNITS.get(x))
+    else if (x?.items) {
+      const sub = fromLayout(x.items)
+      out.push({ label: x.label, ext: x.ext, sub: () => (menuItems(sub).length ? sub : [{ label: 'Empty', enabled: () => false }]) })
+    }
+  }
+  return out
+}
+
+let menuBar = MENU // what the menu bar and Android's menu drawer show
+function applyMenuLayout() {
+  const l = settings.menuLayout
+  if (l?.menus && addNewCommands(l)) saveSettings()
+  menuBar = l?.menus ? l.menus.map((m) => ({ label: m.label, items: fromLayout(m.items) })) : MENU
+  closeMenus()
+  buildMenubar()
+}
+
+async function customizeMenus() {
+  const { editMenus } = await import('./menueditor.js')
+  const units = [...UNITS.values()].map((u) => ({ id: u.id, label: u.label, group: u.group, keys: u.keys, sub: !u.fn, off: !extOn(u.ext) }))
+  const menus = await editMenus({ el, dialog, units, layout: settings.menuLayout?.menus || defaultLayout(), defaults: defaultLayout() })
+  if (!menus) return false
+  const same = JSON.stringify(menus) === JSON.stringify(defaultLayout())
+  settings.menuLayout = same ? null : { menus, known: [...new Set([...(settings.menuLayout?.known || []), ...UNITS.keys()])] }
+  saveSettings()
+  applyMenuLayout()
+  toast(same ? 'Default menus' : 'Menus saved')
+  return true
+}
+function resetMenus() {
+  settings.menuLayout = null
+  saveSettings()
+  applyMenuLayout()
+  toast('Default menus')
+}
+
 /** Custom shortcuts are saved by menu path; when a command moved to another menu (0.10.0 sorted
  *  the menus), its shortcut follows it to the command with the same name. */
 function migrateKeybindings(kb) {
@@ -4271,7 +4404,8 @@ function migrateKeybindings(kb) {
 let openMenu = null
 function buildMenubar() {
   const bar = $('#menus')
-  for (const m of MENU) {
+  bar.replaceChildren()
+  for (const m of menuBar) {
     const root = el('div', { class: 'menu-root' })
     const btn = el('button', {}, m.label)
     root.append(btn)
@@ -4282,6 +4416,8 @@ function buildMenubar() {
     btn.onmouseenter = () => openMenu && openMenu !== root && showMenu(root, m.items)
     bar.append(root)
   }
+}
+function listenMenus() {
   document.addEventListener('mousedown', (e) => {
     if (openMenu && !e.target.closest('.menu-root')) closeMenus()
     if (!e.target.closest('#ctxmenu')) $('#ctxmenu').hidden = true
@@ -5182,7 +5318,9 @@ async function bootAndroid() {
     settings,
     saveSettings,
     S,
-    menu: MENU,
+    get menu() {
+      return menuBar // a getter: Customize Menus can change it after start
+    },
     menuItems,
     extOn,
     version: APP_VERSION,
@@ -5221,7 +5359,8 @@ async function boot() {
   ripples()
   scaleImagesWithWidth($('#wysiwyg'))
   applySettings()
-  buildMenubar()
+  applyMenuLayout()
+  listenMenus()
   initWriting({
     settings,
     saveSettings,

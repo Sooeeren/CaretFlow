@@ -2,7 +2,7 @@
 
 Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctrl+Shift+P`).
 `Shift+F1` lists all shortcuts inside the app. Any command can get a different shortcut, or none, in
-**Preferences → Keyboard** (Help → Customize Shortcuts…). These are the defaults. Shortcuts marked
+**Preferences → Keyboard** (Help → Customize Shortcuts…), and the menus rearranged in **Preferences → Menus** (Help → Customize Menus…). These are the defaults. Shortcuts marked
 *(extension)* work once that extension is installed (Preferences → Extensions).
 
 ## File

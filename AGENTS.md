@@ -73,6 +73,7 @@ These decide most design questions:
 | `src/mcp.js` | MCP tool answers (document, selection, suggestions) and Preferences → AI → MCP server |
 | `src/discord.js`, `src-tauri/src/discord.rs` | Discord Status (lazy, an extension, desktop only): Rich Presence over Discord's local IPC pipe/socket, Preferences → Discord with a preview |
 | `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
+| `src/menueditor.js` | Customize Menus (lazy): the menu bar as a drag-and-drop tree; the layout (`settings.menuLayout`) is applied by `applyMenuLayout()` in `main.js`, which keeps command ids so shortcuts are unaffected |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/imagesize.js` | Image size: right-click sizes and Format → Image Size, saved as Typora's `<img style="zoom:50%">` or a pixel `width`; keeps the alt text Milkdown's image block dropped |
 | `src/toc.js` | Table of contents: a `[TOC]` line shown as a live heading list, linked in exports (`renderToc`) |
@@ -92,7 +93,7 @@ These decide most design questions:
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click; Markdown between lone `<div align=…>` / `</div>` lines styled like on GitHub |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines, Customize Menus) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -198,3 +199,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Typing cat in eight styles (Tools → Cat Style, Preferences → Typing with previews); custom themes with a color editor and preview (View → Theme, Preferences → Appearance) (scripts/checks/themes.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Image Custom Size in percent or pixels (`<img width=…>`); Make Your Own Cat editor with live preview (scripts/checks/imagesize.mjs, themes.mjs custom-cat) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Wrap Code Lines (on by default, View menu / `Alt+Z` / Preferences → Editing): long code lines continue on the next line in the editor and exports (scripts/checks/codewrap.mjs) |
+| Claude Opus 5.5 | Claude Code | 2026-11-25 | Customize Menus (Help menu, Preferences → Menus): drag commands in and out, new menus and submenus, rename, keyboard moves, undo; new commands placed by their default neighbor (src/menueditor.js, scripts/checks/menus.mjs) |

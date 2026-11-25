@@ -128,6 +128,19 @@ does, and PDF, HTML, Word, OpenDocument and LaTeX exports use it. **Custom Size�
 or a width in pixels (it shows the image's own size), saved as `<img … width="300" />`, which GitHub
 shows at that size too.
 
+## Your own menus
+
+**Help → Customize Menus…** (or Preferences → Menus) shows the menu bar as a tree next to a list of
+every command. Drag commands from the list into a menu, and drag them back to the list to take them
+out. **New Menu** adds a menu to the menu bar, **New Submenu** one inside the selected menu, and
+**Separator** a line; double-click a menu (or press `F2`) to rename it. Menus and submenus move like
+commands: drag one into another to nest it. With the keyboard, `Alt+↑` / `Alt+↓` move the selected
+row, `Alt+←` takes it out of its menu, `Alt+→` puts it into the menu above, `Delete` removes it and
+`Ctrl+Z` undoes. A command that is in no menu still works with its shortcut and from the command
+palette (`F1`). **Reset to Default** brings back the menus CaretFlow comes with. Commands added by a
+later version show up next to where they are in the default menus. On Android the menu drawer shows
+the same menus.
+
 ## Typing test and extras
 
 The typing test is an extension: install it in Preferences → Extensions. Then `Ctrl+Alt+T` opens a minimal speed test: 15 to 120 seconds or 10 to 100 words, with optional

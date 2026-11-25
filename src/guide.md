@@ -12,6 +12,7 @@ CaretFlow is a **seamless** Markdown reader and editor: what you type is rendere
 - Type `/` on an empty line for the block menu
 - Prefer Vim? **View → Vim Keybindings** (`Ctrl+Alt+V`) — works in source mode, with `:w`, `:q`, `:wq` and `:Explore` for the file tree (`j` / `k` / `h` / `l`, `Escape` back to the text); line numbers (also relative) under **View → Line Numbers**
 - Change any shortcut in **Preferences → Keyboard** (**Help → Customize Shortcuts…**): click it, press the new keys
+- Arrange the menus your way in **Help → Customize Menus…**: drag commands in and out, make your own menus and submenus
 - **File → Close File** (`Ctrl+F4`) and **File → Close Folder** start over with an empty document or file tree; **Preferences** (`Ctrl+,`) has fonts, heading spacing, line numbers and more, sorted by topic
 - **Help → Check for Updates…** finds a new version; **Update & Restart** installs it and opens CaretFlow again
 
