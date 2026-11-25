@@ -3,9 +3,11 @@
 // submenus are made, renamed, nested and moved like commands.
 // Dragging uses pointer events, not HTML5 drag and drop: WebView2 hands native drags to Tauri's
 // file drop, and Android's WebView has no drag and drop for touch.
+import { MENU_TEMPLATES, expandTemplate } from './menutemplates.js'
 
 /**
- * @param h { el, dialog, units: [{ id, label, group, keys, sub, off }], layout, defaults }
+ * @param h { el, dialog, units: [{ id, label, group, keys, sub, off }], layout, defaults, template? }
+ *   template: the id of a MENU_TEMPLATES entry to start from (Undo goes back to your menus)
  *   layout/defaults: [{ label, items: [id | '-' | { label, items, ext? }] }]
  * @returns the new layout, or null when cancelled
  */
@@ -430,6 +432,59 @@ export function editMenus(h) {
     collapsed = new Set()
     draw()
   })
+
+  // templates: a popup above the button; picking one replaces the tree (Undo brings yours back)
+  const templateMenus = (t) => expandTemplate(t, h.defaults, (id) => byId.has(id))
+  const useTemplate = (t) => {
+    snap()
+    root.items = toNodes(templateMenus(t))
+    selected = null
+    collapsed = new Set(root.items) // the menus at a glance; open one to see what is in it
+    draw()
+    tree.focus({ preventScroll: true })
+  }
+  let tplPop = null
+  const closeTemplates = () => {
+    tplPop?.remove()
+    tplPop = null
+    window.removeEventListener('keydown', tplKey, true)
+    document.removeEventListener('pointerdown', tplOutside, true)
+  }
+  // window capture: Esc closes the popup, not the dialog
+  const tplKey = (e) => {
+    if (e.key !== 'Escape') return
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    closeTemplates()
+    tplBtn.focus()
+  }
+  const tplOutside = (e) => !tplPop?.contains(e.target) && !tplBtn.contains(e.target) && closeTemplates()
+  const tplBtn = btn('Templates…', 'Menus made for a kind of work, to start from', () => {
+    if (tplPop) return closeTemplates()
+    const pick = (t) => () => {
+      closeTemplates()
+      useTemplate(t)
+    }
+    tplPop = el(
+      'div',
+      { class: 'me-tpls', role: 'menu' },
+      ...MENU_TEMPLATES.map((t) =>
+        el('button', { type: 'button', class: 'me-tpl', role: 'menuitem', 'data-tpl': t.id, onclick: pick(t) }, el('b', {}, t.name), el('small', {}, `${t.menus.map((m) => m.label).join(' · ')} — ${t.desc}`)),
+      ),
+    )
+    tplBtn.after(tplPop)
+    tplPop.querySelector('button').focus()
+    tplPop.addEventListener('keydown', (e) => {
+      const bs = [...tplPop.querySelectorAll('button')]
+      const i = bs.indexOf(document.activeElement)
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        bs[(i + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length].focus()
+      }
+    })
+    window.addEventListener('keydown', tplKey, true)
+    document.addEventListener('pointerdown', tplOutside, true)
+  })
   const collapseAll = btn('Collapse All', 'Show only the menus', () => {
     collapsed = new Set(root.items)
     draw()
@@ -446,9 +501,11 @@ export function editMenus(h) {
     { class: 'me' },
     el('p', { class: 'about-note' }, 'Drag commands from the right into your menus, and back to remove them. Double-click a menu to rename it. Keys: Alt+arrows move the selected row, Delete removes it, F2 renames.'),
     el('div', { class: 'me-cols' }, treePane, cmdPane),
-    el('div', { class: 'me-tools me-bottom' }, undoBtn, collapseAll, el('span', { class: 'me-gap' }), reset),
+    el('div', { class: 'me-tools me-bottom' }, undoBtn, collapseAll, el('span', { class: 'me-gap' }), tplBtn, reset),
   )
   draw()
+  const start = h.template && MENU_TEMPLATES.find((t) => t.id === h.template)
+  if (start) useTemplate(start)
 
   return dialog({
     title: 'Customize Menus',
@@ -462,5 +519,8 @@ export function editMenus(h) {
       b.classList.add('me-dialog')
       tree.focus({ preventScroll: true })
     },
-  }).then((ok) => (ok ? fromNodes(root.items) : null))
+  }).then((ok) => {
+    closeTemplates()
+    return ok ? fromNodes(root.items) : null
+  })
 }

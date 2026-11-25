@@ -73,6 +73,7 @@ These decide most design questions:
 | `src/mcp.js` | MCP tool answers (document, selection, suggestions) and Preferences → AI → MCP server |
 | `src/discord.js`, `src-tauri/src/discord.rs` | Discord Status (lazy, an extension, desktop only): Rich Presence over Discord's local IPC pipe/socket, Preferences → Discord with a preview |
 | `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
+| `src/menutemplates.js` | Menu templates (Minimal, Writer, Student & Academic, Developer, Note-taker) by command id; `scripts/checks/menus.mjs` menu-templates fails if one names a command that doesn't exist |
 | `src/menueditor.js` | Customize Menus (lazy): the menu bar as a drag-and-drop tree; the layout (`settings.menuLayout`) is applied by `applyMenuLayout()` in `main.js`, which keeps command ids so shortcuts are unaffected |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/imagesize.js` | Image size: right-click sizes and Format → Image Size, saved as Typora's `<img style="zoom:50%">` or a pixel `width`; keeps the alt text Milkdown's image block dropped |
@@ -200,3 +201,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Image Custom Size in percent or pixels (`<img width=…>`); Make Your Own Cat editor with live preview (scripts/checks/imagesize.mjs, themes.mjs custom-cat) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Wrap Code Lines (on by default, View menu / `Alt+Z` / Preferences → Editing): long code lines continue on the next line in the editor and exports (scripts/checks/codewrap.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Customize Menus (Help menu, Preferences → Menus): drag commands in and out, new menus and submenus, rename, keyboard moves, undo; new commands placed by their default neighbor (src/menueditor.js, scripts/checks/menus.mjs) |
+| Claude Opus 5.5 | Claude Code | 2026-11-25 | Menu templates for kinds of users (Minimal, Writer, Student & Academic, Developer & Technical Writer, Note-taker) in Customize Menus and Preferences → Menus (src/menutemplates.js) |

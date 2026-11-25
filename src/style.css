@@ -1335,6 +1335,12 @@ body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space
 .me-tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 6px; border-bottom: 1px solid var(--border); background: var(--chrome); }
 .me-tools.me-bottom { padding: 0; border: 0; background: none; }
 .me-gap { flex: 1; }
+.me-bottom { position: relative; }
+.me-tpls { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 5; width: min(440px, 90vw); max-height: min(420px, 60vh); overflow-y: auto; padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); }
+.me-tpl { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px; background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer; }
+.me-tpl b { font-size: 13px; color: var(--fg-strong); }
+.me-tpl small { font-size: 12px; line-height: 1.4; color: var(--muted); }
+.me-tpl:hover, .me-tpl:focus-visible { background: var(--accent-soft); outline: none; }
 .me-tree, .me-cmds { flex: 1; min-height: 0; overflow-y: auto; padding: 4px; outline: none; }
 .me-cmds .kb-group { margin: 10px 4px 2px; }
 .me-cmds .kb-group:first-of-type { margin-top: 6px; }

@@ -186,4 +186,106 @@ export const scenes = {
       summary()
     },
   },
+  // templates: every id they name exists, each one picked from the popup becomes the menu bar and
+  // keeps the way back (Preferences…, Customize Menus…); Preferences opens the editor with one
+  'menu-templates': {
+    open: 'Welcome.md',
+    settings: { theme: 'paper', sidebar: false, spellcheck: false, extensions: ['ai', 'cloud', 'typing', 'discord'] },
+    setup: (page) => stubBackend(page),
+    async run(page) {
+      await page.click('#menus .menu-root > button:has-text("Help")')
+      await page.click('.menu-item:has-text("Customize Menus…")')
+      await wait(400)
+      const r = await run(page, async () => {
+        const ids = new Set([...document.querySelectorAll('.me-tree .me-row')].map((x) => x._node.id).filter(Boolean))
+        const folders = new Set()
+        const walk = (rows) => {
+          const stack = []
+          for (const x of rows) {
+            const d = +x.style.getPropertyValue('--depth')
+            stack.length = d
+            if (x._node.t === 'menu') {
+              stack[d] = x._node.label
+              folders.add(stack.slice(0, d + 1).join('/'))
+            }
+          }
+        }
+        walk(document.querySelectorAll('.me-tree .me-row'))
+        const { MENU_TEMPLATES } = await import('/src/menutemplates.js')
+        const missing = []
+        const check = (items, t) => {
+          for (const x of items) {
+            if (x === '-') continue
+            if (typeof x === 'string') (x.startsWith('@') ? folders.has(x.slice(1)) : ids.has(x)) || missing.push(`${t}: ${x}`)
+            else check(x.items, t)
+          }
+        }
+        for (const t of MENU_TEMPLATES) check(t.menus, t.id)
+        return { missing, names: MENU_TEMPLATES.map((t) => [t.id, t.menus.map((m) => m.label)]) }
+      })
+      if (r.error) return check('templates read', false, r.error)
+      check('every command a template names exists', !r.missing.length, r.missing.join(', '))
+      check('five templates', r.names.length === 5)
+
+      for (const [id, labels] of r.names) {
+        await page.click('.me-bottom button:has-text("Templates…")')
+        await wait(100)
+        check(`${id}: popup lists the templates`, (await page.locator('.me-tpl').count()) === 5)
+        await page.click(`.me-tpl[data-tpl="${id}"]`)
+        await wait(100)
+        const tops = await run(page, () => [...document.querySelectorAll('.me-tree .me-row.top .me-label')].map((x) => x.textContent))
+        check(`${id}: tree shows its menus`, JSON.stringify(tops) === JSON.stringify(labels), tops.join(','))
+        await page.click('.modal-btns button:has-text("Save")')
+        await wait(300)
+        const bar = await run(page, () => [...document.querySelectorAll('#menus .menu-root > button')].map((b) => b.textContent))
+        check(`${id}: menu bar follows`, JSON.stringify(bar) === JSON.stringify(labels), bar.join(','))
+        const all = await run(page, () => {
+          const ids = []
+          const walk = (items) => items.forEach((x) => (typeof x === 'string' ? ids.push(x) : x && walk(x.items)))
+          walk(JSON.parse(localStorage.getItem('caretflow.settings')).menuLayout.menus)
+          return ids
+        })
+        check(`${id}: keeps Preferences and Customize Menus`, all.some((x) => x.endsWith('/Preferences…')) && all.includes('Help/Customize Menus…'))
+        // every menu opens with something in it
+        for (const l of labels) {
+          await page.click(`#menus .menu-root > button:text-is("${l}")`)
+          await wait(60)
+          const n = await run(page, () => document.querySelectorAll('#menus .menu-pop > .menu-item:not(.disabled)').length)
+          if (n < 2) check(`${id}: ${l} has commands`, false, String(n))
+          await page.keyboard.press('Escape')
+        }
+        await page.click('#menus .menu-root > button:has-text("Help")')
+        await page.click('.menu-item:has-text("Customize Menus…")')
+        await wait(300)
+      }
+      // Undo after a template brings back the menus you had
+      const before = await run(page, () => [...document.querySelectorAll('.me-tree .me-row.top .me-label')].map((x) => x.textContent))
+      await page.click('.me-bottom button:has-text("Templates…")')
+      await page.click('.me-tpl[data-tpl="minimal"]')
+      await page.click('.me-bottom button:has-text("Undo")')
+      await wait(100)
+      const after = await run(page, () => [...document.querySelectorAll('.me-tree .me-row.top .me-label')].map((x) => x.textContent))
+      check('Undo after a template', JSON.stringify(before) === JSON.stringify(after), after.join(','))
+      // Esc closes the popup, not the dialog
+      await page.click('.me-bottom button:has-text("Templates…")')
+      await page.keyboard.press('Escape')
+      await wait(100)
+      check('Esc closes only the popup', !(await page.isVisible('.me-tpls')) && (await page.isVisible('.me-dialog')))
+      await page.screenshot({ path: process.env.OUT_DIR ? `${process.env.OUT_DIR}/menu-templates.png` : undefined }).catch(() => {})
+      await page.click('.modal-btns button:has-text("Cancel")')
+      await wait(200)
+
+      // Preferences → Menus → Start from a template opens the editor with it
+      await page.keyboard.press('Control+,')
+      await wait(300)
+      await page.click('.prefs-nav button:has-text("Menus")')
+      await page.click('.pref-row:has-text("Start from a template") .fsel')
+      await wait(100)
+      await page.click('text="Writer"')
+      await wait(400)
+      const tops = await run(page, () => [...document.querySelectorAll('.me-tree .me-row.top .me-label')].map((x) => x.textContent))
+      check('Preferences opens the editor with the template', tops.includes('Review') && tops.includes('Format'), tops.join(','))
+      summary()
+    },
+  },
 }

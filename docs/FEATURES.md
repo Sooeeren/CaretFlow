@@ -136,7 +136,19 @@ out. **New Menu** adds a menu to the menu bar, **New Submenu** one inside the se
 **Separator** a line; double-click a menu (or press `F2`) to rename it. Menus and submenus move like
 commands: drag one into another to nest it. With the keyboard, `Alt+↑` / `Alt+↓` move the selected
 row, `Alt+←` takes it out of its menu, `Alt+→` puts it into the menu above, `Delete` removes it and
-`Ctrl+Z` undoes. A command that is in no menu still works with its shortcut and from the command
+`Ctrl+Z` undoes. **Templates…** starts from menus made for a kind of work (also in Preferences →
+Menus → Start from a template):
+
+| Template | Menus | Made for |
+| --- | --- | --- |
+| Minimal | File · Edit · View · Help | The commands most people use; the rest is in the command palette |
+| Writer | File · Edit · Format · Review · View · Help | Stories, essays, blogs: focus/typewriter/zen modes, the writing check and AI in a Review menu, Word and EPUB export |
+| Student & Academic | File · Edit · Paragraph · Insert · Format · Export · Review · View · Help | Papers and theses: math, tables, table of contents, page breaks, an Export menu with PDF, Word and LaTeX |
+| Developer & Technical Writer | File · Edit · Insert · Format · View · Tools · Help | READMEs and docs: source mode, Vim and line numbers, code and diagrams, front matter, copy as Markdown/HTML |
+| Note-taker | Notes · Edit · Insert · Format · View · Help | A folder of notes: quick open, folder search, task lists, callouts, sidebar tabs, Cloud Sync |
+
+A template opens in the editor, so you can change it before saving; Undo brings your menus back.
+Every template keeps Preferences… and Customize Menus…. A command that is in no menu still works with its shortcut and from the command
 palette (`F1`). **Reset to Default** brings back the menus CaretFlow comes with. Commands added by a
 later version show up next to where they are in the default menus. On Android the menu drawer shows
 the same menus.

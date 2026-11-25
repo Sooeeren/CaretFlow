@@ -3688,6 +3688,12 @@ function cloudPrefs(row) {
   return box
 }
 
+/** The template names for Preferences → Menus; the list itself loads with the editor. */
+const TEMPLATE_NAMES = [['minimal', 'Minimal'], ['writer', 'Writer'], ['academic', 'Student & Academic'], ['developer', 'Developer & Technical Writer'], ['notes', 'Note-taker']]
+function templatePicker() {
+  return customSelect([['', 'Choose…'], ...TEMPLATE_NAMES], '', (id) => id && fromPrefs(() => customizeMenus(id), 'menus')())
+}
+
 /** Preferences → Menus: the button to the menu editor, and the way back to the default menus. */
 function menuPrefs(row) {
   const custom = !!settings.menuLayout
@@ -3700,7 +3706,8 @@ function menuPrefs(row) {
   }
   return [
     el('p', { class: 'about-note' }, 'Drag commands into the menus and out of them, make your own menus and submenus, rename and reorder them. Commands that are in no menu still work with their shortcut and from the command palette (F1).'),
-    row('Menu bar', note, el('span', { class: 'me-pref-btns' }, el('button', { type: 'button', class: 'fsel', onclick: fromPrefs(customizeMenus, 'menus') }, 'Customize Menus…'), reset)),
+    row('Menu bar', note, el('span', { class: 'me-pref-btns' }, el('button', { type: 'button', class: 'fsel', onclick: fromPrefs(() => customizeMenus(), 'menus') }, 'Customize Menus…'), reset)),
+    row('Start from a template', 'Menus made for a kind of work. It opens in the editor, where you can change it before saving', templatePicker()),
   ]
 }
 
@@ -4357,10 +4364,10 @@ function applyMenuLayout() {
   buildMenubar()
 }
 
-async function customizeMenus() {
+async function customizeMenus(template) {
   const { editMenus } = await import('./menueditor.js')
   const units = [...UNITS.values()].map((u) => ({ id: u.id, label: u.label, group: u.group, keys: u.keys, sub: !u.fn, off: !extOn(u.ext) }))
-  const menus = await editMenus({ el, dialog, units, layout: settings.menuLayout?.menus || defaultLayout(), defaults: defaultLayout() })
+  const menus = await editMenus({ el, dialog, units, layout: settings.menuLayout?.menus || defaultLayout(), defaults: defaultLayout(), template })
   if (!menus) return false
   const same = JSON.stringify(menus) === JSON.stringify(defaultLayout())
   settings.menuLayout = same ? null : { menus, known: [...new Set([...(settings.menuLayout?.known || []), ...UNITS.keys()])] }
