@@ -130,7 +130,7 @@ HTML in a document is shown rendered, the way GitHub shows a README: press <kbd>
 
 ## Images
 
-Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies it into an `assets` folder next to your document and links it relatively. **Insert → When Adding Images** (or Preferences → Editing) changes that: a `<file name>.assets` folder, a folder of your own, the original path, or embedding the image in the document.
+Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies it into an `assets` folder next to your document and links it relatively. **Insert → When Adding Images** (or Preferences → Editing) changes that: a `<file name>.assets` folder, a folder of your own, the original path, or embedding the image in the document. Hover an image for a full-screen button; its alt text shows under it with **View → Show Image Alt Text**.
 
 To make an image smaller or larger, right-click it and pick a size from 10% to 200%, or **Custom Size…** for any other percentage or a width in pixels (saved as `width="300"`). With the image clicked, `Ctrl+Alt+=` and `Ctrl+Alt+-` step through the sizes and `Ctrl+Alt+0` brings back the original size (also under **Format → Image Size**). A resized image is saved as `<img src="pic.png" alt="…" style="zoom:50%;" />`, the way Typora writes it, so it shows at that size there and in browsers too.
 

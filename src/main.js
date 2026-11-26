@@ -27,6 +27,7 @@ import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { htmlRendering } from './html.js'
 import { watchCodeTools } from './codetools.js'
+import { watchImageTools, showImageFull, editCaption } from './imageview.js'
 import appIcon from '../src-tauri/icons/128x128@2x.png' // the About dialog's logo
 import { imageSizeConfig, imageSizeRemark, imageSizePlugin, selectedImage, setImageZoom, setImageWidth, stepZoom, zoomOf, IMAGE_ZOOMS, MAX_WIDTH } from './imagesize.js'
 import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
@@ -99,6 +100,7 @@ const DEFAULTS = {
   imageDotSlash: false, // write ./assets/x.png instead of assets/x.png
   imageCopyAll: false, // also copy images that already sit in the document's folder
   nestedLists: true, // sub-points get their own bullet shapes and a softer color
+  showAltText: false, // image captions (the alt text) under images; off: shown while being edited
   wrapCode: true, // long code lines continue on the next line instead of scrolling sideways (editor and exports)
   drawnCaret: IS_LINUX, // CaretFlow draws the caret in the rendered view (WebKitGTK leaves stale carets behind)
   sidebar: true,
@@ -1190,6 +1192,9 @@ function imageMenu(x, y, pos) {
     ['Zoom Image Out', () => resizeImage((z) => stepZoom(z, -1), pos), keys('Zoom Image Out')],
     ['Custom Size…', () => customImageSize(pos)],
     ['Original Size', () => resizeImage(100, pos), keys('100%'), cur !== 100],
+    '-',
+    ['View Full Screen', () => showImageFull(view().nodeDOM(pos)?.querySelector?.('img'))],
+    ['Edit Alt Text', () => editCaption(view().nodeDOM(pos))],
     '-',
     ['Copy', () => document.execCommand('copy'), 'Ctrl+C'],
     ['Cut', () => document.execCommand('cut'), 'Ctrl+X'],
@@ -2849,6 +2854,7 @@ function applySettings() {
   document.body.classList.toggle('drawn-caret', settings.drawnCaret)
   document.body.classList.toggle('nested-lists', settings.nestedLists)
   document.body.classList.toggle('wrap-code', settings.wrapCode)
+  document.body.classList.toggle('cf-hide-captions', !settings.showAltText)
   view()?.dispatch(view().state.tr) // show or hide the drawn caret
   $('#wysiwyg').spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (source) {
@@ -3564,6 +3570,7 @@ function openPrefs(section) {
       row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
       ...imagePrefs(row, chk),
       row('Style sub-points differently', 'Nested list items get hollow or square bullets, numbers in a softer color and slightly smaller text', chk('nestedLists')),
+      row('Show image alt text', 'The caption under each image (its alt text). Off: shown only while you edit it, from the image’s caption button or right-click', chk('showAltText')),
       row('Wrap long code lines', 'Lines in code blocks continue on the next line instead of scrolling sideways, also in exports (Alt+Z)', chk('wrapCode')),
       row('Draw the text cursor', 'CaretFlow draws the blinking cursor itself instead of the system. On by default on Linux, where the system cursor can leave copies behind', chk('drawnCaret')),
     ]],
@@ -4095,7 +4102,6 @@ const MENU = [
       k('Quick Open…', 'Ctrl+P', () => quickOpen()),
       { label: 'Open Recent', sub: () => recentMenu() },
       k('Open Folder…', 'Ctrl+Shift+O', openFolderDialog),
-      k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
       {
         label: 'When Opening Files',
         sub: [
@@ -4135,6 +4141,7 @@ const MENU = [
       k('Copy File Path', null, () => S.path && navigator.clipboard.writeText(S.path).then(() => toast('Path copied')), { enabled: () => !!S.path }),
       '-',
       k('Preferences…', 'Ctrl+,', openPrefs),
+      k('Close Folder', null, closeFolder, { enabled: () => !!S.root }),
       k('Close Window', 'Ctrl+W', () => win.close()),
     ],
   },
@@ -4269,6 +4276,7 @@ const MENU = [
       },
       k('Full-width Content', null, toggle('wide'), { checked: () => settings.wide }),
       k('Wrap Code Lines', 'Alt+Z', toggle('wrapCode'), { checked: () => settings.wrapCode }),
+      k('Show Image Alt Text', null, toggle('showAltText'), { checked: () => settings.showAltText }),
       k('Zoom In', 'Ctrl+Shift+=', () => zoom(1)),
       k('Zoom Out', 'Ctrl+Shift+-', () => zoom(-1)),
       k('Actual Size', 'Ctrl+Shift+9', () => zoom(0)),
@@ -4361,7 +4369,7 @@ function recentMenu() {
 }
 
 // Windows and title bars belong to the desktop; Share… to Android (one full-screen window there)
-const DESKTOP_ONLY = ['New Window', 'Close Window', 'Reveal in Explorer', 'Always on Top', 'Full Screen', 'Use System Title Bar', 'Copy Dropped Images into Folder']
+const DESKTOP_ONLY = ['New Window', 'Close Window', 'Reveal in Explorer', 'Always on Top', 'Full Screen', 'Use System Title Bar']
 const forPlatform = (items) =>
   items
     .filter((it) => typeof it !== 'object' || (IS_ANDROID ? !DESKTOP_ONLY.includes(it.label) : !it.android))
@@ -5581,6 +5589,7 @@ async function boot() {
   ripples()
   scaleImagesWithWidth($('#wysiwyg'))
   watchCodeTools($('#wysiwyg'))
+  watchImageTools($('#wysiwyg'))
   applySettings()
   applyMenuLayout()
   listenMenus()

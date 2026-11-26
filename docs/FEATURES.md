@@ -131,6 +131,11 @@ its original path, or embed it in the document as Base64. Two switches go with i
 already sit in the document's folder too, and start relative paths with `./`. Untitled documents
 embed images until they are saved.
 
+Hover an image for its **full-screen** button (or right-click → View Full Screen): the image fills
+the screen, the arrow keys go through the document's images, and `Esc` closes it. An image's
+caption (its alt text) stays hidden until you edit it with the caption button or right-click →
+Edit Alt Text; **View → Show Image Alt Text** (Preferences → Editing) shows it under every image.
+
 Right-click an image to resize it (10 % to
 200 % or any size you type; Format → Image Size and `Ctrl+Alt+=` / `Ctrl+Alt+-` / `Ctrl+Alt+0` do
 the same for the clicked image). The size is saved as `<img … style="zoom:50%;" />` like Typora

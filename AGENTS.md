@@ -78,6 +78,7 @@ These decide most design questions:
 | `src/codetools.js` | Keeps a code block's language button and Copy off the code: right padding on the first line, or a row of their own above a long unwrapped first line |
 | `src/blocks.js`, `src/underline.js` | Page breaks, callouts, underline mark |
 | `src/imagesize.js` | Image size: right-click sizes and Format → Image Size, saved as Typora's `<img style="zoom:50%">` or a pixel `width`; keeps the alt text Milkdown's image block dropped |
+| `src/imageview.js` | Images in the rendered view: full-screen button and viewer, the caption (alt text) hidden unless shown (`settings.showAltText`) or being edited |
 | `src/toc.js` | Table of contents: a `[TOC]` line shown as a live heading list, linked in exports (`renderToc`) |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
@@ -95,7 +96,7 @@ These decide most design questions:
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click; Markdown between lone `<div align=…>` / `</div>` lines styled like on GitHub |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines, Customize Menus, code block tools and the title bar in narrow windows) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size and image viewing, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines, Customize Menus, code block tools and the title bar in narrow windows) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -207,3 +208,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Code block language button never over code, its list above other blocks; window buttons always visible, menus that don't fit go into » (src/codetools.js, scripts/checks/codetools.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | New icon colors (alabaster, navy, cobalt); code block language button in the corner until hover, its list kept inside the window; Preferences search; image storage choices (Insert → When Adding Images); all-in-one tagline, shorter README |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | File menu: Word and HTML moved into Export as Other Format, Export / PDF Theme out of the menu (custom shortcuts and menus follow); logo in the About dialog |
+| Claude Opus 5.5 | Claude Code | 2026-11-26 | Gap above the first heading no longer jumps when an image is clicked; image alt text hidden unless View → Show Image Alt Text; full-screen image viewer; Close Folder above Close Window (scripts/checks/images.mjs) |

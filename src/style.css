@@ -253,6 +253,17 @@ button { font: inherit; color: inherit; }
 /* resized images (imagesize.js): CSS zoom like Typora's style="zoom:50%"; above 100 % never wider than the page */
 .milkdown .milkdown-image-block.cf-zoomed > .image-wrapper img { zoom: var(--cf-zoom); max-width: calc(100% / max(1, var(--cf-zoom))); }
 .milkdown .milkdown-image-block.cf-sized > .image-wrapper img { width: var(--cf-width); max-width: 100%; min-height: 0; }
+/* the caption (alt text) only while it is edited, unless View → Show Image Alt Text (imageview.js) */
+body.cf-hide-captions .milkdown .milkdown-image-block:not(.cf-caption-open) > .caption-input { display: none; }
+/* full screen: a button beside the caption button, and the viewer */
+.milkdown .milkdown-image-block .image-wrapper .operation > .cf-img-full { display: grid; place-items: center; }
+.milkdown .milkdown-image-block .image-wrapper .operation > .cf-img-full svg { width: 20px; height: 20px; }
+.milkdown .milkdown-image-block .image-wrapper .operation > .operation-item:hover { opacity: 0.85; }
+.cf-img-viewer { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: rgba(8, 10, 14, 0.94); outline: none; cursor: zoom-out; }
+.cf-img-viewer > img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+.cf-img-viewer-cap { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: 80vw; padding: 5px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.55); color: #eee; font: 13px var(--font-ui); text-align: center; }
+.cf-img-viewer-close { position: absolute; top: 14px; right: 16px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 22px; line-height: 1; cursor: pointer; }
+.cf-img-viewer-close:hover { background: rgba(255, 255, 255, 0.24); }
 /* Custom Size… dialog */
 .image-size-dlg .is-row { display: flex; gap: 8px; align-items: center; }
 .modal-box .image-size-dlg .is-num { width: 110px; flex: none; margin: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
@@ -457,7 +468,10 @@ button { font: inherit; color: inherit; }
 #wysiwyg .milkdown .ProseMirror h4 { font-size: 1.15em; }
 #wysiwyg .milkdown .ProseMirror h5 { font-size: 1em; }
 #wysiwyg .milkdown .ProseMirror h6 { font-size: 1em; color: var(--muted); }
-#wysiwyg .milkdown .ProseMirror > :first-child { margin-top: 0; }
+/* the first block starts at the top; the drawn cursor (an element ProseMirror puts first while the
+   text has the focus) must not count, or the gap above the first heading jumps when it comes and goes */
+#wysiwyg .milkdown .ProseMirror > :first-child,
+#wysiwyg .milkdown .ProseMirror > .prosemirror-virtual-cursor:first-child + * { margin-top: 0; }
 #wysiwyg .milkdown .ProseMirror a { color: var(--link); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--link) 35%, transparent); }
 .ctrl-down #wysiwyg .milkdown .ProseMirror a { cursor: pointer; border-bottom-color: var(--link); }
 #wysiwyg .milkdown .ProseMirror code { display: inline; padding: 0.1em 0.35em; font-size: 0.88em; background: var(--code-bg); }
