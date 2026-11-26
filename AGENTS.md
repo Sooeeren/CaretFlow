@@ -107,6 +107,9 @@ These decide most design questions:
 
 ## How to work here
 
+- **Before you begin, always pull the latest version from GitHub** (`git pull` on `main`). The
+  repository is worked on from several machines and by several assistants; starting from an old
+  checkout leads to conflicts and redone work.
 - `npm install`, then `npm run app:dev` for the real app (needs Rust), or work on the frontend
   alone: `node scripts/screenshots.mjs --out <tmp dir>` runs Vite + a local Chrome/Edge with a
   stubbed backend and saves screenshots you can look at. Pass `--extra my-scenes.mjs` with an
@@ -210,3 +213,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | File menu: Word and HTML moved into Export as Other Format, Export / PDF Theme out of the menu (custom shortcuts and menus follow); logo in the About dialog |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | Gap above the first heading no longer jumps when an image is clicked; image alt text hidden unless View → Show Image Alt Text; full-screen image viewer; Close Folder above Close Window (scripts/checks/images.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | 0.14.0 release: version bump, notes, draft and publish, PKGBUILD checksum, website rebuild |
+| Claude Opus 5.5 | Claude Code | 2026-11-26 | New app logo (interlocking orbits, all desktop and Android sizes); AGENTS.md: pull from GitHub before starting |
