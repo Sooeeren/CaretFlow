@@ -93,8 +93,10 @@ const DEFAULTS = {
   customCat: null, // your own cat: colors, marks, blush (catmaker.js)
   reopenLast: true,
   readonlyDefault: false,
-  imageDir: 'assets',
-  copyImages: true,
+  imageStore: 'assets', // pasted / dropped images: IMAGE_STORE below
+  imageDir: 'assets', // the custom folder (imageStore 'custom'); ${filename} = the document's name
+  imageDotSlash: false, // write ./assets/x.png instead of assets/x.png
+  imageCopyAll: false, // also copy images that already sit in the document's folder
   nestedLists: true, // sub-points get their own bullet shapes and a softer color
   wrapCode: true, // long code lines continue on the next line instead of scrolling sideways (editor and exports)
   drawnCaret: IS_LINUX, // CaretFlow draws the caret in the rendered view (WebKitGTK leaves stale carets behind)
@@ -185,6 +187,11 @@ const FIRST_RUN = (() => {
 })()
 const SAVED = readJSON('caretflow.settings', {}) // as stored, to tell what an older version didn't know yet
 const settings = { ...DEFAULTS, ...SAVED }
+// up to 0.13 images had a folder and a "copy dropped images" switch; now they are one choice
+if (SAVED.imageStore === undefined && (SAVED.imageDir !== undefined || SAVED.copyImages !== undefined)) {
+  settings.imageStore = SAVED.copyImages === false ? 'original' : (SAVED.imageDir || 'assets') === 'assets' ? 'assets' : 'custom'
+}
+delete settings.copyImages
 let recent = readJSON('caretflow.recent', [])
 /** Is this extension installed? Things without an extension (id undefined) always are. */
 const extOn = (id) => !id || isInstalled(settings, id)
@@ -1033,34 +1040,67 @@ function showNotice(msg, actions = []) {
 const hideNotice = () => ($('#notice').hidden = true)
 
 // ════════════════════════════════════════ images
+// What happens to a pasted or dropped image (Preferences → Editing, Insert → When Adding Images)
+const IMAGE_STORE = [
+  ['assets', 'Copy to ./assets'],
+  ['docname', 'Copy to ./‹file name›.assets'],
+  ['custom', 'Copy to a custom folder'],
+  ['original', 'Keep the original path'],
+  ['embed', 'Embed in the document (Base64)'],
+]
+/** The folder images are copied to: next to the document, or an absolute path of the user's. */
+function imageFolder() {
+  const name = P.stem(S.path)
+  // custom, and where pasted images go under "original"
+  let dir = (settings.imageDir || 'assets').replace(/\$\{filename\}/g, name)
+  if (settings.imageStore === 'docname') dir = name + '.assets'
+  else if (settings.imageStore === 'assets') dir = 'assets'
+  return P.join(P.dirname(S.path), dir.trim().replace(/[\\/]+$/, '') || 'assets')
+}
+/** How the document links to an image file: relative where it can be, else the full path. */
+function imageLink(abs) {
+  const rel = P.relative(P.dirname(S.path), abs)
+  if (rel == null) return P.encodeSrc(abs)
+  return P.encodeSrc(settings.imageDotSlash && !rel.startsWith('.') ? './' + rel : rel)
+}
+const dataUrl = (blob) =>
+  new Promise((res) => {
+    const r = new FileReader()
+    r.onload = () => res(r.result)
+    r.readAsDataURL(blob)
+  })
+const IMAGE_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp', avif: 'image/avif' }
+
+/** A pasted image (no file on disk): saved into the image folder, or embedded. */
 async function storeImageFile(file) {
-  if (!S.path) {
-    return await new Promise((res) => {
-      const r = new FileReader()
-      r.onload = () => res(r.result)
-      r.readAsDataURL(file)
-    })
-  }
+  // an untitled document has no folder yet, so its images are embedded until it is saved
+  if (!S.path || settings.imageStore === 'embed') return await dataUrl(file)
   const ext = P.extname(file.name) || (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg').replace('svg+xml', 'svg')
   const base = (P.stem(file.name) || 'image').replace(/[^\w.-]+/g, '-').slice(0, 40)
   const name = `${base}-${Date.now().toString(36)}.${ext}`
-  const dir = P.join(P.dirname(S.path), settings.imageDir || 'assets')
+  const target = P.join(imageFolder(), name)
   const data = Array.from(new Uint8Array(await file.arrayBuffer()))
-  await invoke('write_bytes', { path: P.join(dir, name), data })
-  return P.encodeSrc((settings.imageDir || 'assets').replace(/[\\/]+$/, '') + '/' + name)
+  await invoke('write_bytes', { path: target, data })
+  return imageLink(target)
 }
 
+/** A dropped or chosen image file: linked where it is, copied to the image folder, or embedded. */
 async function srcForDroppedImage(abs) {
+  if (settings.imageStore === 'embed') {
+    const ext = P.extname(abs).toLowerCase()
+    return await dataUrl(new Blob([await invoke('read_bytes', { path: abs })], { type: IMAGE_MIME[ext] || 'image/png' }))
+  }
   if (!S.path) return P.encodeSrc(abs)
   const docDir = P.dirname(S.path)
-  if (settings.copyImages && !P.isInside(abs, docDir)) {
-    const dir = settings.imageDir || 'assets'
-    let target = P.join(P.join(docDir, dir), P.basename(abs))
-    if (await invoke('exists', { path: target })) target = P.join(P.join(docDir, dir), `${P.stem(abs)}-${Date.now().toString(36)}.${P.extname(abs)}`)
+  const dir = imageFolder()
+  const copy = settings.imageStore !== 'original' && !P.isInside(abs, dir) && (settings.imageCopyAll || !P.isInside(abs, docDir))
+  if (copy) {
+    let target = P.join(dir, P.basename(abs))
+    if (await invoke('exists', { path: target })) target = P.join(dir, `${P.stem(abs)}-${Date.now().toString(36)}.${P.extname(abs)}`)
     await invoke('copy_file', { from: abs, to: target })
     abs = target
   }
-  return P.encodeSrc(P.relative(docDir, abs) ?? abs)
+  return imageLink(abs)
 }
 
 function insertImage(src, alt = '', pos) {
@@ -2655,7 +2695,7 @@ function showAbout() {
   const body = el(
     'div',
     { class: 'about' },
-    el('p', {}, 'A fast, seamless Markdown reader & editor.'),
+    el('p', {}, 'The all-in-one Markdown editor. Fast, minimal, complete.'),
     el('p', { class: 'about-sub' }, 'Built with Tauri, ProseMirror (Milkdown), CodeMirror, KaTeX, Mermaid and pdf.js.'),
   )
   if (s && !s.unavailable && s.total && s.byAuthor) {
@@ -3417,6 +3457,36 @@ function catStylePicker() {
 }
 
 // ════════════════════════════════════════ preferences
+function setImageStore(id) {
+  settings.imageStore = id
+  saveSettings()
+  // a custom folder needs a name: Preferences opens where it is typed
+  if (id === 'custom' && settings.imageDir === DEFAULTS.imageDir) openPrefs('editing')
+}
+
+/** Preferences → Editing: where pasted and dropped images go. */
+function imagePrefs(row, chk) {
+  const folder = el('input', { type: 'text', value: settings.imageDir, spellcheck: 'false', placeholder: 'images or ${filename}-images', style: 'width:180px' })
+  folder.onchange = () => {
+    settings.imageDir = folder.value.trim() || DEFAULTS.imageDir
+    saveSettings()
+  }
+  const folderRow = row('Custom folder', 'Next to the document, or a full path. ${filename} is the document’s name. Pasted images go here under “Keep the original path” too', folder)
+  const show = () => (folderRow.hidden = !['custom', 'original'].includes(settings.imageStore))
+  const store = customSelect(IMAGE_STORE, settings.imageStore, (v) => {
+    settings.imageStore = v
+    saveSettings()
+    show()
+  })
+  show()
+  return [
+    row('When adding images', 'What happens to an image you paste, drop or insert. Untitled documents embed images until they are saved', store),
+    folderRow,
+    row('Copy images from the document’s folder too', 'Off: an image already next to the document is linked where it is', chk('imageCopyAll')),
+    row('Start relative paths with ./', 'Write ./assets/image.png instead of assets/image.png', chk('imageDotSlash')),
+  ]
+}
+
 function openPrefs(section) {
   const row = (label, hint, control) => el('div', { class: 'pref-row' }, el('label', {}, label, hint ? el('small', {}, hint) : null), control)
   const sel = (key, opts, onChange) =>
@@ -3450,14 +3520,6 @@ function openPrefs(section) {
     wrap.append(r, out)
     return wrap
   }
-  const txt = (key) => {
-    const i = el('input', { type: 'text', value: settings[key], spellcheck: 'false', style: 'width:120px' })
-    i.onchange = () => {
-      settings[key] = i.value.trim() || DEFAULTS[key]
-      applySettings()
-    }
-    return i
-  }
   const css = el('textarea', { class: 'pref-css', spellcheck: 'false', placeholder: '/* Custom CSS, e.g. */\n#wysiwyg .ProseMirror h1 { color: tomato; }' })
   css.value = settings.customCSS
   css.oninput = debounce(() => {
@@ -3490,8 +3552,7 @@ function openPrefs(section) {
     ['editing', 'Editing', [
       row('Auto-save', 'Save automatically a moment after you stop typing', chk('autoSave')),
       row('Open files read-only', 'Reader mode — toggle with Ctrl+Shift+R', chk('readonlyDefault')),
-      row('Image folder', 'Pasted / dropped images go to this folder next to the document', txt('imageDir')),
-      row('Copy dropped images into image folder', null, chk('copyImages')),
+      ...imagePrefs(row, chk),
       row('Style sub-points differently', 'Nested list items get hollow or square bullets, numbers in a softer color and slightly smaller text', chk('nestedLists')),
       row('Wrap long code lines', 'Lines in code blocks continue on the next line instead of scrolling sideways, also in exports (Alt+Z)', chk('wrapCode')),
       row('Draw the text cursor', 'CaretFlow draws the blinking cursor itself instead of the system. On by default on Linux, where the system cursor can leave copies behind', chk('drawnCaret')),
@@ -3527,15 +3588,79 @@ function openPrefs(section) {
   const tabs = {}
   const show = (id) => {
     if (!tabs[id]) id = 'general'
+    if (search.value) clearSearch()
     for (const [k, t] of Object.entries(tabs)) {
       t.btn.classList.toggle('on', k === id)
       t.page.hidden = k !== id
     }
+    shown = id
     pages.scrollTop = 0
     try {
       localStorage.setItem('caretflow.prefsPage', id)
     } catch {}
   }
+  // Search: every page with a hit shows at once, with only the rows that match
+  const search = el('input', { type: 'search', class: 'prefs-search', placeholder: 'Search settings', spellcheck: 'false', 'aria-label': 'Search settings' })
+  const none = el('p', { class: 'about-note prefs-none', hidden: true }, 'No settings match.')
+  let shown = 'general' // the page to return to when the search is cleared
+  const clearSearch = () => {
+    search.value = ''
+    filter()
+  }
+  const filter = () => {
+    const q = search.value.trim().toLowerCase()
+    pages.classList.toggle('searching', !!q)
+    nav.classList.toggle('searching', !!q)
+    for (const x of pages.querySelectorAll('.cf-miss')) x.classList.remove('cf-miss')
+    // Keyboard has a filter of its own over its commands: the search types into it
+    for (const kb of pages.querySelectorAll('.kb-filter')) {
+      kb.value = q
+      kb.dispatchEvent(new Event('input'))
+    }
+    if (!q) {
+      none.hidden = true
+      for (const [k, t] of Object.entries(tabs)) t.page.hidden = k !== shown
+      return
+    }
+    const words = q.split(/\s+/)
+    const hit = (text) => words.every((w) => text.toLowerCase().includes(w))
+    let any = false
+    for (const [, t] of Object.entries(tabs)) {
+      const title = t.btn.textContent
+      const rows = [...t.page.querySelectorAll('.pref-row')].filter((r) => hit(title + ' ' + r.textContent))
+      const kb = t.page.querySelector('.kb-filter')
+      const found = rows.length > 0 || (kb ? hit(title) || !!t.page.querySelector('.kb-row') : hit(title + ' ' + t.page.textContent))
+      // only the matching rows: hide what holds none of them (notes, subheadings, other rows)
+      if (rows.length && !hit(title)) {
+        const keep = (x) => rows.some((r) => r === x || x.contains(r) || r.contains(x))
+        for (const x of t.page.querySelectorAll(':scope > *:not(h4), :scope > * *')) if (!keep(x)) x.classList.add('cf-miss')
+      }
+      t.page.hidden = !found
+      t.btn.classList.toggle('hit', found)
+      any ||= found
+    }
+    none.hidden = any
+    pages.scrollTop = 0
+  }
+  search.addEventListener('input', filter)
+  // the dialog takes Enter and Escape before the field sees them (a capture handler on document);
+  // this one on window runs first: Escape empties the search before it closes Preferences, Enter
+  // stays in the field
+  const searchKeys = (e) => {
+    if (e.target !== search) return
+    if (e.key === 'Escape' && search.value) {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      clearSearch()
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+    }
+  }
+  window.addEventListener('keydown', searchKeys, true)
+  nav.append(search)
+  pages.append(none)
+
   for (const [id, label, rows] of PAGES.filter(Boolean)) {
     const btn = el('button', { type: 'button', onclick: () => show(id) }, label)
     const page = el('div', { class: 'prefs-page' }, el('h4', {}, label), ...rows)
@@ -3546,8 +3671,9 @@ function openPrefs(section) {
   nav.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
     e.preventDefault()
+    if (e.target === search) return
     const ids = Object.keys(tabs)
-    const cur = ids.findIndex((k) => !tabs[k].page.hidden)
+    const cur = ids.indexOf(shown)
     const next = ids[(cur + (e.key === 'ArrowDown' ? 1 : -1) + ids.length) % ids.length]
     show(next)
     tabs[next].btn.focus()
@@ -3567,10 +3693,15 @@ function openPrefs(section) {
     onMount: (box, done) => {
       box.classList.add('prefs-dialog')
       closePrefs = mine = done
+      // type to search right away (not on Android, where focusing pops up the keyboard)
+      if (!IS_ANDROID) setTimeout(() => search.focus())
     },
     // only forget the window if it is still this one: after Install/Remove a new one has taken its
     // place by the time this runs, and forgetting that one opened a second window beside it
-  }).then(() => closePrefs === mine && (closePrefs = null))
+  }).then(() => {
+    window.removeEventListener('keydown', searchKeys, true)
+    closePrefs === mine && (closePrefs = null)
+  })
 }
 let closePrefs = null
 /** Rebuild Preferences on the same page (an extension added or removed a page). */
@@ -4061,7 +4192,7 @@ const MENU = [
     items: [
       k('Link', 'Ctrl+K', link),
       k('Image…', 'Ctrl+Shift+I', insertImageDialog),
-      k('Copy Dropped Images into Folder', null, toggle('copyImages'), { checked: () => settings.copyImages }),
+      { label: 'When Adding Images', sub: IMAGE_STORE.map(([id, label]) => k(label.replace('‹file name›', 'File Name'), null, () => setImageStore(id), { checked: () => settings.imageStore === id })) },
       '-',
       k('Table', 'Ctrl+T', table),
       k('Code Block', 'Ctrl+Shift+K', () => codeBlock()),
@@ -4997,6 +5128,12 @@ function wireLanguagePicker() {
         // keep it fully visible
         const r2 = wrap.getBoundingClientRect()
         if (r2.bottom > bounds.bottom - 8 || r2.top < bounds.top + 8) wrap.scrollIntoView({ block: 'nearest' })
+        // and inside the window sideways: the webview can't draw past its edges, so a list that
+        // would reach over one is moved back in (narrow windows, blocks in indented lists)
+        picker.style.translate = ''
+        const r3 = wrap.getBoundingClientRect()
+        const dx = r3.left < 8 ? 8 - r3.left : r3.right > innerWidth - 8 ? innerWidth - 8 - r3.right : 0
+        if (dx) picker.style.translate = `${Math.round(dx)}px 0`
       }
       requestAnimationFrame(() => fit())
     },

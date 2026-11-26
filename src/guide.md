@@ -1,6 +1,6 @@
 # Welcome to CaretFlow
 
-CaretFlow is a **seamless** Markdown reader and editor: what you type is rendered *in place*, with no split preview. Press `Ctrl+/` at any time to see and edit the raw Markdown.
+CaretFlow is an **all-in-one** Markdown editor, fast and minimal: what you type is rendered *in place*, with no split preview. Press `Ctrl+/` at any time to see and edit the raw Markdown.
 
 ## Quick start
 
@@ -13,7 +13,7 @@ CaretFlow is a **seamless** Markdown reader and editor: what you type is rendere
 - Prefer Vim? **View → Vim Keybindings** (`Ctrl+Alt+V`) — works in source mode, with `:w`, `:q`, `:wq` and `:Explore` for the file tree (`j` / `k` / `h` / `l`, `Escape` back to the text); line numbers (also relative) under **View → Line Numbers**
 - Change any shortcut in **Preferences → Keyboard** (**Help → Customize Shortcuts…**): click it, press the new keys
 - Arrange the menus your way in **Help → Customize Menus…**: drag commands in and out, make your own menus and submenus, or start from a template (Minimal, Writer, Student & Academic, Developer & Technical Writer, Note-taker)
-- **File → Close File** (`Ctrl+F4`) and **File → Close Folder** start over with an empty document or file tree; **Preferences** (`Ctrl+,`) has fonts, heading spacing, line numbers and more, sorted by topic
+- **File → Close File** (`Ctrl+F4`) and **File → Close Folder** start over with an empty document or file tree; **Preferences** (`Ctrl+,`) has fonts, heading spacing, line numbers and more, sorted by topic, with a search field to find any setting
 - **Help → Check for Updates…** finds a new version; **Update & Restart** installs it and opens CaretFlow again
 
 ## Spelling & grammar
@@ -130,7 +130,7 @@ HTML in a document is shown rendered, the way GitHub shows a README: press <kbd>
 
 ## Images
 
-Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies it into an `assets` folder next to your document and links it relatively (configurable in Preferences).
+Paste an image from the clipboard or drag one in from Explorer. CaretFlow copies it into an `assets` folder next to your document and links it relatively. **Insert → When Adding Images** (or Preferences → Editing) changes that: a `<file name>.assets` folder, a folder of your own, the original path, or embedding the image in the document.
 
 To make an image smaller or larger, right-click it and pick a size from 10% to 200%, or **Custom Size…** for any other percentage or a width in pixels (saved as `width="300"`). With the image clicked, `Ctrl+Alt+=` and `Ctrl+Alt+-` step through the sizes and `Ctrl+Alt+0` brings back the original size (also under **Format → Image Size**). A resized image is saved as `<img src="pic.png" alt="…" style="zoom:50%;" />`, the way Typora writes it, so it shows at that size there and in browsers too.
 

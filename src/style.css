@@ -842,13 +842,26 @@ button { font: inherit; color: inherit; }
   gap: 6px;
 }
 #wysiwyg .milkdown .milkdown-code-block .tools .language-button { opacity: 0.7; transition: opacity 0.12s; }
-#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group { opacity: 0; transition: opacity 0.12s; }
+/* Copy folds away when the block isn't hovered, so the language button sits in the corner and
+   slides left to make room for it (codetools.js reserves the room either way) */
+#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group {
+  opacity: 0;
+  max-width: 0;
+  margin-left: -6px;
+  overflow: hidden;
+  transition: opacity 0.12s, max-width 0.15s ease, margin-left 0.15s ease;
+}
 #wysiwyg .milkdown .milkdown-code-block:hover .tools :is(.language-button, .tools-button-group),
 #wysiwyg .milkdown .milkdown-code-block:focus-within .tools :is(.language-button, .tools-button-group),
 #wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) :is(.language-button, .tools-button-group) { opacity: 1; }
+#wysiwyg .milkdown .milkdown-code-block:hover .tools .tools-button-group,
+#wysiwyg .milkdown .milkdown-code-block:focus-within .tools .tools-button-group,
+#wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) .tools-button-group { max-width: 80px; margin-left: 0; }
 #wysiwyg .milkdown .milkdown-code-block .tools .language-button { margin: 0; background: var(--bg); border: 1px solid var(--border); }
 #wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button { opacity: 1; background: var(--bg); border: 1px solid var(--border); }
-#wysiwyg .milkdown .milkdown-code-block .language-picker { right: 0; padding-top: 6px; }
+/* the list opens under the button, its right edge on the tools' right edge, so it grows into the
+   block instead of out of the window (Milkdown sets left inline; main.js nudges it if needed) */
+#wysiwyg .milkdown .milkdown-code-block .language-picker { left: auto !important; right: 0; padding-top: 6px; }
 /* the open language list lies over every other block and its tools (all have z-index 3) */
 #wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) { z-index: 60; }
 /* the tools never cover code (codetools.js): the first line ends before them, or they get a row
@@ -1313,10 +1326,19 @@ body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space
 .prefs-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .prefs-pages { flex: 1; min-width: 0; overflow-y: auto; padding-right: 6px; }
 .prefs-page h4 { margin: 2px 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+/* Preferences search: the field heads the category list; while searching, every page with a hit
+   shows at once with only its matching rows, and categories without hits fade */
+.prefs-search { margin: 0 0 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; font-size: 13px; min-width: 0; }
+.prefs-search:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.prefs-nav.searching button.on { background: none; font-weight: inherit; }
+.prefs-nav.searching button:not(.hit) { opacity: 0.4; }
+.prefs-pages.searching .prefs-page:not([hidden]) ~ .prefs-page:not([hidden]) { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
+.prefs-pages .cf-miss { display: none !important; }
 @media (max-width: 600px) {
   .prefs { flex-direction: column; gap: 10px; }
   .prefs-nav { width: auto; flex-direction: row; overflow-x: auto; padding: 0 0 8px; border-right: 0; border-bottom: 1px solid var(--border); }
   .prefs-nav button { white-space: nowrap; }
+  .prefs-search { flex: none; width: 150px; margin: 0 6px 0 0; }
 }
 /* Preferences → Keyboard */
 .kb-top { display: flex; gap: 8px; align-items: center; margin: 8px 0 4px; }

@@ -122,8 +122,16 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
 ## Files and folders
 
 The sidebar has an outline, a file tree and folder search; with Cloud Sync on, a **Cloud** tab too.
-`Ctrl+P` jumps to any file in the open folder. Pasted or dropped images are copied into an `assets`
-folder next to the document (Preferences → Editing). Right-click an image to resize it (10 % to
+`Ctrl+P` jumps to any file in the open folder.
+
+What happens to a pasted, dropped or inserted image is up to you (Preferences → Editing, or
+Insert → When Adding Images): copy it to `./assets`, to `./<file name>.assets`, or to a custom
+folder (next to the document or a full path; `${filename}` stands for the document's name), keep
+its original path, or embed it in the document as Base64. Two switches go with it: copy images that
+already sit in the document's folder too, and start relative paths with `./`. Untitled documents
+embed images until they are saved.
+
+Right-click an image to resize it (10 % to
 200 % or any size you type; Format → Image Size and `Ctrl+Alt+=` / `Ctrl+Alt+-` / `Ctrl+Alt+0` do
 the same for the clicked image). The size is saved as `<img … style="zoom:50%;" />` like Typora
 does, and PDF, HTML, Word, OpenDocument and LaTeX exports use it. **Custom Size…** takes a percentage
@@ -210,3 +218,9 @@ lets you choose each part; **Tools → Discord Status** hides or shows it. Caret
 Discord app on your computer (no network of its own), so Discord must be running, with
 *Share your detected activities* on under Settings → Activity Privacy. It works with the Discord
 app on Windows and Linux (also Flatpak and Snap), not on Android.
+
+## Preferences search
+
+Preferences (`Ctrl+,`) opens with a search field above its categories: type a word and every
+setting that mentions it shows, from all pages at once, with the Keyboard page filtered to the
+matching commands. `Esc` clears the search; clicking a category goes back to browsing.

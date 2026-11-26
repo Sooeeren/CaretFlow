@@ -32,7 +32,12 @@ export function watchCodeTools(root) {
     const t = tools.getBoundingClientRect()
     const box = b.getBoundingClientRect()
     const right = box.right - t.right // the gap between the tools and the block's edge
-    b.style.setProperty('--cf-tools-w', Math.ceil(t.width + right) + 'px')
+    // Copy folds away when the block isn't hovered (style.css); reserve its room anyway, so the
+    // first line doesn't rewrap every time the mouse passes over the block
+    const group = tools.querySelector('.tools-button-group')
+    const folded = group ? Math.max(0, group.scrollWidth - group.getBoundingClientRect().width - Math.min(0, parseFloat(getComputedStyle(group).marginLeft) || 0)) : 0
+    const width = t.width + folded
+    b.style.setProperty('--cf-tools-w', Math.ceil(width + right) + 'px')
     b.style.setProperty('--cf-tools-h', Math.ceil(t.height) + 'px')
     let above = false
     if (!document.body.classList.contains('wrap-code')) {
@@ -40,7 +45,7 @@ export function watchCodeTools(root) {
       const r = document.createRange()
       r.selectNodeContents(line)
       const end = r.getBoundingClientRect().right + (b.querySelector('.cm-scroller')?.scrollLeft || 0)
-      above = end > box.right - t.width - right - 6
+      above = end > box.right - width - right - 6
     }
     if (b.classList.contains('cf-tools-above') !== above) b.classList.toggle('cf-tools-above', above)
   }
