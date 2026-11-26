@@ -38,7 +38,7 @@
     "remark-frontmatter": "^5.0.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.12.5",
+    "@tauri-apps/cli": "^2.12.6",
     "playwright-core": "^1.65.1",
     "vite": "^8.3.8"
   },
