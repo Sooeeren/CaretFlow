@@ -1908,6 +1908,8 @@ async function mermaidGallery() {
     const card = el('button', { class: 'mm-card', type: 'button' }, prev, el('b', {}, name), el('small', {}, desc))
     card.onclick = () => {
       closeDialog?.(true)
+      // with the Diagram Editor, the template opens there and goes into the document on Done
+      if (extOn('diagram') && !S.readonly) return editDiagram(i === 0 ? NEW_DIAGRAM : code)
       insertCodeBlock('mermaid', i === 0 ? '' : code)
     }
     grid.append(card)
@@ -3297,6 +3299,8 @@ function applyExtensions() {
   applyAi()
   applyMcp()
   if (!extOn('typing') && typingTestOpen()) ttMod.closeTypingTest()
+  if (!extOn('diagram') && diagramOpen()) dgMod.closeDiagram(false)
+  diagramButtons()
   saveSettings()
 }
 
@@ -3404,6 +3408,109 @@ function updateTitle() {
 function focusEditor() {
   if (inSource()) source.focus()
   else view()?.focus()
+}
+
+// ════════════════════════════════════════ Diagram Editor (diagram.js, an extension)
+let dgMod = null
+const diagramOpen = () => !!dgMod?.isOpen()
+const NEW_DIAGRAM = 'flowchart TD\n  A[Start] --> B[Next step]'
+
+/** Edits the Mermaid block at the caret, or (with `code`, or outside one) a new diagram that is inserted on Done. */
+async function editDiagram(code) {
+  if (!extOn('diagram') || S.readonly) return
+  const t = code == null ? diagramAtCaret() : null
+  openDiagramEditor(t ? t.code : (code ?? NEW_DIAGRAM), !t, (c) => (t ? t.apply(c) : insertCodeBlock('mermaid', c)))
+}
+
+async function openDiagramEditor(code, isNew, onDone) {
+  dgMod ||= await import('./diagram.js')
+  closeMenus()
+  const host = { el, isDark, mermaid: () => (mermaidP ||= import('mermaid').then((m) => m.default)), onClose: () => focusEditor() }
+  dgMod.openDiagram(host, { code, isNew, onDone })
+}
+
+// the Mermaid block around the caret: its code and how to replace it
+function diagramAtCaret() {
+  if (inSource()) {
+    const text = source.getText()
+    const at = source.cursorOffset()
+    for (const m of text.matchAll(/^(```|~~~)[ \t]*mermaid\b[^\n]*\n(?:([\s\S]*?)\n)?\1[ \t]*$/gm)) {
+      if (at < m.index || at > m.index + m[0].length) continue
+      const from = m.index + m[0].indexOf('\n') + 1
+      const to = from + (m[2] ?? '').length
+      const empty = m[2] == null
+      return { code: m[2] ?? '', apply: (c) => source.view.dispatch({ changes: { from, to, insert: empty ? c + '\n' : c } }) }
+    }
+    return null
+  }
+  const v = view()
+  if (!v) return null
+  const sel = v.state.selection
+  if (sel.node) return mermaidBlockAt(sel.from)
+  const $f = sel.$from
+  for (let d = $f.depth; d > 0; d--) if ($f.node(d).type.name === 'code_block') return mermaidBlockAt($f.before(d))
+  return null
+}
+
+function mermaidBlockAt(pos) {
+  const node = view()?.state.doc.nodeAt(pos)
+  if (node?.type.name !== 'code_block' || (node.attrs.language || '').toLowerCase() !== 'mermaid') return null
+  return {
+    code: node.textContent,
+    apply(code) {
+      const v = view()
+      const n = v?.state.doc.nodeAt(pos)
+      if (n?.type.name !== 'code_block') return
+      v.dispatch(v.state.tr.replaceWith(pos + 1, pos + n.nodeSize - 1, code ? v.state.schema.text(code) : []).scrollIntoView())
+    },
+  }
+}
+
+// the block a "Diagram" button or double-click belongs to
+function editDiagramBlock(block) {
+  const v = view()
+  if (!v || !extOn('diagram') || S.readonly) return
+  let at = null
+  try {
+    const p = v.posAtDOM(block, 0)
+    at = [p, p - 1].map(mermaidBlockAt).find(Boolean)
+  } catch {}
+  if (at) openDiagramEditor(at.code, false, at.apply)
+}
+
+// a "Diagram" button on every Mermaid block in the rendered view while the extension is installed
+let dgQueued = false
+function diagramButtons() {
+  const on = extOn('diagram') && !S.readonly
+  for (const b of document.querySelectorAll('#wysiwyg .milkdown-code-block')) {
+    const tools = b.querySelector(':scope > .tools')
+    if (!tools) continue
+    const mm = /^mermaid\b/i.test(tools.querySelector('.language-button')?.textContent.trim() || '')
+    const btn = tools.querySelector('.cf-dg-btn')
+    if (on && mm && !btn) {
+      const nb = el('button', { type: 'button', class: 'cf-dg-btn', title: 'Edit in the Diagram Editor (Ctrl+Alt+D)', onmousedown: (e) => e.preventDefault() }, 'Diagram')
+      nb.addEventListener('click', (e) => {
+        e.stopPropagation()
+        editDiagramBlock(b)
+      })
+      tools.insertBefore(nb, tools.querySelector('.tools-button-group'))
+    } else if (btn && !(on && mm)) btn.remove()
+  }
+}
+function watchDiagramButtons(root) {
+  new MutationObserver(() => {
+    if (dgQueued || !extOn('diagram')) return
+    dgQueued = true
+    requestAnimationFrame(() => {
+      dgQueued = false
+      diagramButtons()
+    })
+  }).observe(root, { childList: true, subtree: true, characterData: true })
+  // double-clicking a drawn diagram opens it too
+  root.addEventListener('dblclick', (e) => {
+    const b = e.target.closest?.('.milkdown-code-block')
+    if (b && e.target.closest('.preview-panel') && b.querySelector('.cf-dg-btn')) editDiagramBlock(b)
+  })
 }
 
 // ════════════════════════════════════════ typing test & companions
@@ -4203,6 +4310,7 @@ const MENU = [
       k('Code Block', 'Ctrl+Shift+K', () => codeBlock()),
       k('Math Block', 'Ctrl+Shift+M', mathBlock),
       k('Mermaid Diagram…', 'Ctrl+Shift+D', mermaidGallery),
+      k('Edit Diagram…', 'Ctrl+Alt+D', () => editDiagram(), { ext: 'diagram' }),
       '-',
       k('Horizontal Rule', 'Ctrl+Shift+H', hr),
       k('Page Break', 'Ctrl+Enter', pageBreak),
@@ -5047,6 +5155,8 @@ function bindKeys() {
       }
       // The typing test takes all keys (Esc closes it) except its own toggle and full screen
       if (typingTestOpen() && combo !== 'Ctrl+Alt+T' && combo !== 'F11') return
+      // so does the Diagram Editor (Esc cancels, Ctrl+Enter is Done)
+      if (diagramOpen() && combo !== 'F11') return
       if (e.key === 'Escape') {
         if (openMenu) return closeMenus()
         if (inVim) return // Vim needs Esc
@@ -5589,6 +5699,7 @@ async function boot() {
   ripples()
   scaleImagesWithWidth($('#wysiwyg'))
   watchCodeTools($('#wysiwyg'))
+  watchDiagramButtons($('#wysiwyg'))
   watchImageTools($('#wysiwyg'))
   applySettings()
   applyMenuLayout()

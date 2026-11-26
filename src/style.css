@@ -1613,6 +1613,57 @@ body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space
 #tt .tt-legend .wpm { color: var(--accent); }
 #tt .tt-legend .err { color: var(--wc-spelling); }
 
+/* Diagram Editor (diagram.js): code on the left, the drawing on the right */
+#dg { position: absolute; inset: 30px 0 0 0; z-index: 300; background: var(--bg); color: var(--fg); display: flex; flex-direction: column; font-family: var(--font-ui); font-size: 13px; }
+.app-zen #dg { inset: 0; }
+.android #dg { inset: 48px 0 0 0; }
+#dg[hidden] { display: none; }
+#dg .dg-top { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--chrome); }
+#dg .dg-top b { font-size: 14px; color: var(--fg-strong); }
+#dg .dg-kind { color: var(--muted); }
+#dg .dg-kind:not(:empty)::before { content: '·'; margin-right: 10px; }
+#dg .dg-fill { flex: 1; }
+#dg .dg-b { font-family: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--bg); color: var(--fg); border-radius: 7px; padding: 5px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+#dg .dg-b:hover:not(:disabled) { border-color: var(--accent); }
+#dg .dg-b:disabled { opacity: 0.4; cursor: default; }
+#dg .dg-b.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+#dg .dg-b.dg-ico { padding: 4px 6px; border-color: transparent; background: none; }
+#dg .dg-b.dg-ico.on { background: var(--accent-soft); color: var(--accent); }
+#dg .dg-main { flex: 1; min-height: 0; display: flex; }
+#dg .dg-left { width: 36%; min-width: 220px; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+#dg .dg-code { flex: 1; resize: none; border: 0; outline: 0; padding: 14px; background: var(--code-bg); color: var(--code-fg); font-family: var(--font-mono); font-size: 13px; line-height: 1.55; tab-size: 2; white-space: pre; }
+#dg .dg-msg { white-space: pre-wrap; font-family: var(--font-mono); font-size: 12px; color: var(--tok-invalid, #d33); padding: 0 14px; max-height: 30%; overflow: auto; }
+#dg .dg-msg:not(:empty) { padding: 8px 14px; border-top: 1px solid var(--border); }
+#dg .dg-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#dg .dg-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+#dg .dg-bar[hidden] { display: none; }
+#dg .dg-group { display: inline-flex; gap: 1px; }
+#dg .dg-sep { width: 1px; height: 20px; background: var(--border); margin: 0 6px; }
+#dg .dg-canvas { flex: 1; min-height: 0; overflow: auto; position: relative; outline: 0; padding: 24px; display: flex; }
+#dg .dg-svg { margin: auto; max-width: 100%; }
+#dg .dg-svg.stale { opacity: 0.35; }
+#dg .dg-svg svg { height: auto; display: block; }
+#dg .dg-hint { padding: 7px 14px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); }
+#dg g.node[data-node] { cursor: pointer; touch-action: none; }
+#dg g.node.dg-sel :is(rect, polygon, circle, ellipse, path), #dg g.node.dg-target :is(rect, polygon, circle, ellipse, path) { stroke: var(--accent) !important; stroke-width: 3px !important; }
+#dg g.node.dg-target :is(rect, polygon, circle, ellipse, path) { stroke-dasharray: 5 3; }
+#dg path.flowchart-link.dg-sel { stroke: var(--accent) !important; stroke-width: 3px !important; }
+#dg g.edgeLabel.dg-sel rect { stroke: var(--accent); stroke-width: 2px; }
+#dg path.dg-hit { stroke: transparent !important; stroke-width: 14px !important; fill: none !important; cursor: pointer; pointer-events: stroke; }
+#dg g.edgeLabel[data-edge] { cursor: pointer; }
+#dg .dg-rename { position: absolute; z-index: 2; height: 32px; box-sizing: border-box; text-align: center; font: inherit; font-size: 14px; border: 2px solid var(--accent); border-radius: 6px; background: var(--bg); color: var(--fg-strong); outline: 0; padding: 0 8px; }
+#dg .dg-dragline { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; display: none; z-index: 3; }
+#dg .dg-dragline.on { display: block; }
+#dg .dg-dragline line { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 6 4; }
+@media (max-width: 760px) {
+  #dg .dg-main { flex-direction: column-reverse; }
+  #dg .dg-left { width: auto; min-width: 0; height: 38%; border-right: 0; border-top: 1px solid var(--border); }
+}
+/* Diagram Editor's button on Mermaid blocks; shows with the other tools on hover */
+#wysiwyg .milkdown .milkdown-code-block .tools .cf-dg-btn { opacity: 0; transition: opacity 0.12s; font: inherit; font-size: 12px; color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px 9px; cursor: pointer; }
+#wysiwyg .milkdown .milkdown-code-block:is(:hover, :focus-within) .tools .cf-dg-btn { opacity: 1; }
+#wysiwyg .milkdown .milkdown-code-block .tools .cf-dg-btn:hover { border-color: var(--accent); color: var(--accent); }
+
 /* Cloud Sync: sidebar tab, status bar, Preferences page */
 #sb-cloud .sb-head { padding-bottom: 2px; }
 .cl-where { flex: 1; font-weight: 600; color: var(--fg-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

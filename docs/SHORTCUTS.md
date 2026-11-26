@@ -57,6 +57,7 @@ Every command in CaretFlow is in a menu and in the command palette (`F1` or `Ctr
 | Code block | `Ctrl+Shift+K` |
 | Math block | `Ctrl+Shift+M` |
 | Mermaid diagram… | `Ctrl+Shift+D` |
+| Edit diagram… (Diagram Editor extension) | `Ctrl+Alt+D` |
 | Horizontal rule | `Ctrl+Shift+H` |
 | Page break | `Ctrl+Enter` |
 | Table of contents | `Ctrl+Alt+O` |

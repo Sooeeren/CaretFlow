@@ -291,6 +291,41 @@ const SCENES = {
       await settle(page, 800)
     },
   },
+  // the Diagram Editor screenshots of the Extensions page: a gallery template opened in the editor
+  'diagram-edit': {
+    webp: 'diagram-1',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'paper', sidebar: false, extensions: ['diagram'] },
+    run: async (page) => {
+      await key(page, 'Control+Shift+D')
+      await settle(page, 600)
+      await page.click('.mm-card:has-text("Flowchart")')
+      await page.waitForSelector('#dg g.node[data-node="B"]')
+      await page.click('#dg g.node[data-node="B"]')
+      await settle(page, 500)
+    },
+  },
+  'diagram-dark': {
+    webp: 'diagram-2',
+    only: true,
+    open: 'Welcome.md',
+    settings: { theme: 'ink', sidebar: false, extensions: ['diagram'] },
+    run: async (page) => {
+      await key(page, 'Control+Shift+D')
+      await settle(page, 600)
+      await page.click('.mm-card:has-text("Flowchart")')
+      await page.waitForSelector('#dg g.node[data-node="C"]')
+      await page.click('#dg .dg-b[title="Top to bottom"]')
+      await page.waitForSelector('#dg g.node[data-node="C"]')
+      await settle(page, 400)
+      await page.click('#dg g.node[data-node="C"]')
+      await page.click('#dg .dg-add')
+      await page.waitForSelector('#dg .dg-rename')
+      await page.keyboard.type('Ship it')
+      await settle(page, 300)
+    },
+  },
   // the Discord Status screenshots of the Extensions page (discord_set answers null in the stub)
   'discord-prefs': {
     webp: 'discord-1',

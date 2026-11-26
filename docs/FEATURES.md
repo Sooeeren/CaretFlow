@@ -104,7 +104,8 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
   underline syntax.
 - **Tables**: inserting asks for the size; press `Enter` in the last row or use the **+** buttons to
   grow it.
-- **Mermaid**: Insert → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery.
+- **Mermaid**: Insert → Mermaid Diagram… (`Ctrl+Shift+D`) opens a template gallery. With the
+  [Diagram Editor](#diagram-editor) extension, diagrams can also be drawn.
 - **Math** is rendered with KaTeX, inline (`Ctrl+Shift+E`) or as a block (`Ctrl+Shift+M`).
 - **Pasting** (Edit menu or right-click): **Paste** (`Ctrl+V`) keeps links and formatting;
   **Paste as Plain Text** (`Ctrl+Shift+V`) puts in only the text, without links, bold, headings or
@@ -210,6 +211,31 @@ verifies its signature, installs it and opens CaretFlow again. This works for th
 the AppImage, `.deb` and `.rpm`. `CaretFlow-portable.exe`, the raw binary, the Arch package (updated
 by pacman) and the `.rpm` on systems whose `rpm` only installs GPG-signed packages (Fedora 43 and
 later; update with `dnf`) get a download link instead.
+
+## Diagram Editor
+
+An extension (Preferences → Extensions) for Mermaid diagrams. Insert → Edit Diagram… (`Ctrl+Alt+D`)
+opens the diagram at the cursor, or a new one outside a diagram; in the rendered view every Mermaid
+block also gets a **Diagram** button, and double-clicking a drawing opens it. Templates from
+Insert → Mermaid Diagram… open in the editor too.
+
+The code is on the left and the drawing on the right; both stay in step. **Flowcharts** can be edited
+on the drawing:
+
+- **+ Box** (or `A`, or double-click on empty space) adds a box; with a box selected, the new one is
+  linked from it, so a chain is quick to build.
+- **Drag** from one box to another to connect them.
+- **Double-click** a box or a link (or `F2` / `Enter`) to rename it; links get a text that way.
+- The toolbar sets the **shape** of the selected box (box, rounded, pill, circle, decision, database,
+  hexagon, …), the **style** of the selected link (arrow, line, dotted, thick, both ways) and the
+  **direction** of the whole chart.
+- `Del` deletes the selection, `Ctrl+Z` / `Ctrl+Y` undo and redo, `Esc` cancels, `Ctrl+Enter` (or
+  **Done**) puts the diagram into the document.
+
+Mermaid places everything by itself, so boxes can't be moved by hand; the editor changes what is
+connected, not where it sits. The result is ordinary Mermaid code, readable in any other tool;
+`style`, `classDef` and comment lines are kept. Flowcharts with subgraphs, and all other diagram
+types (sequence, class, Gantt, …), are edited as code with a live drawing.
 
 ## Discord Status
 

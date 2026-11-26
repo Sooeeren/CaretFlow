@@ -51,6 +51,21 @@ export const EXTENSIONS = [
     shots: [shot('ai-1.webp'), shot('ai-2.webp')],
   },
   {
+    id: 'diagram',
+    name: 'Diagram Editor',
+    icon: svg('<rect x="3" y="3.5" width="7" height="5" rx="1"/><rect x="14" y="15.5" width="7" height="5" rx="1"/><path d="M6.5 8.5v4.5a2 2 0 0 0 2 2H14"/><path d="M12 13l2 2-2 2"/><circle cx="17.5" cy="6" r="2.5"/>'),
+    tagline: 'Draw Mermaid flowcharts instead of typing them',
+    description:
+      'Edit a Mermaid diagram with its code and the drawing side by side. Flowcharts can be edited on the drawing itself: add boxes, drag from one box to another to connect them, double-click to rename, and pick shapes, arrow styles and the direction. Mermaid places everything by itself, and the result is saved as ordinary Mermaid code in your Markdown file, so it stays readable everywhere. Other diagram types (sequence, Gantt, class, …) get the code with a live drawing.',
+    adds: [
+      'Insert → Edit Diagram… (Ctrl+Alt+D) for the diagram at the cursor, or a new one',
+      'A Diagram button on every Mermaid block, and double-click on a drawing',
+      'Templates from Insert → Mermaid Diagram… open in the editor',
+    ],
+    network: 'None.',
+    shots: [shot('diagram-1.webp'), shot('diagram-2.webp')],
+  },
+  {
     id: 'discord',
     name: 'Discord Status',
     desktop: true, // talks to the Discord app's local IPC, which Android doesn't offer

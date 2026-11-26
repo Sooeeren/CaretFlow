@@ -124,6 +124,7 @@ loads.
 | **AI Writing Help** | Spelling, grammar and style suggestions from the AI you choose, with your own API key or a local model, and limits you set. Also connects to AI apps over MCP. [Details](docs/AI.md) |
 | **Advanced Grammar** | LanguageTool on your computer: full grammar checking in 30+ languages, with no limits and no text leaving your machine. [Details](docs/LANGUAGETOOL.md) |
 | **Typing Test** | A speed test by time, word count or on your own document, with WPM, accuracy and a chart. |
+| **Diagram Editor** | Draw Mermaid flowcharts: add boxes, drag to connect them, rename, pick shapes and arrows. Saved as plain Mermaid code. |
 | **Discord Status** | Shows what you are writing (or just that you are) on your Discord profile. |
 
 <table>

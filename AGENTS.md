@@ -71,6 +71,7 @@ These decide most design questions:
 | `src/extensions.js` | The extension catalog (`EXTENSIONS`) and installed state (`settings.extensions`) |
 | `src/ai.js` | AI Writing Help (lazy, an extension): providers (Anthropic + OpenAI-compatible), limits and usage, live checking of finished paragraphs, the AI tab of the review panel, Preferences → AI, the MCP setup guide |
 | `src/mcp.js` | MCP tool answers (document, selection, suggestions) and Preferences → AI → MCP server |
+| `src/diagram.js`, `src/flowchart.js` | Diagram Editor (lazy, an extension): a Mermaid block's code beside its drawing; flowcharts edited on the drawing (add, connect by dragging, rename, shapes, direction), written back as plain Mermaid by `flowchart.js` |
 | `src/discord.js`, `src-tauri/src/discord.rs` | Discord Status (lazy, an extension, desktop only): Rich Presence over Discord's local IPC pipe/socket, Preferences → Discord with a preview |
 | `src/cloud.js` | Cloud Sync (lazy, an extension): WebDAV / S3 (SigV4) / rclone backends, two-way sync, Cloud sidebar tab, status-bar button, Preferences page |
 | `src/menutemplates.js` | Menu templates (Minimal, Writer, Student & Academic, Developer, Note-taker) by command id; `scripts/checks/menus.mjs` menu-templates fails if one names a command that doesn't exist |
@@ -96,7 +97,7 @@ These decide most design questions:
 | `src-tauri/src/mcp.rs` | The MCP server (Streamable HTTP on 127.0.0.1, token) and the `caretflow --mcp` stdio bridge; unit tests run in CI |
 | `src/html.js` | HTML in Markdown shown rendered (cleaned with DOMPurify) and edited as source on click; Markdown between lone `<div align=…>` / `</div>` lines styled like on GitHub |
 | `src/frontmatter.js` | Front matter (`---` YAML / `+++` TOML at the top): parsed with remark-frontmatter, shown as a properties panel, edited as text on click |
-| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, HTML, front matter, right-click, image size and image viewing, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines, Customize Menus, code block tools and the title bar in narrow windows) |
+| `scripts/checks/` | UI checks: scene modules for `scripts/screenshots.mjs --extra` that print PASS/FAIL (extensions, AI, MCP, the Diagram Editor, HTML, front matter, right-click, image size and image viewing, cat styles and custom themes, exports, source/rendered round trip, editor/export spacing, Vim and the cursor on a mode change, page preview scrolling, wrapped code lines, Customize Menus, code block tools and the title bar in narrow windows) |
 | `.github/workflows/check.yml` | Compiles the app on Windows and Linux, and a debug APK, for every push and pull request |
 | `docs/` | User docs: `SHORTCUTS.md`, `FEATURES.md`, `ANDROID.md`, `EXTENSIONS.md`, `CLOUD-SYNC.md`, `AI.md`, `MCP.md` (also opened in the app), `LANGUAGETOOL.md`, `NOTES.md`; `BUILDING.md`, `RELEASING.md` for developers |
 | `scripts/ai-stats.mjs` | Counts lines per model for the About dialog |
@@ -214,3 +215,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | Gap above the first heading no longer jumps when an image is clicked; image alt text hidden unless View → Show Image Alt Text; full-screen image viewer; Close Folder above Close Window (scripts/checks/images.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | 0.14.0 release: version bump, notes, draft and publish, PKGBUILD checksum, website rebuild |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | New app logo (interlocking orbits, all desktop and Android sizes); AGENTS.md: pull from GitHub before starting |
+| Claude Opus 5.5 | Claude Code | 2026-11-26 | Diagram Editor extension: Mermaid code beside its drawing, flowcharts edited on the drawing (add, drag to connect, rename, shapes, links, direction), Diagram button on Mermaid blocks, `Ctrl+Alt+D` (scripts/checks/diagram.mjs) |
