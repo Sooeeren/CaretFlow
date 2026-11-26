@@ -216,3 +216,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | 0.14.0 release: version bump, notes, draft and publish, PKGBUILD checksum, website rebuild |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | New app logo (interlocking orbits, all desktop and Android sizes); AGENTS.md: pull from GitHub before starting |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | Diagram Editor extension: Mermaid code beside its drawing, flowcharts edited on the drawing (add, drag to connect, rename, shapes, links, direction), Diagram button on Mermaid blocks, `Ctrl+Alt+D` (scripts/checks/diagram.mjs) |
+| Claude Opus 5.5 | Claude Code | 2026-11-26 | 0.14.1 release: version bump, notes, draft, PKGBUILD checksum; website rebuilt with the new logo |
