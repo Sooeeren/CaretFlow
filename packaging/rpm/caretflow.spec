@@ -10,7 +10,7 @@
 Name:           caretflow
 Version:        %{_ver}
 Release:        1
-Summary:        A fast, seamless Markdown reader & editor
+Summary:        The all-in-one Markdown editor: fast, minimal, complete
 License:        LicenseRef-unknown
 URL:            https://github.com/Sooeeren/CaretFlow
 BuildArch:      x86_64
