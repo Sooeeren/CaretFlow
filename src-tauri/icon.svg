@@ -1,31 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 30 452 452" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6.75 6.75 242.5 242.5" width="512" height="512" fill="none">
   <!-- Cropped to the rounded square: desktop taskbars expect icons to fill their box. -->
-  <!-- Colors: warm alabaster, ink navy, slate gray and a cobalt dot. -->
+  <!-- The back orbit is cut where the front orbit crosses it, so the two rings interlock. -->
   <defs>
-    <linearGradient id="alabasterBg" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#F7F8FA" />
-      <stop offset="100%" stop-color="#EDEFF2" />
+    <linearGradient id="tileGrad" x1="128" y1="8" x2="128" y2="248" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#EEF1F5" />
     </linearGradient>
 
-    <linearGradient id="alabasterRim" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.6" />
-      <stop offset="100%" stop-color="#1F293B" stop-opacity="0.12" />
+    <linearGradient id="backRingGrad" x1="50" y1="50" x2="206" y2="206" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7B8798" />
+      <stop offset="100%" stop-color="#5A6678" />
     </linearGradient>
 
-    <linearGradient id="cobalt" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#5B97F8" />
-      <stop offset="100%" stop-color="#3B82F6" />
+    <linearGradient id="accentBlue" x1="175" y1="65" x2="205" y2="95" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4B91F7" />
+      <stop offset="100%" stop-color="#2563EB" />
     </linearGradient>
+
+    <mask id="ringOverlapMask">
+      <rect width="256" height="256" fill="white" />
+      <ellipse cx="128" cy="128" rx="92" ry="42" transform="rotate(-35 128 128)" stroke="black" stroke-width="29" />
+    </mask>
   </defs>
 
-  <rect x="36" y="36" width="440" height="440" rx="104" fill="url(#alabasterBg)" />
-  <rect x="36" y="36" width="440" height="440" rx="104" fill="none" stroke="url(#alabasterRim)" stroke-width="2.5" />
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#tileGrad)" stroke="#CBD5E1" stroke-width="2.5" />
 
-  <g fill="none" stroke-width="24" stroke-linecap="round">
-    <ellipse cx="256" cy="256" rx="146" ry="64" transform="rotate(32 256 256)" stroke="#BEC1C8" />
-    <ellipse cx="256" cy="256" rx="146" ry="64" transform="rotate(-32 256 256)" stroke="#1F293B" />
+  <g mask="url(#ringOverlapMask)">
+    <ellipse cx="128" cy="128" rx="92" ry="42" transform="rotate(35 128 128)" stroke="url(#backRingGrad)" stroke-width="18.5" />
   </g>
 
-  <circle cx="256" cy="256" r="38" fill="#1F293B" />
-  <circle cx="370" cy="182" r="15" fill="url(#cobalt)" />
+  <ellipse cx="128" cy="128" rx="92" ry="42" transform="rotate(-35 128 128)" stroke="#141B24" stroke-width="18.5" />
+
+  <circle cx="128" cy="128" r="24" fill="#141B24" />
+
+  <circle cx="191" cy="84" r="14.5" fill="url(#accentBlue)" stroke="#F6F8FA" stroke-width="5" />
 </svg>
