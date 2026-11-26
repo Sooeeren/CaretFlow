@@ -156,6 +156,8 @@ The Windows installer, AppImage and `.deb` update themselves from inside the app
 CaretFlow offers the new APK. The Linux packages register CaretFlow for Markdown files, so it
 shows up under "Open with".
 
+Windows files are code signed; see the [code signing policy](#code-signing-policy).
+
 There is no macOS build at the moment. Tauri supports macOS, so it may come once it can be built
 and tested there.
 
@@ -200,6 +202,25 @@ CaretFlow is written almost entirely by AI coding assistants, steered and tested
 **Help → About** shows how many lines each model wrote, counted from the git history. If you work
 on it with an AI assistant, start with [AGENTS.md](AGENTS.md): it explains the project, its goals
 and conventions, and how to credit the model in commits.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
+
+Only files built by this repository's GitHub Actions release workflow from its own source code are
+signed, and every signing request is approved by hand.
+
+| Role | Members |
+| --- | --- |
+| Committers and reviewers | [Sooeeren](https://github.com/Sooeeren) |
+| Approvers | [Sooeeren](https://github.com/Sooeeren) |
+
+Pull requests from anyone else are reviewed by a committer before they are merged.
+
+Privacy: this program will not transfer any information to other networked systems unless
+specifically requested by the user or the person installing or operating it. The features that go
+online, all turned on by you, are listed in the [Privacy Policy](docs/PRIVACY.md).
 
 ## License
 
