@@ -1200,6 +1200,10 @@ body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space
 
 /* ───────────── About ───────────── */
 .about p { margin: 0 0 6px; }
+/* the app icon in the top right corner; the lines beside it end before it */
+.modal-box.about-dialog { position: relative; }
+.about-logo { position: absolute; top: 22px; right: 24px; width: 60px; height: 60px; pointer-events: none; }
+.about-dialog h3, .about > p:first-child, .about > .about-sub { padding-right: 76px; }
 .about .about-sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
 .about h4 { margin: 14px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .ai-hero { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }

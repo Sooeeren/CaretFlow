@@ -136,4 +136,4 @@ To make an image smaller or larger, right-click it and pick a size from 10% to 2
 
 ---
 
-Check page layout with **File → Page Preview** (`Ctrl+Alt+L`), add page breaks with `Ctrl+Enter`, and export with **File → Export as PDF**, **Export as Word (.docx)** (`Ctrl+Alt+W`) or **Export as HTML**. **File → Export as Other Format** also writes OpenDocument (.odt), EPUB e-books, LaTeX and plain text.
+Check page layout with **File → Page Preview** (`Ctrl+Alt+L`), add page breaks with `Ctrl+Enter`, and export with **File → Export as PDF**. **File → Export as Other Format** writes Word (.docx, `Ctrl+Alt+W`), HTML, OpenDocument (.odt), EPUB e-books, LaTeX and plain text.

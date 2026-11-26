@@ -123,7 +123,7 @@ export const scenes = {
       }
 
       // ── Word
-      const docx = await exportVia(page, 'Export as Word', 'C:\\out\\Export Test.docx')
+      const docx = await exportVia(page, 'Other Format: Word', 'C:\\out\\Export Test.docx')
       check('docx written', !!docx)
       if (docx) {
         save('Export Test.docx', docx)

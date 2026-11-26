@@ -50,8 +50,8 @@ A hardware keyboard works with all the usual shortcuts (`Ctrl+S`, `Ctrl+/`, `F7`
 - **Export as PDF** works like on the desktop, with page size, margins, header, footer and page
   numbers. The PDF opens in your PDF viewer afterwards if you like.
 - **Print…** opens Android's print dialog (a printer, or Save as PDF).
-- **Export as HTML** writes a single HTML file; **Export as Word (.docx)** and the other formats
-  (OpenDocument, EPUB, LaTeX, plain text) work as on the desktop.
+- **Export as Other Format** works as on the desktop: HTML (a single file), Word (.docx),
+  OpenDocument, EPUB, LaTeX and plain text.
 
 ## What's different from the desktop
 

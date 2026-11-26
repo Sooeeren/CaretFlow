@@ -59,8 +59,8 @@ View → Line Numbers), and CaretFlow starts in source mode again when you quit 
 
 ## Word, OpenDocument, EPUB, LaTeX and plain text
 
-**File → Export as Word (.docx)** (`Ctrl+Alt+W`) and **File → Export as Other Format** write the
-document for other programs. Everything is made inside CaretFlow, offline; web images are left out
+**File → Export as Other Format** has Word (.docx, `Ctrl+Alt+W`), HTML, OpenDocument, EPUB, LaTeX
+and plain text; they write the document for other programs. Everything is made inside CaretFlow, offline; web images are left out
 as links.
 
 - **Word (.docx)** uses Word's own styles (Title, Heading 1–6, Quote, lists, a table style), so the

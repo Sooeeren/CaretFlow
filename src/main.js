@@ -27,6 +27,7 @@ import { createLineNumbers } from './linenumbers.js'
 import { drawnCaretPlugin } from './caret.js'
 import { htmlRendering } from './html.js'
 import { watchCodeTools } from './codetools.js'
+import appIcon from '../src-tauri/icons/128x128@2x.png' // the About dialog's logo
 import { imageSizeConfig, imageSizeRemark, imageSizePlugin, selectedImage, setImageZoom, setImageWidth, stepZoom, zoomOf, IMAGE_ZOOMS, MAX_WIDTH } from './imagesize.js'
 import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
@@ -2730,7 +2731,16 @@ function showAbout() {
       ),
     )
   } else body.append(el('p', { class: 'about-note' }, 'AI statistics are not available in this build.'))
-  dialog({ title: `CaretFlow ${APP_VERSION}`, body, wide: true, buttons: [{ label: 'Close', value: true, primary: true, cancel: true }] })
+  dialog({
+    title: `CaretFlow ${APP_VERSION}`,
+    body,
+    wide: true,
+    buttons: [{ label: 'Close', value: true, primary: true, cancel: true }],
+    onMount: (box) => {
+      box.classList.add('about-dialog')
+      box.prepend(el('img', { class: 'about-logo', src: appIcon, alt: '' }))
+    },
+  })
 }
 
 // ── updates (lazy, see updater.js). Automatic checks only after the user agreed once.
@@ -4104,30 +4114,18 @@ const MENU = [
       k('Sync Now', 'Ctrl+Alt+S', cloudSyncNow, { hint: 'Cloud Sync', ext: 'cloud' }),
       '-',
       k('Export as PDF…', 'Ctrl+Alt+E', exportPdfDialog),
-      k('Export as Word (.docx)…', 'Ctrl+Alt+W', () => exportAs('docx')),
-      k('Export as HTML…', null, exportHtml),
       {
+        // everything but PDF, the export most people want; the PDF theme is in the PDF dialog
+        // and Preferences → Export
         label: 'Export as Other Format',
         sub: [
+          k('Word (.docx)…', 'Ctrl+Alt+W', () => exportAs('docx')),
+          k('HTML…', null, exportHtml),
           k('OpenDocument Text (.odt)…', null, () => exportAs('odt')),
           k('EPUB E-book (.epub)…', null, () => exportAs('epub')),
           k('LaTeX (.tex)…', null, () => exportAs('tex')),
           k('Plain Text (.txt)…', null, () => exportAs('txt')),
         ],
-      },
-      {
-        label: 'Export / PDF Theme',
-        sub: [
-          ['paper', 'Paper (light, recommended for print)'],
-          ['sepia', 'Sepia'],
-          ['current', 'Same as Editor'],
-        ].map(([id, l]) =>
-          k(l, null, () => {
-            settings.exportTheme = id
-            saveSettings()
-            toast('Export theme: ' + l.replace(/ \(.*/, ''))
-          }, { checked: () => settings.exportTheme === id }),
-        ),
       },
       k('Page Preview', 'Ctrl+Alt+L', togglePagePreview, { checked: () => pagePreviewOpen() }),
       k('Print…', 'Ctrl+Alt+P', printDoc),
@@ -4487,10 +4485,23 @@ function fromLayout(items) {
   return out
 }
 
+/** A saved layout names moved commands (MOVED) by their new ids; true if it changed. */
+function renameMoved(l) {
+  let changed = false
+  const walk = (items) =>
+    items.forEach((x, i) => {
+      if (x && typeof x === 'object') return walk(x.items)
+      if (MOVED[x]) (items[i] = MOVED[x]), (changed = true)
+    })
+  for (const m of l.menus) walk(m.items)
+  if (l.known) l.known = l.known.map((x) => MOVED[x] ?? x)
+  return changed
+}
+
 let menuBar = MENU // what the menu bar and Android's menu drawer show
 function applyMenuLayout() {
   const l = settings.menuLayout
-  if (l?.menus && addNewCommands(l)) saveSettings()
+  if (l?.menus && (renameMoved(l) | addNewCommands(l))) saveSettings()
   menuBar = l?.menus ? l.menus.map((m) => ({ label: m.label, items: fromLayout(m.items) })) : MENU
   closeMenus()
   buildMenubar()
@@ -4517,11 +4528,16 @@ function resetMenus() {
 
 /** Custom shortcuts are saved by menu path; when a command moved to another menu (0.10.0 sorted
  *  the menus), its shortcut follows it to the command with the same name. */
+// Commands that moved and changed their name (0.13.2): custom shortcuts and menus follow them
+const MOVED = {
+  'File/Export as Word (.docx)…': 'File/Export as Other Format/Word (.docx)…',
+  'File/Export as HTML…': 'File/Export as Other Format/HTML…',
+}
 function migrateKeybindings(kb) {
   let moved = false
   for (const old of Object.keys(kb)) {
     // Sepia is also an export theme, so the theme commands move by path
-    const id = old.replace(/^Themes\//, 'View/Theme/')
+    const id = MOVED[old] ?? old.replace(/^Themes\//, 'View/Theme/')
     if (id !== old) {
       if (!(id in kb)) kb[id] = kb[old]
       delete kb[old]

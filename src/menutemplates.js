@@ -30,7 +30,7 @@ export const MENU_TEMPLATES = [
     name: 'Writer',
     desc: 'For stories, essays and blog posts: distraction-free modes, the writing check up front, export to Word and EPUB.',
     menus: [
-      M('File', 'File/New', 'File/Open…', 'File/Open Recent', 'File/Open Folder…', '-', 'File/Save', 'File/Save As…', 'File/Auto-save', 'File/Rename…', 'File/Sync Now', '-', 'File/Export as Word (.docx)…', 'File/Export as PDF…', M('Export as E-book or Other', 'File/Export as Other Format/EPUB E-book (.epub)…', 'File/Export as Other Format/OpenDocument Text (.odt)…', 'File/Export as Other Format/Plain Text (.txt)…', 'File/Export as HTML…'), 'File/Page Preview', 'File/Print…', '-', 'File/Preferences…', 'File/Close Window'),
+      M('File', 'File/New', 'File/Open…', 'File/Open Recent', 'File/Open Folder…', '-', 'File/Save', 'File/Save As…', 'File/Auto-save', 'File/Rename…', 'File/Sync Now', '-', 'File/Export as Other Format/Word (.docx)…', 'File/Export as PDF…', M('Export as E-book or Other', 'File/Export as Other Format/EPUB E-book (.epub)…', 'File/Export as Other Format/OpenDocument Text (.odt)…', 'File/Export as Other Format/Plain Text (.txt)…', 'File/Export as Other Format/HTML…'), 'File/Page Preview', 'File/Print…', '-', 'File/Preferences…', 'File/Close Window'),
       M('Edit', 'Edit/Undo', 'Edit/Redo', '-', 'Edit/Paste as Plain Text', '-', ...find, '-', 'Edit/Read-only Mode'),
       M('Format', ...headings, '-', 'Format/Bold', 'Format/Italic', 'Format/Underline', 'Format/Strikethrough', 'Format/Clear Formatting', '-', 'Paragraph/Quote', ...lists.slice(0, 2), '-', 'Insert/Link', 'Insert/Image…', 'Insert/Horizontal Rule', 'Insert/Page Break'),
       M('Review', 'Tools/Spelling & Grammar…', 'Tools/Next Spelling or Grammar Issue', 'Tools/Check Spelling & Grammar', 'Tools/AutoCorrect While Typing', '-', 'Tools/AI: Check Paragraph', 'Tools/AI: Check Document', 'Tools/AI: Next Suggestion', 'Tools/AI: Review Panel'),
@@ -48,7 +48,7 @@ export const MENU_TEMPLATES = [
       M('Paragraph', 'Paragraph/Heading 1', 'Paragraph/Heading 2', 'Paragraph/Heading 3', 'Paragraph/Heading 4', 'Paragraph/Paragraph', 'Paragraph/Promote Heading', 'Paragraph/Demote Heading', '-', ...lists, '-', 'Paragraph/Quote', '@Paragraph/Callout'),
       M('Insert', 'Insert/Math Block', 'Format/Inline Math', 'Insert/Table', 'Insert/Image…', '@Format/Image Size', 'Insert/Mermaid Diagram…', '-', 'Insert/Table of Contents', 'Insert/Page Break', 'Insert/Front Matter', '-', 'Insert/Link', 'Insert/Code Block'),
       M('Format', 'Format/Bold', 'Format/Italic', 'Format/Underline', 'Format/Strikethrough', 'Format/Inline Code', '-', 'Format/Clear Formatting'),
-      M('Export', 'File/Export as PDF…', 'File/Page Preview', '@File/Export / PDF Theme', 'File/Print…', '-', 'File/Export as Word (.docx)…', 'File/Export as Other Format/LaTeX (.tex)…', 'File/Export as Other Format/OpenDocument Text (.odt)…', 'File/Export as HTML…'),
+      M('Export', 'File/Export as PDF…', 'File/Page Preview', 'File/Print…', '-', 'File/Export as Other Format/Word (.docx)…', 'File/Export as Other Format/LaTeX (.tex)…', 'File/Export as Other Format/OpenDocument Text (.odt)…', 'File/Export as Other Format/HTML…'),
       M('Review', 'Tools/Spelling & Grammar…', 'Tools/Next Spelling or Grammar Issue', 'Tools/Check Spelling & Grammar', '-', 'Tools/AI: Check Document', 'Tools/AI: Review Panel'),
       M('View', 'View/Sidebar', 'View/Outline', 'View/Files', 'View/Search', '-', 'View/Source Code Mode', '@View/Theme', ...zoom, '-', 'View/Focus Mode', 'View/Full Screen'),
       help(),
@@ -59,7 +59,7 @@ export const MENU_TEMPLATES = [
     name: 'Developer & Technical Writer',
     desc: 'For READMEs and docs: source mode and Vim at hand, code, diagrams, front matter, HTML and Markdown copy.',
     menus: [
-      M('File', 'File/New', 'File/New Window', 'File/New File in Folder…', '-', 'File/Open…', 'File/Quick Open…', 'File/Open Recent', 'File/Open Folder…', 'File/Close Folder', '-', 'File/Save', 'File/Save As…', 'File/Auto-save', 'File/Rename…', 'File/Reload from Disk', 'File/Close File', '-', 'File/Export as HTML…', 'File/Export as PDF…', '-', 'File/Reveal in Explorer', 'File/Copy File Path', '-', 'File/Preferences…', 'File/Close Window'),
+      M('File', 'File/New', 'File/New Window', 'File/New File in Folder…', '-', 'File/Open…', 'File/Quick Open…', 'File/Open Recent', 'File/Open Folder…', 'File/Close Folder', '-', 'File/Save', 'File/Save As…', 'File/Auto-save', 'File/Rename…', 'File/Reload from Disk', 'File/Close File', '-', 'File/Export as Other Format/HTML…', 'File/Export as PDF…', '-', 'File/Reveal in Explorer', 'File/Copy File Path', '-', 'File/Preferences…', 'File/Close Window'),
       M('Edit', 'Edit/Undo', 'Edit/Redo', '-', 'Edit/Copy as Markdown', 'Edit/Copy as HTML', 'Edit/Paste as Markdown', 'Edit/Paste as Plain Text', '-', ...find, 'Edit/Find in Folder…', '-', 'Edit/Read-only Mode'),
       M('Insert', 'Insert/Code Block', 'Format/Inline Code', 'Insert/Mermaid Diagram…', 'Insert/Table', '-', 'Insert/Link', 'Insert/Image…', '@Paragraph/Callout', '-', 'Insert/Front Matter', 'Insert/Table of Contents', 'Insert/Horizontal Rule'),
       M('Format', ...headings, 'Paragraph/Promote Heading', 'Paragraph/Demote Heading', '-', 'Format/Bold', 'Format/Italic', 'Format/Strikethrough', 'Format/Clear Formatting', '-', ...lists, 'Paragraph/Quote'),

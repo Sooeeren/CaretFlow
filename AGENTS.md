@@ -206,3 +206,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | 0.13.1 release: version bump, notes, draft and publish, PKGBUILD checksum, website redeploy |
 | Claude Opus 5.5 | Claude Code | 2026-11-25 | Code block language button never over code, its list above other blocks; window buttons always visible, menus that don't fit go into » (src/codetools.js, scripts/checks/codetools.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | New icon colors (alabaster, navy, cobalt); code block language button in the corner until hover, its list kept inside the window; Preferences search; image storage choices (Insert → When Adding Images); all-in-one tagline, shorter README |
+| Claude Opus 5.5 | Claude Code | 2026-11-26 | File menu: Word and HTML moved into Export as Other Format, Export / PDF Theme out of the menu (custom shortcuts and menus follow); logo in the About dialog |
