@@ -209,3 +209,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | New icon colors (alabaster, navy, cobalt); code block language button in the corner until hover, its list kept inside the window; Preferences search; image storage choices (Insert → When Adding Images); all-in-one tagline, shorter README |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | File menu: Word and HTML moved into Export as Other Format, Export / PDF Theme out of the menu (custom shortcuts and menus follow); logo in the About dialog |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | Gap above the first heading no longer jumps when an image is clicked; image alt text hidden unless View → Show Image Alt Text; full-screen image viewer; Close Folder above Close Window (scripts/checks/images.mjs) |
+| Claude Opus 5.5 | Claude Code | 2026-11-26 | 0.14.0 release: version bump, notes, draft and publish, PKGBUILD checksum, website rebuild |
