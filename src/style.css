@@ -1103,6 +1103,10 @@ body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space
   white-space: pre-wrap;
 }
 #wysiwyg .cf-html.editing { cursor: text; box-shadow: none; contain: none; }
+/* HTML blocks whose tags are all removed by the sanitizer (<script>, <form>, <iframe>…): hidden in
+   the rendered view like stripped children of mixed blocks, while source mode still keeps them */
+#wysiwyg .ProseMirror p:has(> .cf-html.block.stripped:not(.editing)),
+#wysiwyg .cf-html.stripped:not(.editing) { display: none; }
 /* the lone `<div align="center">` / `</div>` lines around Markdown (html.js wrapDecorations): kept
    visible to edit or delete, but small and quiet, since the blocks between them show their effect */
 #wysiwyg .ProseMirror p.cf-html-wrap-tag { display: none; }

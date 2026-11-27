@@ -2397,7 +2397,7 @@ function themeVars(theme = exportThemeName()) {
   const cs = getComputedStyle(html)
   const vars = [
     '--bg', '--fg', '--fg-strong', '--muted', '--chrome', '--border', '--link', '--code-bg', '--code-fg', '--quote', '--quote-bar',
-    '--doc-font', '--doc-size', '--doc-width', '--doc-lh', '--heading-space', '--font-mono',
+    '--doc-font', '--doc-size', '--doc-width', '--doc-lh', '--heading-space', '--font-mono', '--font-ui',
     ...TOKEN_VARS,
   ]
     .map((v) => `${v}:${cs.getPropertyValue(v)}`)
@@ -2417,14 +2417,17 @@ async function exportHtml() {
   toast('Exported ' + P.basename(target))
 }
 
+const checkLocalImage = (path) => invoke('exists', { path }).catch(() => true)
+
 async function exportHtmlTo(target) {
   const { toHtml } = await import('./export.js')
   const out = await toHtml(currentText(), {
     nestedLists: settings.nestedLists,
     wrapCode: settings.wrapCode,
     title: docTitle(),
-    docDir: S.path && P.dirname(S.path),
+    docDir: S.path && !P.isUri(S.path) ? P.dirname(S.path) : '',
     targetDir: P.dirname(target),
+    imageExists: checkLocalImage,
     themeVars: themeVars(),
     dark: DARK_THEMES.includes(exportThemeName()),
   })
@@ -2556,8 +2559,9 @@ async function exportPdfTo(out, options) {
     nestedLists: settings.nestedLists,
     wrapCode: settings.wrapCode,
     title: options.title || docTitle(),
-    docDir: S.path && P.dirname(S.path),
+    docDir: S.path && !P.isUri(S.path) ? P.dirname(S.path) : '',
     resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,
+    imageExists: checkLocalImage,
     themeVars: themeVars(),
     dark: DARK_THEMES.includes(exportThemeName()),
     inlineKatex: true,
@@ -2678,6 +2682,9 @@ function openPagePreview() {
   pvStatus('Rendering…')
   schedulePreview(0)
 }
+// pdf.js v5 puts destroy() on the loadingTask rather than on the resolved PDFDocumentProxy
+const destroyPdf = (doc) => (doc?.destroy?.() ?? doc?.loadingTask?.destroy?.())?.catch?.(() => {})
+
 function closePagePreview() {
   PV.open = false
   PV.token++
@@ -2685,7 +2692,7 @@ function closePagePreview() {
   $('#pagepreview').hidden = true
   $('#pv-resizer').hidden = true
   $('#pv-pages').innerHTML = ''
-  PV.doc?.destroy()
+  destroyPdf(PV.doc)
   PV.doc = null
   if (PV.file) invoke('remove_temp', { path: PV.file }).catch(() => {})
   PV.file = null
@@ -2710,11 +2717,11 @@ async function refreshPreview() {
     const bytes = await invoke('read_bytes', { path: PV.file })
     const pdfjs = await loadPdfjs()
     const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise
-    if (!PV.open) return doc.destroy()
+    if (!PV.open) return await destroyPdf(doc)
     const old = PV.doc
     PV.doc = doc
     await layoutPages()
-    old?.destroy()
+    await destroyPdf(old)
     pvStatus(`${doc.numPages} page${doc.numPages === 1 ? '' : 's'}`)
   } catch (e) {
     log('page preview failed:', e)
@@ -3001,8 +3008,9 @@ async function printDoc() {
     nestedLists: settings.nestedLists,
     wrapCode: settings.wrapCode,
     title,
-    docDir: S.path && P.dirname(S.path),
+    docDir: S.path && !P.isUri(S.path) ? P.dirname(S.path) : '',
     resolveForView: IS_ANDROID ? P.fileUrl : convertFileSrc,
+    imageExists: checkLocalImage,
     themeVars: themeVars(),
     dark: DARK_THEMES.includes(exportThemeName()),
     inlineKatex: true,
@@ -3014,7 +3022,12 @@ async function printDoc() {
 
 async function copyHtml() {
   const { toHtml } = await import('./export.js')
-  const full = await toHtml(selectionMarkdown(), { themeVars: themeVars(), resolveForView: convertFileSrc, docDir: S.path && P.dirname(S.path) })
+  const full = await toHtml(selectionMarkdown(), {
+    themeVars: themeVars(),
+    resolveForView: convertFileSrc,
+    imageExists: checkLocalImage,
+    docDir: S.path && !P.isUri(S.path) ? P.dirname(S.path) : '',
+  })
   const body = /<body>([\s\S]*)<\/body>/.exec(full)[1]
   await navigator.clipboard.write([
     new ClipboardItem({ 'text/html': new Blob([body], { type: 'text/html' }), 'text/plain': new Blob([body], { type: 'text/plain' }) }),

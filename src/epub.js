@@ -14,7 +14,7 @@ h1,h2,h3,h4,h5,h6{font-family:sans-serif;line-height:1.25;margin:1.4em 0 .5em;pa
 h1{font-size:1.8em}h2{font-size:1.45em}h3{font-size:1.2em}h4{font-size:1.05em}
 p{margin:0 0 .8em}
 a{color:#0b5cad}
-img{max-width:100%;height:auto}
+img{max-width:100%;height:auto}.cf-img{text-align:center}
 code,kbd,samp{font-family:monospace;font-size:.9em;background:#f3f4f6;padding:0 .2em;border-radius:3px}
 pre{font-family:monospace;font-size:.85em;background:#f6f8fa;border:1px solid #e1e4e8;padding:.6em .8em;white-space:pre-wrap;word-wrap:break-word;border-radius:4px}
 pre code{background:none;padding:0;font-size:1em}

@@ -57,6 +57,15 @@ const PURIFY = {
   FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'iframe', 'frame', 'object', 'embed', 'link', 'meta', 'base', 'dialog'],
   FORBID_ATTR: ['id', 'class', 'name', 'autofocus', 'contenteditable', 'tabindex', 'popover'],
 }
+const FORBIDDEN_EL = new Set(['SCRIPT', ...PURIFY.FORBID_TAGS.map((t) => t.toUpperCase())])
+
+/** True when `raw` holds only elements the sanitizer removes (<script>, <form>, <iframe>…), not comments or lone wrapper tags. */
+function isStrippedHtml(raw) {
+  if (/<!--/.test(raw)) return false
+  const doc = new DOMParser().parseFromString(raw, 'text/html')
+  const els = [...doc.head.children, ...doc.body.children]
+  return els.length > 0 && els.every((e) => FORBIDDEN_EL.has(e.tagName)) && ![...doc.body.childNodes].some((n) => n.nodeType === 3 && n.nodeValue.trim())
+}
 
 /** Cleaned HTML as a fragment, local image paths made loadable, or null if nothing would show. */
 export function renderHtml(raw, resolveSrc = (s) => s) {
@@ -142,10 +151,11 @@ class HtmlView {
       return
     }
     const frag = renderHtml(raw, this.opts.resolveSrc)
-    this.dom.className = 'cf-html' + (frag ? '' : ' raw') + (this.isBlock() ? ' block' : '')
+    const stripped = !frag && isStrippedHtml(raw)
+    this.dom.className = 'cf-html' + (frag ? '' : stripped ? ' stripped' : ' raw') + (this.isBlock() ? ' block' : '')
     this.dom.title = frag ? 'HTML – click to edit' : ''
     if (frag) this.dom.replaceChildren(frag)
-    else this.dom.textContent = raw
+    else this.dom.textContent = stripped ? '' : raw
   }
 
   edit() {

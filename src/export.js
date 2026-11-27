@@ -59,6 +59,36 @@ const CALLOUT_CSS = `
 .callout-title+*{margin-top:0}
 .callout>:last-child{margin-bottom:.15em}
 .callout-note{--c:#2f74d0}.callout-tip{--c:#2c9a4b}.callout-important{--c:#8250df}.callout-warning{--c:#b7791f}.callout-caution{--c:#cf3a33}`
+
+// Same disallowed elements as html.js (no scripts, styles, forms or frames), while keeping id/class
+// needed by headings, footnotes, KaTeX and code blocks in the standalone export document
+const EXPORT_PURIFY = {
+  FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select', 'iframe', 'frame', 'object', 'embed', 'link', 'meta', 'base', 'dialog'],
+  FORBID_ATTR: ['autofocus', 'contenteditable', 'tabindex', 'popover'],
+}
+
+const STYLE_ZOOM = /^\s*zoom\s*:\s*(\d+(?:\.\d+)?)\s*(%?)\s*;?\s*$/i
+const MISSING_ICON =
+  '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>'
+
+/** Same rule as imagesize.js parseImgTag: a lone `<img …>` with only a zoom or pixel width, centered like .milkdown-image-block. */
+function isBlockImgTag(html) {
+  const t = html.trim()
+  if (!/^<img\b[^<>]*\/?>$/i.test(t)) return false
+  const img = new DOMParser().parseFromString(t, 'text/html').body.firstElementChild
+  if (!img || img.tagName !== 'IMG' || !img.getAttribute('src')) return false
+  if ([...img.attributes].some((a) => !['src', 'alt', 'title', 'style', 'width'].includes(a.name))) return false
+  const w = img.getAttribute('width')
+  if (w != null) {
+    const m = w.trim().match(/^(\d+)(px)?$/i)
+    if (!m || +m[1] < 1) return false
+  }
+  const st = img.getAttribute('style')
+  if (st != null && st.trim() && !STYLE_ZOOM.test(st)) return false
+  return !(w != null && st != null && st.trim())
+}
+
 // How math is written: 'html' (KaTeX, for the screen and PDF), 'mathml' (e-book readers), or
 // 'source' (the TeX kept in a data attribute, for the Word / OpenDocument / LaTeX writers)
 let mathMode = 'html'
@@ -86,6 +116,23 @@ function footnotesHtml() {
 
 marked.use({
   gfm: true,
+  renderer: {
+    // GFM task boxes become a marker before DOMPurify runs, so user <input>/<form> HTML is stripped without losing task lists
+    checkbox({ checked }) {
+      return `<span data-cf-task="${checked ? 1 : 0}"></span>`
+    },
+    // Standalone Markdown images and resized <img …> lines are centered in the rendered editor (.milkdown-image-block)
+    paragraph({ tokens }) {
+      const cls =
+        tokens.length === 1 && (tokens[0].type === 'image' || (tokens[0].type === 'html' && isBlockImgTag(tokens[0].text)))
+          ? ' class="cf-img"'
+          : ''
+      return `<p${cls}>${this.parser.parseInline(tokens)}</p>\n`
+    },
+    html({ text, block }) {
+      return block && isBlockImgTag(text) ? `<p class="cf-img">${text.trim()}</p>\n` : text
+    },
+  },
   extensions: [
     {
       name: 'footnoteDef',
@@ -215,25 +262,86 @@ export async function bodyHtml(md, o = {}) {
     const refs = new Set()
     for (const m of md.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, '').matchAll(/\[\^([^\]\s]+)\](?!:)/g)) refs.add(m[1])
     for (const r of refs) noteNum(r)
-    // the document's own HTML is kept, minus scripts and event handlers: the export page is
-    // loaded by CaretFlow (print, PDF export, page preview), where a script could reach its commands
-    html = DOMPurify.sanitize(marked.parse(md) + footnotesHtml())
+    // the document's own HTML is kept, minus scripts, forms, frames and event handlers: the export
+    // page is loaded by CaretFlow (print, PDF export, page preview), and must match the editor
+    html = DOMPurify.sanitize(marked.parse(md) + footnotesHtml(), EXPORT_PURIFY)
   } finally {
     mathMode = 'html'
     notes = null
   }
   html = await renderMermaidBlocks(html, o.dark, o.plainLabels)
   html = await highlightBlocks(html)
-  // no space after a task's check box: the box sits where the bullet would be (like the editor)
-  html = html.replace(/(<input [^>]*type="checkbox"[^>]*>)[ \t]+/g, '$1')
+  // restore GFM task check boxes, with no space after them: the box sits where the bullet would be (like the editor)
+  html = html.replace(/<span data-cf-task="([01])"><\/span>[ \t]*/g, (_, c) => `<input ${c === '1' ? 'checked="" ' : ''}disabled="" type="checkbox">`)
   return renderToc(renderCallouts(html))
 }
 
 export { highlightCss }
 
+/** Short path for a missing-image box (same tail as imageview.js shortSrc). */
+function shortImgSrc(s = '') {
+  if (!s) return 'missing path'
+  if (/^data:/i.test(s)) return 'embedded image'
+  try {
+    s = decodeURIComponent(s)
+  } catch {}
+  if (/^(https?:)?\/\//i.test(s) && !/asset\.localhost/i.test(s)) return s
+  return s.split(/[\\/]/).filter(Boolean).slice(-2).join('/') || s
+}
+
+function missingImgSpan(doc, src) {
+  const span = doc.createElement('span')
+  span.className = 'cf-img-missing'
+  span.innerHTML = MISSING_ICON
+  const txt = doc.createElement('span')
+  txt.textContent = `Image not found: ${shortImgSrc(src)}`
+  span.append(txt)
+  return span
+}
+
+async function rewriteImages(html, o) {
+  if (!html.includes('<img')) return html
+  const tpl = document.createElement('template')
+  tpl.innerHTML = html
+  const doc = tpl.content.ownerDocument
+  await Promise.all(
+    [...tpl.content.querySelectorAll('img')].map(async (img) => {
+      const src = img.getAttribute('src') || ''
+      if (!src) {
+        img.replaceWith(missingImgSpan(doc, ''))
+        return
+      }
+      // above 100 % zoom, still never wider than the page (matches style.css .cf-zoomed)
+      const zm = (img.getAttribute('style') || '').match(STYLE_ZOOM)
+      if (zm) {
+        const z = zm[2] ? +zm[1] / 100 : +zm[1]
+        if (z > 1) img.style.maxWidth = `${100 / z}%`
+      }
+      if (/^(https?:|data:|blob:|mailto:)/i.test(src)) return
+      const raw = decodeSrc(src)
+      const abs = isAbs(raw) ? raw : o.docDir ? join(o.docDir, raw) : null
+      if (!abs) {
+        if (o.resolveForView) img.replaceWith(missingImgSpan(doc, raw))
+        return
+      }
+      if (o.imageExists && !(await o.imageExists(abs))) {
+        img.replaceWith(missingImgSpan(doc, raw))
+        return
+      }
+      if (o.resolveForView) {
+        img.setAttribute('src', o.resolveForView(abs))
+        return
+      }
+      const rel = o.targetDir ? relative(o.targetDir, abs) : null
+      img.setAttribute('src', rel ? encodeSrc(rel) : 'file:///' + encodeSrc(abs))
+    }),
+  )
+  return tpl.innerHTML
+}
+
 /**
  * @param md markdown source
- * @param o { title, docDir, targetDir, resolveForView, themeVars, dark, inlineKatex }
+ * @param o { title, docDir, targetDir, resolveForView, imageExists, themeVars, dark, inlineKatex }
  */
 /** Classes on the exported <body>: the same switches as the editor's (nested lists, wrapped code). */
 function bodyClass(o) {
@@ -243,25 +351,19 @@ function bodyClass(o) {
 
 export async function toHtml(md, o) {
   let html = await bodyHtml(md, o)
-
-  // Rewrite relative image paths
-  html = html.replace(/(<img[^>]*?\ssrc=")([^"]+)(")/g, (all, a, src, b) => {
-    if (/^(https?:|data:|blob:|mailto:)/i.test(src)) return all
-    const raw = decodeSrc(src)
-    const abs = isAbs(raw) ? raw : o.docDir ? join(o.docDir, raw) : null
-    if (!abs) return all
-    if (o.resolveForView) return a + o.resolveForView(abs) + b
-    const rel = o.targetDir ? relative(o.targetDir, abs) : null
-    return a + (rel ? encodeSrc(rel) : 'file:///' + encodeSrc(abs)) + b
-  })
+  html = await rewriteImages(html, o)
 
   const katexLink = o.inlineKatex
     ? `<style>${katexCss}</style>`
     : `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css">`
+  // Temporary PDF pages also replace web or unreadable images that fail at load time, before print-to-PDF runs
+  const pdfBrokenImg = o.forPdf
+    ? `<script>addEventListener('error',e=>{const i=e.target;if(i?.tagName!=='IMG')return;let u=i.getAttribute('src')||'';if(/^data:/i.test(u))u='embedded image';else{try{u=decodeURIComponent(u)}catch{}if(!/^(https?:)?\\/\\//i.test(u)||/asset\\.localhost/i.test(u))u=u.split(/[\\\\/]/).filter(Boolean).slice(-2).join('/')||u}const s=document.createElement('span');s.className='cf-img-missing';s.innerHTML='${MISSING_ICON}';const t=document.createElement('span');t.textContent='Image not found: '+(u||'missing path');s.append(t);i.replaceWith(s)},true)</script>`
+    : ''
 
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(o.title || 'Document')}</title>
+<title>${esc(o.title || 'Document')}</title>${pdfBrokenImg}
 ${katexLink}
 <style>${highlightCss()}${CALLOUT_CSS}${TOC_CSS}
 div[style*="page-break-after"]{height:0;margin:0;border:0}
@@ -294,10 +396,12 @@ blockquote{margin:.9em 0;padding:0 0 0 calc(1.1em - 3px);color:var(--quote);bord
 table{border-collapse:collapse;margin:1em 0;width:100%;table-layout:fixed;overflow-wrap:anywhere}
 th,td{border:1px solid var(--border);padding:6px 13px;line-height:1.5}th:not([align]){text-align:left}th{background:var(--chrome)}
 tr:nth-child(2n) td{background:color-mix(in srgb,var(--chrome) 50%,transparent)}
-img{max-width:100%}hr{border:0;height:1px;padding:6px 0;margin:0;background:var(--border);background-clip:content-box;box-sizing:content-box}
+img{max-width:100%}.cf-img{text-align:center}[align=left] .cf-img{text-align:left}[align=right] .cf-img{text-align:right}.cf-img>img{vertical-align:middle}li>img:only-child{display:block;margin:0 auto}
+.cf-img-missing{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border:1px dashed var(--border);border-radius:6px;color:var(--muted);background:var(--code-bg);font:.85em/1.4 var(--font-ui,system-ui,sans-serif);text-align:left;overflow-wrap:anywhere;max-width:100%;box-sizing:border-box}.cf-img-missing svg{flex:none}
+hr{border:0;height:1px;padding:6px 0;margin:0;background:var(--border);background-clip:content-box;box-sizing:content-box}
 li>input[type=checkbox],li>p:first-child>input[type=checkbox]{width:18px;height:18px;margin:0 16px 0 -34px;vertical-align:-.2em}
 .math-block{overflow-x:auto;margin:1em 0}.mermaid{text-align:center;margin:1em 0}
-@media print{body{padding:0;max-width:none}pre,blockquote,table,img,.mermaid{break-inside:avoid}h1,h2,h3{break-after:avoid}}
+@media print{body{padding:0;max-width:none}pre,blockquote,table,img,.mermaid,.cf-img-missing{break-inside:avoid}h1,h2,h3{break-after:avoid}}
 ${o.forPdf ? '' : '@page{margin:18mm 16mm}'}
 ${o.forPdf ? 'body{padding:0;max-width:none}' : ''}
 </style></head>

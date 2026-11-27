@@ -15,6 +15,14 @@ Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save, H<sub>2</sub>O, and <u>underline</u>
 
 <!-- a comment -->
 
+<script>window.__pwned = 3</script>
+<img src="x" alt="onerror test" width="32" onerror="window.__pwned = 4" onclick="window.__pwned = 5" />
+<form><input type="text" value="A form should not be shown"></form>
+<iframe src="https://example.com" width="200" height="50"></iframe>
+
+- [ ] open task
+- [x] done task
+
 <div style="position: fixed; top: 0; left: 0">pinned</div>
 
 <details>
@@ -102,15 +110,28 @@ export const scenes = {
             const h = pm.querySelector('.cf-html.block p[align]').closest('.cf-html')
             return Math.round(h.parentElement.getBoundingClientRect().height - h.getBoundingClientRect().height) + '/' + getComputedStyle(h.querySelector('p')).marginTop
           })(),
-          rawTags: /<p align|<kbd>|<b>/.test(pm.textContent),
+          rawTags: /<p align|<kbd>|<b>|<script>/.test(pm.textContent),
+          formInEditor: !!pm.querySelector('.cf-html form, .cf-html input, .cf-html iframe'),
+          strippedHidden: [...pm.querySelectorAll('.cf-html.stripped')].every((n) => getComputedStyle(n.closest('p') || n).display === 'none'),
           pwned: window.__pwned,
         }
       })
+      const exp = await run(page, async (src) => {
+        const { bodyHtml } = await import('/src/export.js')
+        const html = await bodyHtml(src)
+        const doc = new DOMParser().parseFromString(html, 'text/html')
+        return {
+          form: !!doc.querySelector('form, iframe, script, style, input:not([type="checkbox"])'),
+          shownValue: html.includes('A form should not be shown'),
+          tasks: [...doc.querySelectorAll('li input[type="checkbox"]')].map((i) => i.checked),
+        }
+      }, DOC)
       check('block HTML renders (centered paragraph with a bold link)', r.centered, JSON.stringify(r))
       check('inline pairs render (<kbd>, <sub>)', r.kbd === 2 && r.sub)
       check('<u> stays an underline mark', r.u)
-      check('no raw tags left as text', !r.rawTags)
-      check('scripts and event handlers removed, never run', !r.script && !r.onclick && !r.pwned, String(r.pwned))
+      check('no raw tags or standalone <script> left as text', !r.rawTags && r.strippedHidden, JSON.stringify(r))
+      check('scripts, forms, iframes and event handlers removed, never run', !r.script && !r.onclick && !r.formInEditor && !r.pwned, String(r.pwned))
+      check('exports also strip <form>/<input>/<iframe> while keeping GFM task checkboxes', !exp.form && !exp.shownValue && exp.tasks.join(',') === 'false,true', JSON.stringify(exp))
       check('id/class removed (cannot pick up app styles)', !r.idClass)
       check('the safe part still shows', r.safe)
       check('comments stay visible as source', r.comment)
@@ -119,8 +140,8 @@ export const scenes = {
       check('no empty lines or margins around block HTML', r.gap === '0/0px', r.gap)
 
       const untouched = await md(page)
-      const htmlParts = DOC.match(/<p align[\s\S]*?<\/p>|<kbd>Ctrl<\/kbd>|<sub>2<\/sub>|<details>[\s\S]*?<\/details>|<!-- a comment -->/g)
-      check('saving without edits keeps every HTML part as written', htmlParts.every((p) => untouched.includes(p)), untouched)
+      const htmlParts = DOC.match(/<p align[\s\S]*?<\/p>|<kbd>Ctrl<\/kbd>|<sub>2<\/sub>|<details>[\s\S]*?<\/details>|<!-- a comment -->|<script>window\.__pwned = 3<\/script>|<form>[\s\S]*?<\/iframe>/g)
+      check('saving without edits keeps every HTML part (including hidden <script>/<form>/<iframe>) as written', htmlParts.every((p) => untouched.includes(p)), untouched)
 
       // click to edit the source, change it, Ctrl+Enter saves it back
       await page.click('.cf-html.block p[align="center"]', { position: { x: 5, y: 5 } })

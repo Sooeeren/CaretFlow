@@ -121,6 +121,12 @@ export const scenes = {
       check('no page is drawn while the list is scrolling', during.draws === 0, JSON.stringify(during))
       const after = await untilDrawn(page)
       check('the pages are drawn once it is still', after.drawn === after.n && after.exact, JSON.stringify(after))
+
+      // refreshing the preview cleans up the previous PDF without throwing (pdf.js loadingTask.destroy)
+      await page.click('#pv-refresh')
+      await wait(800)
+      const refreshed = await untilDrawn(page)
+      check('refreshing the preview succeeds without error', refreshed.status === '24 pages' && refreshed.drawn === 24, refreshed.status)
       summary()
     },
   },
