@@ -67,9 +67,65 @@ const tex = (s, displayMode) =>
     ? `<span class="math-src${displayMode ? ' display' : ''}" data-tex="${esc(s)}"></span>`
     : katex.renderToString(s, { displayMode, throwOnError: false, output: mathMode === 'mathml' ? 'mathml' : 'htmlAndMathml' })
 
+// Footnotes ([^1] … [^1]: text), which marked doesn't read: numbered in the order the text first
+// refers to them (named ones like [^note] too, as on GitHub and in the editor), with the notes in a
+// list at the end. Word, OpenDocument, EPUB, LaTeX and plain text get them from this HTML too.
+let notes = null // { num: Map label → n, html: Map label → html } while one document is turned into HTML
+const noteNum = (label) => {
+  if (!notes.num.has(label)) notes.num.set(label, notes.num.size + 1)
+  return notes.num.get(label)
+}
+const noteId = (label) => String(label).toLowerCase().replace(/[^\p{L}\p{N}_-]+/gu, '-')
+function footnotesHtml() {
+  if (!notes?.num.size) return ''
+  const items = [...notes.num]
+    .sort((a, b) => a[1] - b[1])
+    .map(([label]) => `<li id="fn-${esc(noteId(label))}">${notes.html.get(label) ?? ''} <a href="#fnref-${esc(noteId(label))}" class="fn-back">↩</a></li>`)
+  return `<section class="footnotes"><hr><ol>${items.join('')}</ol></section>`
+}
+
 marked.use({
   gfm: true,
   extensions: [
+    {
+      name: 'footnoteDef',
+      level: 'block',
+      start(src) {
+        const m = /^\[\^[^\]\s]+\]:/m.exec(src)
+        return m ? m.index : undefined
+      },
+      tokenizer(src) {
+        // the note's first line, and lines indented below it
+        const m = /^\[\^([^\]\s]+)\]:[ \t]*([^\n]*(?:\n(?:[ \t]{2,}|\t)[^\n]*)*)(?:\n|$)/.exec(src)
+        if (!m) return
+        return { type: 'footnoteDef', raw: m[0], label: m[1], tokens: this.lexer.inlineTokens(m[2].replace(/\n[ \t]+/g, ' ').trim()) }
+      },
+      renderer(tok) {
+        if (notes) {
+          noteNum(tok.label)
+          notes.html.set(tok.label, this.parser.parseInline(tok.tokens))
+        }
+        return ''
+      },
+    },
+    {
+      name: 'footnoteRef',
+      level: 'inline',
+      start(src) {
+        const i = src.indexOf('[^')
+        return i >= 0 ? i : undefined
+      },
+      tokenizer(src) {
+        const m = /^\[\^([^\]\s]+)\](?!:)/.exec(src)
+        if (m) return { type: 'footnoteRef', raw: m[0], label: m[1] }
+      },
+      renderer(tok) {
+        if (!notes) return esc(tok.raw)
+        const n = noteNum(tok.label)
+        const id = esc(noteId(tok.label))
+        return `<sup class="fn-ref"><a href="#fn-${id}" id="fnref-${id}">${n}</a></sup>`
+      },
+    },
     {
       name: 'mathBlock',
       level: 'block',
@@ -154,11 +210,17 @@ export async function bodyHtml(md, o = {}) {
   mathMode = o.math || 'html'
   let html
   try {
+    notes = { num: new Map(), html: new Map() }
+    // footnotes are numbered in the order of the references: the notes' own order doesn't count
+    const refs = new Set()
+    for (const m of md.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, '').matchAll(/\[\^([^\]\s]+)\](?!:)/g)) refs.add(m[1])
+    for (const r of refs) noteNum(r)
     // the document's own HTML is kept, minus scripts and event handlers: the export page is
     // loaded by CaretFlow (print, PDF export, page preview), where a script could reach its commands
-    html = DOMPurify.sanitize(marked.parse(md))
+    html = DOMPurify.sanitize(marked.parse(md) + footnotesHtml())
   } finally {
     mathMode = 'html'
+    notes = null
   }
   html = await renderMermaidBlocks(html, o.dark, o.plainLabels)
   html = await highlightBlocks(html)
@@ -202,7 +264,8 @@ export async function toHtml(md, o) {
 <title>${esc(o.title || 'Document')}</title>
 ${katexLink}
 <style>${highlightCss()}${CALLOUT_CSS}${TOC_CSS}
-div[style*="page-break-after"]{height:0;margin:0;border:0}</style>
+div[style*="page-break-after"]{height:0;margin:0;border:0}
+.fn-ref{font-size:.75em;line-height:0}.fn-ref a{padding:0 1px}.footnotes{font-size:.92em;color:var(--muted);margin-top:2em}.footnotes hr{margin-bottom:.6em}.footnotes ol{padding-left:1.6em}.footnotes li{padding:.1em 0}.fn-back{text-decoration:none}</style>
 <style>
 :root{${o.themeVars}}
 html{background:var(--bg);color:var(--fg)}

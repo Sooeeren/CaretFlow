@@ -58,6 +58,10 @@ const answer = 42 // the answer
 
 ---
 
+A claim with a source.[^src]
+
+[^src]: The source of the claim.
+
 The end.
 `
 
@@ -196,6 +200,7 @@ export const scenes = {
       check('txt lists', txt.includes('1. First') && txt.includes('   - nested bullet') && txt.includes('[x] done task'))
       check('txt table aligned', /Name\s+Count\n-+\s+-+\nApples\s+3/.test(txt))
       check('txt link address', txt.includes('link (https://example.com)'))
+      check('footnotes become numbered notes, not [^src]', txt.includes('1. The source of the claim.') && !txt.includes('[^'), txt.slice(-160))
       summary()
     },
   },

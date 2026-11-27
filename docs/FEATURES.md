@@ -85,6 +85,7 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
 
 - **Footnotes** (`[^1]` and `[^1]: …`) are numbered in the order they appear, also named ones
   (`[^note]`), with the notes below a rule; a click on a number goes to its note and back.
+  Exports number them the same way and list the notes at the end.
 - **Links**: `Ctrl+Click` opens a link, and so does a click on the address in the popup that shows
   when the cursor is in a link.
 - **Sub-points** (nested lists) get hollow or square bullets, lettered or roman numbers, a softer
