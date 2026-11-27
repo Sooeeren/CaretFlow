@@ -324,8 +324,8 @@ graph TD
 - [ ] The three valid diagrams render, and follow light / dark themes
 - [ ] The invalid one shows an error message, and you can still edit it
 - [ ] `Ctrl+Shift+D` opens the template gallery; insert one
-- [ ] Hover a diagram → **Editor** opens the diagram editor (code + live preview, templates,
-      `Ctrl+Enter` applies); `Ctrl+Alt+D` does the same with the cursor in a diagram
+- [ ] With the Diagram Editor extension: **Diagram** on a diagram (or `Ctrl+Alt+D`, or a double-click
+      on the drawing) opens it; add boxes, drag to connect, rename, undo, Done writes Mermaid code back
 - [ ] Scroll far below the diagrams and back: they stay drawn, nothing jumps
 - [ ] Diagrams appear in PDF, as images in Word, as SVG in EPUB
 

@@ -140,9 +140,9 @@ export function createLanguageTool({ server = 'https://api.languagetool.org', la
   const base = () => (opts.apiKey && /\/\/api\.languagetool\.org/.test(opts.server) ? 'https://api.languagetoolplus.com' : opts.server)
   const endpoint = () => base().replace(/\/+$/, '').replace(/\/v2(\/check)?$/, '') + '/v2/check'
 
-  async function request(text) {
-    const body = new URLSearchParams({ text, language: opts.language || 'auto' })
-    if (opts.language === 'auto') body.set('preferredVariants', 'en-US,de-AT,pt-PT,ca-ES')
+  async function request(text, language = opts.language || 'auto') {
+    const body = new URLSearchParams({ text, language })
+    if (language === 'auto') body.set('preferredVariants', 'en-US,de-AT,pt-PT,ca-ES')
     if (opts.motherTongue) body.set('motherTongue', opts.motherTongue)
     if (opts.picky) body.set('level', 'picky')
     if (disabled.length) body.set('disabledRules', disabled.join(','))
@@ -163,7 +163,8 @@ export function createLanguageTool({ server = 'https://api.languagetool.org', la
       opts = { ...opts, ...o }
       if (o.disabledRules) disabled = [...o.disabledRules]
     },
-    async check(blocks) {
+    /** `language` overrides the configured one for these blocks (a paragraph in another language). */
+    async check(blocks, language) {
       const out = blocks.map(() => [])
       // pack blocks into requests of at most ~18k characters
       let batch = []
@@ -177,7 +178,7 @@ export function createLanguageTool({ server = 'https://api.languagetool.org', la
           starts.push(at)
           at += blocks[b].length + SEP.length
         }
-        const json = await request(text)
+        const json = await request(text, language)
         for (const m of json.matches || []) {
           let i = starts.length - 1
           while (i > 0 && starts[i] > m.offset) i--

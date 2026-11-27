@@ -33,6 +33,8 @@ import { imageSizeConfig, imageSizeRemark, imageSizePlugin, selectedImage, setIm
 import { frontmatter as frontmatterPlugin, frontmatterCommand, sourceFrontmatter } from './frontmatter.js'
 import { pageBreak as pageBreakPlugin, insertPageBreakCommand, PAGE_BREAK_HTML, callouts as calloutPlugins, calloutConfig, CALLOUTS } from './blocks.js'
 import { toc as tocPlugin, insertTocCommand, TOC_MARKDOWN, slugify } from './toc.js'
+import { listMarkers } from './listmarkers.js'
+import { footnotePlugin } from './footnotes.js'
 import { registerSource, sourceChanged, documentLoaded, blockHelpers, openAiPanel, currentIssues } from './writing.js'
 import { initWriting, writingPlugin, writingSourceExtension, writingSettingsChanged, writingStatus, togglePanel as toggleWritingPanel, nextIssueMenu, dictionaryEditor, languagesEditor, WORDS_FILE } from './writing.js'
 import { autocorrectRule } from './autocorrect.js'
@@ -449,20 +451,44 @@ function centerAt(c) {
 
 let mmId = 0
 let mermaidP = null
+// Rendered diagrams by theme and text: when Milkdown draws a block again (an edit nearby, the
+// block scrolled back into view, switching views) the diagram is there at once, at its full
+// height, instead of "Loading…" and a jump of everything below it
+const mermaidCache = new Map()
+const MERMAID_CACHE_MAX = 60
+
+function loadMermaid() {
+  mermaidP ||= import('mermaid').then((m) => m.default)
+  return mermaidP.then((mermaid) => {
+    mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'strict', flowchart: { htmlLabels: false } })
+    return mermaid
+  })
+}
+
+/** A diagram as SVG markup, or an error message as HTML (cached). */
+async function renderMermaid(content) {
+  const key = (isDark() ? 'd' : 'l') + content
+  const hit = mermaidCache.get(key)
+  if (hit) return hit
+  const mermaid = await loadMermaid()
+  const id = 'mmd' + ++mmId
+  let html
+  try {
+    html = (await mermaid.render(id, content)).svg
+  } catch (e) {
+    document.getElementById('d' + id)?.remove()
+    html = `<pre class="mermaid-error">${esc(String(e?.message || e))}</pre>`
+  }
+  mermaidCache.set(key, html)
+  while (mermaidCache.size > MERMAID_CACHE_MAX) mermaidCache.delete(mermaidCache.keys().next().value)
+  return html
+}
+
 function renderPreview(lang, content, apply) {
   if ((lang || '').toLowerCase() !== 'mermaid' || !content.trim()) return null
-  mermaidP ||= import('mermaid').then((m) => m.default)
-  mermaidP.then(async (mermaid) => {
-    mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'strict', flowchart: { htmlLabels: false } })
-    const id = 'mmd' + ++mmId
-    try {
-      const { svg } = await mermaid.render(id, content)
-      apply(svg)
-    } catch (e) {
-      document.getElementById('d' + id)?.remove()
-      apply(`<pre class="mermaid-error">${esc(String(e?.message || e))}</pre>`)
-    }
-  })
+  const hit = mermaidCache.get((isDark() ? 'd' : 'l') + content)
+  if (hit) return hit
+  renderMermaid(content).then(apply)
   return undefined
 }
 
@@ -509,6 +535,9 @@ async function createEditor(markdown) {
   }
   const root = $('#wysiwyg')
   root.innerHTML = ''
+  // long documents: blocks out of view skip style, layout and paint (style.css). Set before the
+  // editor is built, or each of hundreds of code blocks measuring itself lays out the whole document
+  root.classList.toggle('cf-big', countBlocks(markdown) > 400)
   const c = new Crepe({
     root,
     defaultValue: markdown,
@@ -535,13 +564,43 @@ async function createEditor(markdown) {
   // write list bullets and rules the way this document already does (`-` unless it uses `*` or `+`)
   const style = markdownStyle(markdown)
   c.editor.config((ctx) => ctx.update(remarkStringifyOptionsCtx, (o) => ({ ...o, ...style })))
-  c.editor.config(calloutConfig).config(imageSizeConfig).use(imageSizeRemark).use(imageSizeProse).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(findPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
-  c.on((api) => api.markdownUpdated((_ctx, md) => c === crepe && onMarkdown(md)))
+  c.editor.config(calloutConfig).config(imageSizeConfig).use(imageSizeRemark).use(imageSizeProse).use(underlinePlugin).use(pageBreakPlugin).use(tocPlugin({ jump: (h) => jumpToHeading(h) })).use(listMarkers).use(footnotePlugin).use(htmlRendering({ resolveSrc })).use(frontmatterPlugin).use(calloutPlugins).use(findPlugin).use(writingProse).use(caretProse).use(autocorrectInput)
+  c.on((api) => api.updated((_ctx, doc, prev) => c === crepe && onDocUpdated(doc, prev)))
   await c.create()
   crepe = c
+  cleanDoc = null
   S.rendered = { text: markdown, md: c.getMarkdown() }
+  if (root.classList.contains('cf-big')) settleHeights(root)
   if (S.readonly) c.setReadonly(true)
   return c
+}
+
+/** About how many blocks Markdown text makes (paragraphs, list items, table rows count once per run). */
+function countBlocks(text) {
+  let n = 0
+  for (let i = text.indexOf('\n\n'); i >= 0 && n <= 400; i = text.indexOf('\n\n', i + 2)) n++
+  return n
+}
+
+/**
+ * Blocks of a long document that were never on screen have a guessed height (style.css), so the
+ * scroll bar would jump while scrolling. Once the app is idle, every block is laid out one time and
+ * keeps its real height from then on.
+ */
+function settleHeights(root) {
+  const go = () => {
+    if (!root.classList.contains('cf-big') || !root.isConnected) return
+    // the block at the top of the window stays where it is while the heights above it become real
+    const pm = root.querySelector('.ProseMirror')
+    const top = scroller.getBoundingClientRect().top
+    const at = pm && [...pm.children].find((b) => b.getBoundingClientRect().bottom > top)
+    const before = at?.getBoundingClientRect().top
+    root.classList.add('cf-measure-all')
+    if (at && before != null) scroller.scrollTop += at.getBoundingClientRect().top - before
+    requestAnimationFrame(() => root.classList.remove('cf-measure-all'))
+  }
+  if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 3000 })
+  else setTimeout(go, 500)
 }
 
 /** Bullet and rule characters a document uses, for the Markdown the rendered editor writes */
@@ -564,12 +623,26 @@ function wysiwygText() {
   return S.rendered && md === S.rendered.md ? S.rendered.text : md
 }
 
-function onMarkdown(md) {
-  setDirty(S.baseline === null ? true : md !== S.baseline)
+// The document as it was when last saved (or opened), once an edit shows it: going back to it
+// (undo) makes the file clean again without turning the whole document into Markdown
+let cleanDoc = null
+const BIG_DOC = 150000 // positions; above this, edits are compared as documents only
+
+/** After edits in the rendered editor (Milkdown calls this a moment after typing stops). */
+function onDocUpdated(doc, prev) {
+  if (!S.dirty && S.baseline !== null && !cleanDoc) cleanDoc = prev
+  if (cleanDoc && doc.eq(cleanDoc)) {
+    setDirty(false)
+    cleanDoc = doc
+  } else if (S.baseline === null || doc.content.size > BIG_DOC) setDirty(true)
+  // small documents: the Markdown decides, so an edit typed back the way it was is clean too
+  else setDirty(crepe.getMarkdown() !== S.baseline)
   scheduleAutoSave()
 }
 
 function setDirty(d) {
+  // saved or opened: the next edit notes the new clean document
+  if (!d) cleanDoc = null
   if (d === S.dirty) return
   S.dirty = d
   updateTitle()
@@ -644,12 +717,19 @@ function alignOffset(before, after, text) {
 /** Where the rendered editor's cursor is in `text`, the document's Markdown (an offset), or null. */
 function cursorToSource(text) {
   const v = view()
-  const mark = cursorMark(text)
-  if (!v || !mark || text.length > CURSOR_MAX) return null
+  if (!v) return null
   // a document that was only opened, never clicked into: the very start, as before
   if (!v.hasFocus() && v.state.selection.eq(Selection.atStart(v.state.doc))) return 0
+  return posToSource(text, v.state.selection.head)
+}
+
+/** Where the rendered editor's position `pos` is in `text`, the document's Markdown (an offset), or null. */
+function posToSource(text, pos) {
+  const v = view()
+  const mark = cursorMark(text)
+  if (!v || !mark || text.length > CURSOR_MAX) return null
   try {
-    const doc = v.state.tr.insertText(mark, v.state.selection.head).doc
+    const doc = v.state.tr.insertText(mark, pos).doc
     const md = crepe.editor.action((ctx) => ctx.get(serializerCtx)(doc))
     const at = md.indexOf(mark)
     return at < 0 ? null : alignOffset(md.slice(0, at), md.slice(at + mark.length), text)
@@ -698,17 +778,76 @@ function cursorY() {
   return top != null && top >= box.top && top <= box.bottom - 16 ? top - box.top : null
 }
 
-/** After a mode change: the cursor at the height `y` it had, or else the same part of the text as before. */
-function restoreView(y, ratio) {
-  if (y == null) return requestAnimationFrame(() => setScrollRatio(ratio))
+/**
+ * The place at the top of the window when the cursor is out of view, so the other mode can show
+ * the same lines: a position in the rendered editor, or an offset in source mode, and its height.
+ */
+function topAnchor() {
+  const box = scroller.getBoundingClientRect()
+  for (const dy of [12, 40, 90, 160]) {
+    const y = box.top + dy
+    try {
+      if (S.mode === 'source' && source) {
+        const cm = source.view
+        const at = cm.posAtCoords({ x: cm.contentDOM.getBoundingClientRect().left + 8, y }, false)
+        const top = cm.coordsAtPos(at)?.top
+        if (at != null && top != null) return { at, y: top - box.top }
+      } else if (view()) {
+        const v = view()
+        const r = v.dom.getBoundingClientRect()
+        const hit = v.posAtCoords({ left: r.left + Math.min(r.width / 2, 120), top: y })
+        if (!hit) continue
+        const top = v.coordsAtPos(hit.pos).top
+        return { at: hit.pos, y: top - box.top }
+      }
+    } catch {}
+  }
+  return null
+}
+
+/** The height in the window of an offset in source mode / a position in the rendered editor. */
+function placeTop(at) {
+  try {
+    if (S.mode === 'source' && source) {
+      const cm = source.view
+      return cm.coordsAtPos(at)?.top ?? cm.documentTop + cm.lineBlockAt(at).top
+    }
+    return view()?.coordsAtPos(at).top ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * After a mode change: what was at height `y` (the cursor, or the line at the top of the window)
+ * comes back to that height, or else the same part of the text as before. Images and diagrams in
+ * the rendered view load a moment later and change the height of what is above, so the place is
+ * kept until the page settles or the user scrolls, types or clicks.
+ */
+function restoreView(getTop, y, ratio) {
+  if (y == null || !getTop) return requestAnimationFrame(() => setScrollRatio(ratio))
   const place = () => {
-    const top = cursorTop()
+    const top = getTop()
     if (top != null) scroller.scrollTop += top - scroller.getBoundingClientRect().top - y
   }
+  let done = false
+  const ro = new ResizeObserver(() => !done && place())
+  const stop = () => {
+    if (done) return
+    done = true
+    ro.disconnect()
+    for (const ev of ['wheel', 'mousedown', 'keydown', 'touchstart']) window.removeEventListener(ev, stop, true)
+  }
+  for (const ev of ['wheel', 'mousedown', 'keydown', 'touchstart']) window.addEventListener(ev, stop, true)
+  setTimeout(stop, 2500)
   // twice: source mode lays out only the text near the window, so the first step is an estimate
   requestAnimationFrame(() => {
     place()
-    requestAnimationFrame(place)
+    requestAnimationFrame(() => {
+      place()
+      const content = S.mode === 'source' ? source?.view.contentDOM : view()?.dom
+      if (content && !done) ro.observe(content)
+    })
   })
 }
 
@@ -720,8 +859,11 @@ async function enterSource() {
   if (!S.dirty && crepe && S.baseline !== null && crepe.getMarkdown() !== S.baseline) setDirty(true)
   const text = S.dirty ? wysiwygText() : S.diskText
   const clean = !S.dirty
-  const y = cursorY()
+  let y = cursorY()
   const cursor = cursorToSource(text)
+  // the cursor is out of view: keep the line at the top of the window instead
+  const anchor = y == null || cursor == null ? topAnchor() : null
+  const anchorAt = anchor ? posToSource(text, anchor.at) : null
   if (crepe) {
     const old = crepe
     crepe = null
@@ -755,7 +897,8 @@ async function enterSource() {
   S.baseline = clean ? text : null
   source.view.contentDOM.spellcheck = false // CaretFlow checks spelling itself (writing.js)
   if (S.readonly) source.view.contentDOM.contentEditable = 'false'
-  restoreView(cursor == null ? null : y, ratio)
+  if (anchorAt != null) restoreView(() => placeTop(anchorAt), anchor.y, ratio)
+  else restoreView(cursor == null ? null : cursorTop, y, ratio)
   source.focus()
   afterModeSwitch()
 }
@@ -766,6 +909,7 @@ async function exitSource() {
   const clean = !S.dirty
   const y = cursorY()
   const at = source.cursorOffset()
+  const anchor = y == null ? topAnchor() : null
   source.destroy()
   source = null
   setVimMode(null)
@@ -788,7 +932,9 @@ async function exitSource() {
   // Crepe's list items note the selection while they are put on the page and set it again a frame
   // later, which would be the start of the document: put the cursor back after that
   requestAnimationFrame(putCursor)
-  restoreView(pos == null ? null : y, ratio)
+  const anchorPos = anchor ? cursorToRendered(text, anchor.at) : null
+  if (anchorPos != null) restoreView(() => placeTop(anchorPos), anchor.y, ratio)
+  else restoreView(pos == null ? null : cursorTop, y, ratio)
   afterModeSwitch()
 }
 
@@ -941,7 +1087,7 @@ async function writeDoc(path, text) {
   S.mtime = await invoke('write_text', { path, content: out })
   cloudSaved(path)
   S.diskText = text
-  // the rendered editor compares its own Markdown with the baseline (see onMarkdown)
+  // the rendered editor compares its own Markdown with the baseline (see onDocUpdated)
   S.baseline = S.mode === 'wysiwyg' && crepe ? crepe.getMarkdown() : text
   S.externalChange = false
   hideNotice()
@@ -1281,7 +1427,8 @@ function headingTop(h) {
   if (h.line != null) return source ? source.lineTop(h.line) + $('#source').offsetTop : 0
   const v = view()
   const dom = v?.nodeDOM(h.pos)
-  if (!dom) return 0
+  // a position from before an edit can point at text now: no element, no height
+  if (!dom?.getBoundingClientRect) return 0
   return dom.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop
 }
 
@@ -1292,11 +1439,38 @@ function jumpToHeading(h) {
   }
   const v = view()
   if (!v) return
-  scroller.scrollTo({ top: Math.max(0, headingTop(h) - 24), behavior: 'smooth' })
+  // the cursor first: giving the editor the focus may scroll, which would cut the glide short
   try {
     v.dispatch(v.state.tr.setSelection(TextSelection.create(v.state.doc, h.pos + 1 + v.state.doc.nodeAt(h.pos).content.size)))
-    v.focus()
+    v.focus({ preventScroll: true })
   } catch {}
+  glideTo(() => Math.max(0, headingTop(h) - 24))
+}
+
+/**
+ * Smooth scrolling to a place that may move on the way: diagrams and images above it get their
+ * height while the page scrolls past them. When the glide stops short, a last step goes the rest
+ * of the way (unless the user took over the scrolling).
+ */
+function glideTo(target, tries = 2) {
+  scroller.scrollTo({ top: target(), behavior: 'smooth' })
+  if (!tries) return
+  let over = false
+  const end = (check) => {
+    if (over) return
+    over = true
+    scroller.removeEventListener('scrollend', onEnd)
+    for (const ev of ['wheel', 'mousedown', 'keydown', 'touchstart']) window.removeEventListener(ev, cancel, true)
+    if (!check) return
+    const t = Math.min(target(), scroller.scrollHeight - scroller.clientHeight)
+    if (Math.abs(t - scroller.scrollTop) > 2) glideTo(target, tries - 1)
+  }
+  const onEnd = () => end(true)
+  const cancel = () => end(false)
+  scroller.addEventListener('scrollend', onEnd)
+  for (const ev of ['wheel', 'mousedown', 'keydown', 'touchstart']) window.addEventListener(ev, cancel, true)
+  // no scrollend (already there, or a webview without the event): look once a moment later
+  setTimeout(onEnd, 1200)
 }
 
 function updateActiveHeading() {
@@ -1900,6 +2074,24 @@ const MERMAID_TEMPLATES = [
   ['Quadrant', 'Two-axis comparison', 'quadrantChart\n  title Effort vs impact\n  x-axis Low effort --> High effort\n  y-axis Low impact --> High impact\n  quadrant-1 Plan\n  quadrant-2 Do now\n  quadrant-3 Skip\n  quadrant-4 Delegate\n  Feature A: [0.3, 0.8]\n  Feature B: [0.7, 0.6]\n  Feature C: [0.2, 0.2]'],
 ]
 
+/**
+ * Crepe's theme hides its selection toolbar with `.milkdown:has(.milkdown-link-preview[…])`: a
+ * :has() on the root of the whole document, so the browser checked it again on every change
+ * anywhere in it, about 100 ms per keystroke in a long file. style.css does the same with a
+ * sibling selector; the slow rule goes.
+ */
+function dropSlowCrepeRules() {
+  for (const sheet of document.styleSheets) {
+    let rules
+    try {
+      rules = sheet.cssRules
+    } catch {
+      continue
+    }
+    for (let i = rules.length - 1; i >= 0; i--) if (/^\.milkdown:has\(/.test(rules[i].selectorText || '')) sheet.deleteRule(i)
+  }
+}
+
 async function mermaidGallery() {
   const grid = el('div', { class: 'mm-grid' })
   let closeDialog
@@ -1923,9 +2115,7 @@ async function mermaidGallery() {
     onMount: (_b, done) => (closeDialog = done),
   })
   // render previews one by one (mermaid is loaded lazily)
-  mermaidP ||= import('mermaid').then((m) => m.default)
-  const mermaid = await mermaidP
-  mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'strict', flowchart: { htmlLabels: false } })
+  const mermaid = await loadMermaid()
   for (const c of cards) {
     if (c.i === 0 || $('#modal').hidden) continue
     try {
@@ -5526,6 +5716,23 @@ function wireUi() {
     },
     true,
   )
+  // The popup over a link shows its address: a click on it opens the link (web pages and mail in
+  // their apps, Markdown files in CaretFlow, headings by scrolling), like Ctrl+click in the text
+  document.addEventListener(
+    'click',
+    (e) => {
+      const a = e.target.closest('.milkdown-link-preview a.link-display')
+      if (!a) return
+      e.preventDefault()
+      e.stopPropagation()
+      openLink(a.getAttribute('href'))
+    },
+    true,
+  )
+  document.addEventListener('mouseover', (e) => {
+    const a = e.target.closest?.('.milkdown-link-preview a.link-display')
+    if (a && !a.title) a.title = 'Open link (or Ctrl+click it in the text)'
+  })
   // Never let the webview navigate
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a[href]')
@@ -5698,6 +5905,7 @@ async function boot() {
   if (IS_ANDROID) systemSeed = await invoke('android_system_color').catch(() => null)
   ripples()
   scaleImagesWithWidth($('#wysiwyg'))
+  dropSlowCrepeRules()
   watchCodeTools($('#wysiwyg'))
   watchDiagramButtons($('#wysiwyg'))
   watchImageTools($('#wysiwyg'))

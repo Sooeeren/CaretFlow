@@ -4,7 +4,43 @@
 
 const FULL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>'
 
+/** The end of an image's path (folder and file name), for the message on one that didn't load. */
+function shortSrc(img) {
+  let s = img.getAttribute('src') || ''
+  try {
+    // the view loads a converted URL (http://asset.localhost/C%3A%5C…): decode it back to the path
+    s = decodeURIComponent(s)
+  } catch {}
+  if (/^(https?:)?\/\//i.test(s) && !/asset\.localhost/i.test(s)) return s
+  return s.split(/[\\/]/).filter(Boolean).slice(-2).join('/')
+}
+
+// An image that can't load (a wrong path, a deleted file, no network) shows as a small box that
+// says so and keeps the place in the text, instead of an empty gap as tall as the last image
+function watchBrokenImages(root) {
+  root.addEventListener(
+    'error',
+    (e) => {
+      const img = e.target
+      const block = img?.tagName === 'IMG' && img.closest('.milkdown-image-block')
+      if (!block || !img.getAttribute('src')) return
+      block.classList.add('cf-img-broken')
+      img.parentElement.dataset.cfBroken = `Image not found: ${shortSrc(img)}`
+    },
+    true,
+  )
+  root.addEventListener(
+    'load',
+    (e) => {
+      const block = e.target?.tagName === 'IMG' && e.target.closest('.milkdown-image-block.cf-img-broken')
+      if (block) block.classList.remove('cf-img-broken')
+    },
+    true,
+  )
+}
+
 export function watchImageTools(root) {
+  watchBrokenImages(root)
   // Milkdown (Vue) draws the image block; the button is added on the first hover, and again
   // whenever a re-render dropped it
   root.addEventListener('mouseover', (e) => {

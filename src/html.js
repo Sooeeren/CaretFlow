@@ -93,7 +93,21 @@ class HtmlView {
     this.dom.contentEditable = 'false'
     this.dom.addEventListener('mousedown', (e) => {
       // Ctrl+click opens links (main.js); read-only shows, never edits
-      if (e.button !== 0 || e.ctrlKey || e.metaKey || !view.editable || this.ta) return
+      if (e.button !== 0 || e.ctrlKey || e.metaKey || this.ta) return
+      // a <details> summary line opens and closes its section (also read-only); a double click edits it
+      if (this.isDetailsHead()) {
+        e.preventDefault()
+        const pos = this.getPos()
+        if (pos != null) toggleDetails(view, pos - 1)
+        if (e.detail === 2 && view.editable) {
+          toggleDetails(view, pos - 1)
+          this.edit()
+        }
+        return
+      }
+      // a whole <details> in one piece of HTML: its summary opens and closes it, the browser's way
+      if (e.target.closest?.('details > summary')) return
+      if (!view.editable) return
       e.preventDefault()
       this.edit()
     })
@@ -108,8 +122,25 @@ class HtmlView {
     return $p.parent.type.name === 'paragraph' && $p.parent.childCount === 1
   }
 
+  isDetailsHead() {
+    return DETAILS_OPEN.test(this.node.attrs.value.trim()) && this.isBlock()
+  }
+
   render() {
     const raw = this.node.attrs.value
+    if (this.isDetailsHead()) {
+      // the summary with an arrow; the section's blocks follow as Markdown (wrapDecorations)
+      const summary = DETAILS_OPEN.exec(raw.trim())[2]
+      const frag = summary?.trim() ? renderHtml(summary, this.opts.resolveSrc) : null
+      const label = document.createElement('span')
+      label.className = 'cf-summary'
+      if (frag) label.append(frag)
+      else label.textContent = 'Details'
+      this.dom.className = 'cf-html block cf-details-summary'
+      this.dom.title = 'Click to open or close · double-click to edit the HTML'
+      this.dom.replaceChildren(label)
+      return
+    }
     const frag = renderHtml(raw, this.opts.resolveSrc)
     this.dom.className = 'cf-html' + (frag ? '' : ' raw') + (this.isBlock() ? ' block' : '')
     this.dom.title = frag ? 'HTML – click to edit' : ''
@@ -213,9 +244,13 @@ const enterKey = $prose(
 // README headers put Markdown between a lone `<div align="center">` line and a lone `</div>` line
 // (blank lines around both, so the Markdown inside is parsed). Markdown sees three separate things;
 // this pairs the two tag lines and gives the blocks between them the wrapper's alignment and text
-// styles, so they show as on GitHub and stay editable Markdown. The file is never changed.
+// styles, so they show as on GitHub and stay editable Markdown. The tag lines themselves are hidden;
+// source mode shows them, to edit or delete.
+// `<details><summary>…</summary>` … `</details>` works the same way: a click on the summary line
+// opens and closes the blocks up to `</details>`. The file is never changed.
 const WRAP_OPEN = /^<(div|center|p|section|article|span|font)\b([^>]*)>$/i
-const WRAP_CLOSE = /^<\/(div|center|p|section|article|span|font)\s*>$/i
+const WRAP_CLOSE = /^<\/(div|center|p|section|article|span|font|details)\s*>$/i
+export const DETAILS_OPEN = /^<details\b([^>]*)>\s*(?:<summary\b[^>]*>([\s\S]*?)<\/summary>)?$/i
 // only what changes how text looks: nothing that could move a block over the app
 const WRAP_STYLES = ['text-align', 'color', 'font-size', 'font-weight', 'font-style', 'font-family', 'line-height']
 
@@ -223,6 +258,8 @@ const WRAP_STYLES = ['text-align', 'color', 'font-size', 'font-weight', 'font-st
 function loneTag(node) {
   if (node.type.name !== 'paragraph' || node.childCount !== 1 || node.firstChild.type.name !== 'html') return null
   const v = node.firstChild.attrs.value.trim()
+  const det = DETAILS_OPEN.exec(v)
+  if (det) return { open: true, tag: 'details', css: '', details: true, startsOpen: /\bopen\b/i.test(det[1]) }
   const open = WRAP_OPEN.exec(v)
   if (open) return { open: true, tag: open[1].toLowerCase(), css: wrapCss(open[1], open[2]) }
   const close = WRAP_CLOSE.exec(v)
@@ -242,50 +279,102 @@ export function wrapCss(tag, attrs) {
   return out.join('; ')
 }
 
-/** Decorations: wrapper tag lines shown small, the blocks between them styled. */
-export function wrapDecorations(doc) {
-  const decos = []
-  const tagLine = (pos, node) => decos.push(Decoration.node(pos, pos + node.nodeSize, { class: 'cf-html-wrap-tag' }))
+/**
+ * The wrappers of a document, found again when the text changes: tag lines to hide, blocks a
+ * wrapper styles, and <details> sections (summary line, the blocks inside, the closing line).
+ */
+export function findWrappers(doc) {
+  const tags = []
+  const styled = []
+  const details = []
   const scan = (parent, base) => {
     const stack = []
     parent.forEach((child, offset) => {
       const pos = base + offset
       const t = loneTag(child)
       if (t?.open) {
-        stack.push({ ...t, inner: [] })
-        tagLine(pos, child)
+        stack.push({ ...t, pos, size: child.nodeSize, inner: [] })
         return
       }
       if (t && stack.length && stack[stack.length - 1].tag === t.tag) {
         const w = stack.pop()
-        tagLine(pos, child)
+        tags.push({ pos, size: child.nodeSize })
+        if (w.details) {
+          details.push({ pos: w.pos, startsOpen: w.startsOpen, body: w.inner.map(({ pos, size }) => ({ pos, size })) })
+          if (stack.length) stack[stack.length - 1].inner.push({ pos: w.pos, size: w.size, css: '' }, ...w.inner)
+          return
+        }
+        tags.push({ pos: w.pos, size: w.size })
         // one style per block: the outer wrapper's first, so an inner wrapper's own values win
         for (const b of w.inner) b.css = [w.css, b.css].filter(Boolean).join('; ')
         if (stack.length) stack[stack.length - 1].inner.push(...w.inner)
-        else for (const b of w.inner) if (b.css) decos.push(Decoration.node(b.pos, b.pos + b.size, { style: b.css }))
+        else for (const b of w.inner) if (b.css) styled.push(b)
         return
       }
       if (stack.length) stack[stack.length - 1].inner.push({ pos, size: child.nodeSize, css: '' })
       // Markdown inside quotes and lists can hold wrappers too
       if (!child.isTextblock && child.childCount && child.firstChild.isBlock) scan(child, pos + 1)
     })
+    // an opening line that is never closed styles nothing and stays a visible line of HTML
   }
   scan(doc, 0)
+  return { tags, styled, details }
+}
+
+/**
+ * Decorations: tag lines hidden (source mode shows them), wrapped blocks styled, the
+ * blocks of a closed <details> folded away. `open` holds the summary lines the user toggled.
+ */
+export function wrapDecorations(doc, w = findWrappers(doc), sel = null, open = new Set()) {
+  if (!w.tags.length && !w.styled.length && !w.details.length) return DecorationSet.empty
+  const decos = []
+  const touches = (a, b) => !!sel && sel.from <= b && sel.to >= a
+  for (const t of w.tags) decos.push(Decoration.node(t.pos, t.pos + t.size, { class: 'cf-html-wrap-tag' }))
+  for (const b of w.styled) decos.push(Decoration.node(b.pos, b.pos + b.size, { style: b.css }))
+  for (const d of w.details) {
+    const isOpen = open.has(d.pos) !== d.startsOpen
+    decos.push(Decoration.node(d.pos, d.pos + doc.nodeAt(d.pos).nodeSize, { class: 'cf-details-head' + (isOpen ? ' cf-details-open' : '') }))
+    if (isOpen || !d.body.length) continue
+    // closed, unless the cursor went inside (with the arrow keys): nobody should type unseen
+    const last = d.body[d.body.length - 1]
+    if (touches(d.body[0].pos, last.pos + last.size)) continue
+    for (const b of d.body) decos.push(Decoration.node(b.pos, b.pos + b.size, { class: 'cf-details-folded' }))
+  }
   return DecorationSet.create(doc, decos)
 }
 
 const wrapKey = new PluginKey('cf-html-wrap')
+const wrapState = (doc, sel, w, open) => ({ w, open, decos: wrapDecorations(doc, w, sel, open) })
 const wrapPlugin = $prose(
   () =>
     new Plugin({
       key: wrapKey,
       state: {
-        init: (_, { doc }) => wrapDecorations(doc),
-        apply: (tr, old) => (tr.docChanged ? wrapDecorations(tr.doc) : old),
+        init: (_, { doc, selection }) => wrapState(doc, selection, findWrappers(doc), new Set()),
+        apply: (tr, old, _before, state) => {
+          const toggle = tr.getMeta(wrapKey)
+          if (!tr.docChanged && !tr.selectionSet && toggle == null) return old
+          const w = tr.docChanged ? findWrappers(state.doc) : old.w
+          // most documents have no wrappers: nothing to redo when only the cursor moves
+          if (!tr.docChanged && toggle == null && !w.tags.length && !w.details.length) return old
+          let open = old.open
+          if (tr.docChanged) open = new Set([...open].map((p) => tr.mapping.map(p)))
+          if (toggle != null) {
+            open = new Set(open)
+            if (open.has(toggle)) open.delete(toggle)
+            else open.add(toggle)
+          }
+          return wrapState(state.doc, state.selection, w, open)
+        },
       },
-      props: { decorations: (state) => wrapKey.getState(state) },
+      props: { decorations: (state) => wrapKey.getState(state).decos },
     }),
 )
+
+/** Opens or closes the <details> section whose summary line is the paragraph at `pos`. */
+function toggleDetails(view, pos) {
+  view.dispatch(view.state.tr.setMeta(wrapKey, pos))
+}
 
 /** The plugins for Crepe: `editor.use(htmlRendering({ resolveSrc }))`. */
 export function htmlRendering(opts = {}) {

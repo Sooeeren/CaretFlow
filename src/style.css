@@ -258,6 +258,15 @@ body.cf-hide-captions .milkdown .milkdown-image-block:not(.cf-caption-open) > .c
 /* full screen: a button beside the caption button, and the viewer */
 .milkdown .milkdown-image-block .image-wrapper .operation > .cf-img-full { display: grid; place-items: center; }
 .milkdown .milkdown-image-block .image-wrapper .operation > .cf-img-full svg { width: 20px; height: 20px; }
+/* an image that didn't load (imageview.js): a small box with its path in place of an empty gap */
+.milkdown .milkdown-image-block.cf-img-broken > .image-wrapper { display: block; width: auto; }
+.milkdown .milkdown-image-block.cf-img-broken > .image-wrapper img { display: none; }
+.milkdown .milkdown-image-block.cf-img-broken > .image-wrapper .image-resize-handle { display: none; }
+.milkdown .milkdown-image-block.cf-img-broken > .image-wrapper::after {
+  content: '🖼  ' attr(data-cf-broken);
+  display: inline-block; padding: 10px 14px; border: 1px dashed var(--border); border-radius: 6px;
+  color: var(--muted); background: var(--code-bg); font: 0.85em/1.4 var(--font-ui); overflow-wrap: anywhere;
+}
 .milkdown .milkdown-image-block .image-wrapper .operation > .operation-item:hover { opacity: 0.85; }
 .cf-img-viewer { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: rgba(8, 10, 14, 0.94); outline: none; cursor: zoom-out; }
 .cf-img-viewer > img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
@@ -437,7 +446,8 @@ body.cf-hide-captions .milkdown .milkdown-image-block:not(.cf-caption-open) > .c
 #wysiwyg .milkdown .ProseMirror {
   max-width: calc(var(--doc-width) + 128px);
   margin: 0 auto;
-  padding: 44px 64px 45vh;
+  /* room below the end, so a heading near the end can still scroll up to the top (outline, [TOC], links) */
+  padding: 44px 64px max(45vh, calc(100vh - 160px));
   color: var(--fg);
   caret-color: var(--accent);
 }
@@ -451,6 +461,16 @@ body.cf-hide-captions .milkdown .milkdown-image-block:not(.cf-caption-open) > .c
 .nested-lists #wysiwyg .milkdown .ProseMirror ol ol { list-style-type: lower-alpha; }
 .nested-lists #wysiwyg .milkdown .ProseMirror ol ol ol { list-style-type: lower-roman; }
 .nested-lists #wysiwyg .milkdown .ProseMirror :is(ul, ol) :is(ul, ol) li::marker { color: var(--muted); }
+/* Milkdown draws list markers itself (a label beside each item): sub-point numbers come as letters
+   and roman numerals from listmarkers.js, and the markers of sub-points are softer */
+.nested-lists #wysiwyg .milkdown-list-item-block[data-cf-marker] > li > .label-wrapper > .label.ordered { display: none; }
+.nested-lists #wysiwyg .milkdown-list-item-block[data-cf-marker] > li > .label-wrapper::before { content: var(--cf-marker); font-size: 0.92em; white-space: nowrap; line-height: calc(1em * var(--doc-lh)); }
+/* the marker sits on the first line of its text: a box as tall as one line, below the same top
+   margin as the item's paragraph (Crepe's fixed 32px box put it above or below the text), and wide
+   numbers ("10.", "viii.") grow to the left instead of pushing the text over */
+#wysiwyg .milkdown .milkdown-list-item-block li .label-wrapper { height: calc(1em * var(--doc-lh)); margin-top: 0.2em; width: 24px; justify-content: flex-end; flex: none; }
+#wysiwyg .milkdown .milkdown-list-item-block li .label-wrapper .label { height: auto; padding: 0; width: auto; white-space: nowrap; line-height: calc(1em * var(--doc-lh)); }
+#wysiwyg .milkdown .milkdown-list-item-block li .label-wrapper .label.ordered { font-size: 0.92em; font-variant-numeric: tabular-nums; }
 #wysiwyg .milkdown .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--doc-font);
   font-weight: 650;
@@ -494,6 +514,36 @@ body.cf-hide-captions .milkdown .milkdown-image-block:not(.cf-caption-open) > .c
 #wysiwyg .milkdown .milkdown-code-block .preview :is(foreignObject, svg) :is(p, div, span) { margin: 0; padding: 0; line-height: 1.5; }
 #wysiwyg .milkdown .ProseMirror ::selection { background: var(--sel); }
 #wysiwyg [data-placeholder]::before { color: var(--muted); }
+/* the small editor of inline math is a ProseMirror too: none of the document's page padding (its
+   45vh bottom made it a huge box), and above the tools of the blocks below it */
+#wysiwyg .milkdown .milkdown-latex-inline-edit { z-index: 70; border: 1px solid var(--border); }
+#wysiwyg .milkdown .milkdown-latex-inline-edit .ProseMirror { padding: 4px 0; margin: 0; max-width: min(520px, 70vw); min-width: 174px; white-space: pre-wrap; }
+#wysiwyg .milkdown .milkdown-latex-inline-edit .container { align-items: center; }
+
+/* footnotes (footnotes.js): references as small numbers in the order they appear, notes below a rule */
+#wysiwyg .ProseMirror sup[data-type='footnote_reference'] { font-size: 0; cursor: pointer; }
+#wysiwyg .ProseMirror sup[data-type='footnote_reference']::after { content: var(--cf-fn); font-size: 0.75rem; color: var(--link); padding: 0 1px; vertical-align: super; line-height: 0; }
+#wysiwyg .ProseMirror sup[data-type='footnote_reference']:hover::after { text-decoration: underline; }
+#wysiwyg .ProseMirror dl[data-type='footnote_definition'] { display: flex; gap: 8px; margin: 0.3em 0; font-size: 0.92em; color: var(--muted); }
+#wysiwyg .ProseMirror dl[data-type='footnote_definition'].cf-fn-first { margin-top: 1.6em; padding-top: 0.8em; border-top: 1px solid var(--border); }
+#wysiwyg .ProseMirror dl[data-type='footnote_definition'] > dt { flex: none; min-width: 1.6em; font-size: 0; cursor: pointer; line-height: calc(0.92rem * var(--doc-lh)); }
+#wysiwyg .ProseMirror dl[data-type='footnote_definition'] > dt::before { content: var(--cf-fn) '.'; font-size: 0.85rem; color: var(--link); font-variant-numeric: tabular-nums; }
+#wysiwyg .ProseMirror dl[data-type='footnote_definition'] > dd { margin: 0; flex: 1; min-width: 0; }
+#wysiwyg .ProseMirror dl[data-type='footnote_definition'] > dd > p { margin: 0; }
+
+/* long documents (main.js sets .cf-big): blocks out of view are not laid out or painted, which keeps
+   typing fast with thousands of blocks; each keeps the height it had when last shown */
+#wysiwyg.cf-big .milkdown .ProseMirror > * { content-visibility: auto; contain-intrinsic-size: auto 2.2em; }
+#wysiwyg.cf-big .milkdown .ProseMirror > .milkdown-code-block,
+#wysiwyg.cf-big .milkdown .ProseMirror > .milkdown-table-block { contain-intrinsic-size: auto 6em; }
+/* for a moment after opening (main.js) or to count lines (linenumbers.js): every block laid out once,
+   so each remembers its real height and the scroll bar fits the document */
+#wysiwyg.cf-big.cf-measure-all .milkdown .ProseMirror > * { content-visibility: visible; }
+
+/* the selection toolbar steps aside while a link's popup shows (Crepe does this with a :has() on
+   the editor's root, which made every keystroke restyle the whole document; main.js drops it) */
+#wysiwyg .milkdown .milkdown-link-preview[data-show='true'] ~ .milkdown-toolbar,
+#wysiwyg .milkdown .milkdown-link-edit[data-show='true'] ~ .milkdown-toolbar { display: none; }
 
 /* find hits */
 .find-hit { background: var(--hit); border-radius: 2px; color: inherit; }
@@ -867,17 +917,23 @@ body.cf-hide-captions .milkdown .milkdown-image-block:not(.cf-caption-open) > .c
 }
 #wysiwyg .milkdown .milkdown-code-block:hover .tools :is(.language-button, .tools-button-group),
 #wysiwyg .milkdown .milkdown-code-block:focus-within .tools :is(.language-button, .tools-button-group),
-#wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) :is(.language-button, .tools-button-group) { opacity: 1; }
+#wysiwyg .milkdown .milkdown-code-block .tools .language-button[data-expanded='true'],
+#wysiwyg .milkdown .milkdown-code-block .tools .language-button[data-expanded='true'] ~ .tools-button-group { opacity: 1; }
 #wysiwyg .milkdown .milkdown-code-block:hover .tools .tools-button-group,
 #wysiwyg .milkdown .milkdown-code-block:focus-within .tools .tools-button-group,
-#wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) .tools-button-group { max-width: 80px; margin-left: 0; }
+#wysiwyg .milkdown .milkdown-code-block .tools .language-button[data-expanded='true'] ~ .tools-button-group { max-width: 260px; margin-left: 0; }
 #wysiwyg .milkdown .milkdown-code-block .tools .language-button { margin: 0; background: var(--bg); border: 1px solid var(--border); }
-#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button { opacity: 1; background: var(--bg); border: 1px solid var(--border); }
+#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button { opacity: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; height: 26px; box-sizing: border-box; padding: 0 9px; line-height: 1; }
+/* Copy, and Edit / Hide on diagrams and math: separate buttons of one height, icon and word on one line */
+#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group { gap: 4px; }
+#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button .milkdown-icon { display: inline-flex; align-items: center; gap: 4px; height: 100%; }
+#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button svg { display: block; flex: none; }
+#wysiwyg .milkdown .milkdown-code-block .tools .tools-button-group button:hover { border-color: var(--accent); }
 /* the list opens under the button, its right edge on the tools' right edge, so it grows into the
    block instead of out of the window (Milkdown sets left inline; main.js nudges it if needed) */
 #wysiwyg .milkdown .milkdown-code-block .language-picker { left: auto !important; right: 0; padding-top: 6px; }
 /* the open language list lies over every other block and its tools (all have z-index 3) */
-#wysiwyg .milkdown .milkdown-code-block .tools:has(.list-wrapper) { z-index: 60; }
+#wysiwyg .milkdown .milkdown-code-block:focus-within .tools { z-index: 60; }
 /* the tools never cover code (codetools.js): the first line ends before them, or they get a row
    of their own above a long first line; Copy shows only its icon, so they take less room */
 #wysiwyg .milkdown .milkdown-code-block .cm-line:first-child { padding-right: var(--cf-tools-w, 0px); }
@@ -1026,6 +1082,10 @@ body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space
   cursor: pointer;
   white-space: normal; /* ProseMirror keeps every space; HTML collapses them */
 }
+/* inline HTML (<kbd>, <sub>, <mark>) flows with the text on its baseline: an inline-block with layout
+   containment has no baseline of its own, so its bottom sat on the line's baseline and the whole tag
+   floated up (H<sub>2</sub>O looked like H²O). Inline boxes can't hold fixed/sticky positions anyway (html.js drops them) */
+#wysiwyg .cf-html:not(.block, .editing) { display: inline; contain: none; }
 #wysiwyg .cf-html.block { display: block; contain: none; position: relative; } /* lets align="right" images float beside the next paragraph, like GitHub; html.js drops fixed/sticky positions */
 /* the surrounding paragraph already spaces the block: no margins of its own at the edges
    (beats Crepe's paragraph margins), and no empty lines for ProseMirror's separators and trailing <br> (its CSS forces them inline) */
@@ -1044,9 +1104,17 @@ body.wrap-code #wysiwyg .milkdown .milkdown-code-block .cm-content { white-space
 #wysiwyg .cf-html.editing { cursor: text; box-shadow: none; contain: none; }
 /* the lone `<div align="center">` / `</div>` lines around Markdown (html.js wrapDecorations): kept
    visible to edit or delete, but small and quiet, since the blocks between them show their effect */
+#wysiwyg .ProseMirror p.cf-html-wrap-tag { display: none; }
 #wysiwyg .ProseMirror p.cf-html-wrap-tag { margin-top: 0; margin-bottom: 0; line-height: 1.2; }
 #wysiwyg .cf-html-wrap-tag .cf-html.raw { font-size: 0.72em; opacity: 0.55; }
 #wysiwyg .cf-html-wrap-tag .cf-html.raw:hover { opacity: 1; }
+/* <details> split over Markdown blocks (html.js): the summary line opens and closes the blocks up to </details> */
+#wysiwyg .ProseMirror .cf-details-folded { display: none; }
+#wysiwyg .cf-html.cf-details-summary { cursor: pointer; user-select: none; }
+#wysiwyg .cf-details-summary .cf-summary { display: inline-flex; align-items: baseline; gap: 0.5em; }
+#wysiwyg .cf-details-summary .cf-summary::before { content: ''; flex: none; width: 0; height: 0; border-style: solid; border-width: 0.32em 0 0.32em 0.52em; border-color: transparent transparent transparent currentColor; transform: translateY(-0.08em); transition: transform 0.12s; }
+#wysiwyg .cf-details-open .cf-details-summary .cf-summary::before { transform: translateY(-0.08em) rotate(90deg); }
+#wysiwyg .cf-details-summary .cf-summary > :first-child { margin: 0; }
 #wysiwyg .cf-html-src {
   display: block;
   width: 100%;

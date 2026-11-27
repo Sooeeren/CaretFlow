@@ -53,6 +53,18 @@ After the wrapper.
 Never closed.
 `
 
+const DETAILS_DOC = `# Details
+
+<details>
+<summary>Click to expand</summary>
+
+Hidden **Markdown** inside.
+
+</details>
+
+After.
+`
+
 let saved = null
 /** What Ctrl+S writes to disk */
 async function md(page) {
@@ -134,6 +146,39 @@ export const scenes = {
       summary()
     },
   },
+  // <details> around Markdown: the summary line opens and closes the blocks up to </details>
+  'html-details': {
+    open: 'Welcome.md',
+    settings: { theme: 'paper', sidebar: false },
+    setup: (page) => stubBackend(page, { read_text: () => DETAILS_DOC, write_text: ({ content }) => void (saved = content) }),
+    async run(page) {
+      await wait(600)
+      const state = () =>
+        run(page, () => {
+          const pm = document.querySelector('#wysiwyg .ProseMirror')
+          const p = [...pm.querySelectorAll('p')].find((p) => p.textContent.includes('Hidden'))
+          const close = [...pm.querySelectorAll('p')].find((p) => p.textContent.trim() === '</details>')
+          return { body: getComputedStyle(p).display, close: getComputedStyle(close).display, summary: pm.querySelector('.cf-details-summary')?.textContent }
+        })
+      let r = await state()
+      check('closed at first: the blocks inside and </details> are hidden', r.body === 'none' && r.close === 'none' && r.summary === 'Click to expand', JSON.stringify(r))
+      const box = await page.locator('#wysiwyg .cf-details-summary').boundingBox()
+      await page.mouse.click(box.x + 20, box.y + box.height / 2)
+      await wait(300)
+      r = await state()
+      check('a click on the summary opens it', r.body !== 'none' && r.close === 'none', JSON.stringify(r))
+      await page.mouse.click(box.x + 20, box.y + box.height / 2)
+      await wait(300)
+      r = await state()
+      check('another click closes it again', r.body === 'none', JSON.stringify(r))
+      await page.mouse.dblclick(box.x + 20, box.y + box.height / 2)
+      await wait(300)
+      check('a double click edits the HTML', await run(page, () => !!document.querySelector('#wysiwyg .cf-html-src')))
+      await page.keyboard.press('Escape')
+      check('saving keeps the file as written', (await md(page)) === DETAILS_DOC)
+      summary()
+    },
+  },
   // a README header: Markdown between a lone `<div align="center">` and `</div>` shows centered
   'html-wrap': {
     open: 'Welcome.md',
@@ -147,7 +192,9 @@ export const scenes = {
         const para = (t) => [...pm.querySelectorAll('p')].find((p) => p.textContent.includes(t))
         return {
           tags: pm.querySelectorAll('p.cf-html-wrap-tag').length,
-          tagSize: parseFloat(getComputedStyle(pm.querySelector('p.cf-html-wrap-tag .cf-html')).fontSize) < parseFloat(getComputedStyle(para('Centered')).fontSize),
+          hidden: [...pm.querySelectorAll('p.cf-html-wrap-tag')].every((p) => getComputedStyle(p).display === 'none'),
+          // an opening line that is never closed stays visible: nothing shows what it does
+          unclosedTag: [...pm.querySelectorAll('p')].filter((p) => p.textContent.trim() === '<div align="center">').some((p) => getComputedStyle(p).display !== 'none'),
           h1: align('h1'),
           quote: align('blockquote'),
           centered: getComputedStyle(para('Centered')).textAlign,
@@ -158,7 +205,7 @@ export const scenes = {
           leak: [...pm.querySelectorAll('[style]')].some((e) => /position|display/.test(e.getAttribute('style'))),
         }
       })
-      check('the tag lines are shown small', r.tags === 7 && r.tagSize, JSON.stringify(r))
+      check('the tag lines are hidden (source mode shows them)', r.tags === 6 && r.hidden && r.unclosedTag, JSON.stringify(r))
       check('heading, quote and paragraph between them are centered', r.h1 === 'center' && r.quote === 'center' && r.centered === 'center')
       check('an inner wrapper wins (align="right" and its color)', r.right === 'right' && r.rightColor === 'rgb(255, 0, 0)', r.right + ' ' + r.rightColor)
       check('blocks after the closing tag are not centered', r.after !== 'center', r.after)

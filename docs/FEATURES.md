@@ -83,6 +83,10 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
 
 ## Blocks and formatting
 
+- **Footnotes** (`[^1]` and `[^1]: …`) are numbered in the order they appear, also named ones
+  (`[^note]`), with the notes below a rule; a click on a number goes to its note and back.
+- **Links**: `Ctrl+Click` opens a link, and so does a click on the address in the popup that shows
+  when the cursor is in a link.
 - **Sub-points** (nested lists) get hollow or square bullets, lettered or roman numbers, a softer
   marker color and slightly smaller text. Turn it off in Preferences → Editing → Style sub-points
   differently.
@@ -115,7 +119,8 @@ likewise `--export-odt`, `--export-epub`, `--export-tex`, `--export-txt` (with t
 - **HTML** (README headers, `<kbd>`, `<sub>`, `<details>`, `<img width=…>`) is shown rendered.
   Markdown between a `<div align="center">` line and its `</div>` line (or `<center>`, or a wrapper
   with a `style="text-align: …; color: …"`) shows centered or styled and stays editable Markdown; the
-  two tag lines are shown small. Click
+  two tag lines are hidden (source mode shows them). `<details><summary>…</summary>` … `</details>` around Markdown opens and closes with a click
+  on the summary (a double click edits it). Click
   it, or press `Enter` when it is selected, to edit the HTML; `Ctrl+Enter` or clicking elsewhere
   finishes, `Escape` cancels. Scripts, event handlers, forms and frames are removed before showing,
   and the file keeps the HTML exactly as written.
@@ -131,6 +136,8 @@ folder (next to the document or a full path; `${filename}` stands for the docume
 its original path, or embed it in the document as Base64. Two switches go with it: copy images that
 already sit in the document's folder too, and start relative paths with `./`. Untitled documents
 embed images until they are saved.
+
+An image that can't be loaded shows a small box with its path instead of an empty gap.
 
 Hover an image for its **full-screen** button (or right-click → View Full Screen): the image fills
 the screen, the arrow keys go through the document's images, and `Esc` closes it. An image's

@@ -249,4 +249,4 @@ export const TOC_CSS = `
 .toc-title{font-weight:650;margin:0 0 .3em;color:var(--fg-strong)}
 .toc ul{list-style:none;margin:0;padding:0}.toc li{margin:.15em 0}
 .toc-l2{padding-left:1.2em}.toc-l3{padding-left:2.4em}.toc-l4{padding-left:3.6em}.toc-l5{padding-left:4.8em}.toc-l6{padding-left:6em}
-@media print{.toc{break-inside:avoid}}`
+.toc{box-decoration-break:clone;-webkit-box-decoration-break:clone}.toc li,.toc-title{break-inside:avoid}.toc-title{break-after:avoid}`

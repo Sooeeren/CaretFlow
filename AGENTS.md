@@ -81,6 +81,7 @@ These decide most design questions:
 | `src/imagesize.js` | Image size: right-click sizes and Format → Image Size, saved as Typora's `<img style="zoom:50%">` or a pixel `width`; keeps the alt text Milkdown's image block dropped |
 | `src/imageview.js` | Images in the rendered view: full-screen button and viewer, the caption (alt text) hidden unless shown (`settings.showAltText`) or being edited |
 | `src/toc.js` | Table of contents: a `[TOC]` line shown as a live heading list, linked in exports (`renderToc`) |
+| `src/listmarkers.js`, `src/footnotes.js` | Lettered / roman numbers of nested ordered lists (Milkdown draws list markers itself); footnotes numbered in order, click to jump between reference and note |
 | `src/style.css` | Themes (CSS variables per `data-theme`) and all styles |
 | `src/guide.md` | Help → Markdown Guide (shown in the app) |
 | `src/welcome.md` | Welcome page, shown on the very first start and from Help → Welcome Page |
@@ -217,3 +218,4 @@ Add a row when you finish a piece of work (newest last). Keep it short.
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | New app logo (interlocking orbits, all desktop and Android sizes); AGENTS.md: pull from GitHub before starting |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | Diagram Editor extension: Mermaid code beside its drawing, flowcharts edited on the drawing (add, drag to connect, rename, shapes, links, direction), Diagram button on Mermaid blocks, `Ctrl+Alt+D` (scripts/checks/diagram.mjs) |
 | Claude Opus 5.5 | Claude Code | 2026-11-26 | 0.14.1 release: version bump, notes, draft, PKGBUILD checksum; website rebuilt with the new logo |
+| Claude Opus 5.5 | Claude Code | 2026-11-27 | Benchmark document (benchmark/); fixes from it: TOC page breaks and jumps, view kept on mode switch, list markers, math buttons and inline editor, Mermaid diagrams cached, links open from the popup, footnotes, broken images, inline HTML baseline, `<details>`, hidden wrapper tags, LanguageTool per-paragraph language, long-document speed |

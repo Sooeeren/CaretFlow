@@ -77,7 +77,7 @@ let engineState = 'idle' // 'loading' | 'ready' | 'error'
 let engineError = ''
 let engineKey = '' // engine options the current engine was made with
 const cache = new Map() // block text -> issues
-const CACHE_MAX = 5000
+const CACHE_MAX = 20000
 
 /** The LanguageTool server to use, or null while the one on this computer (an extension) is starting. */
 function ltServer() {
@@ -197,6 +197,21 @@ function routeLanguages(texts, declared) {
   })
 }
 
+/**
+ * LanguageTool with a fixed language (English, say) checks a German paragraph as English mistakes:
+ * a paragraph clearly in another language goes as 'lt:<language>' and is checked in that language.
+ * With "auto", LanguageTool tells the languages apart itself.
+ */
+function ltLanguages(texts) {
+  const fixed = (H.settings.ltLanguage || 'auto').toLowerCase()
+  if (fixed === 'auto') return texts.map(() => 'lt')
+  const base = fixed.split(/[-_]/)[0]
+  return texts.map((t) => {
+    const l = detect(t)
+    return l && l !== base ? 'lt:' + l : 'lt'
+  })
+}
+
 async function dictFiles(id) {
   const m = await import('./dictionaries.js')
   return m.readDict(H.invoke, id)
@@ -204,10 +219,11 @@ async function dictFiles(id) {
 
 async function checkWith(lang, texts) {
   if (lang.startsWith('none:')) return texts.map(() => [])
-  if (lang === 'en' || lang === 'lt') {
+  if (lang === 'en' || lang === 'lt' || lang.startsWith('lt:')) {
     const eng = await getEngine()
     await syncWords(eng)
-    return eng.check(texts)
+    // LanguageTool's own detection picks the variant (de-DE, pt-PT …) for these paragraphs
+    return lang.startsWith('lt:') ? eng.check(texts, 'auto') : eng.check(texts)
   }
   if (!engineMod) await getEngine()
   hunspell ||= engineMod.createHunspell()
@@ -217,11 +233,15 @@ async function checkWith(lang, texts) {
   return hunspell.check(texts, lang, { mask: engineMod.maskPattern({ ignoreUpper: s.wcIgnoreUpper !== false, ignoreDigits: s.wcIgnoreDigits !== false }), name: d?.name })
 }
 
-async function checkTexts(texts, declared) {
+async function checkTexts(texts, declared, { cachedOnly = false } = {}) {
   if (!harperOn()) return texts.map(() => [])
+  if (cachedOnly) {
+    const langs = usingLt() ? ltLanguages(texts) : routeLanguages(texts, declared)
+    return texts.map((t, i) => cache.get(langs[i] + '\u0001' + t) || [])
+  }
   missingLangs.clear()
   if (!enginePromise) await getEngine().catch(() => {})
-  const langs = usingLt() ? texts.map(() => 'lt') : routeLanguages(texts, declared)
+  const langs = usingLt() ? ltLanguages(texts) : routeLanguages(texts, declared)
   const key = (i) => langs[i] + '\u0001' + texts[i]
   const missing = new Map() // lang -> [text]
   texts.forEach((t, i) => {
@@ -258,8 +278,11 @@ let folder = { words: [], file: null }
 let docMeta = { words: [], lang: null }
 let wordsSig = '' // the words Harper was given last
 
+// names every CaretFlow document may use without a red line
+const BUILT_IN_WORDS = ['CaretFlow']
+
 function allWords() {
-  return [...new Set([...(H.settings.wcDictionary || []), ...folder.words, ...docMeta.words])]
+  return [...new Set([...BUILT_IN_WORDS, ...(H.settings.wcDictionary || []), ...folder.words, ...docMeta.words])]
 }
 
 /** Harper learns the words too: they come up as suggestions and stop confusing its grammar rules. */
@@ -372,11 +395,12 @@ function keep(iss, words) {
 }
 
 /** Issues for blocks: [{ text, at(i) -> doc position, masks }] → absolute, filtered issues. */
-async function issuesFor(blocks, ctx) {
+async function issuesFor(blocks, ctx, { first = false, cachedOnly = false } = {}) {
   // other sources first: they must see the document as it is now, not after the spelling
-  // checker has loaded (AI Writing Help tells opened text from new writing this way)
-  const extras = sources.filter((src) => src.active()).map((src) => src.issues(blocks, ctx))
-  const results = await checkTexts(blocks.map((b) => b.text), docMeta.lang)
+  // checker has loaded (AI Writing Help tells opened text from new writing this way); a first look
+  // at the part in view leaves them out (they get the whole document a moment later)
+  const extras = first ? [] : sources.filter((src) => src.active()).map((src) => src.issues(blocks, ctx))
+  const results = await checkTexts(blocks.map((b) => b.text), docMeta.lang, { cachedOnly })
   for (const extra of extras) {
     extra.forEach((list, i) => {
       // the spelling checker already marks exactly these words: one underline is enough
@@ -592,6 +616,20 @@ async function run() {
     const snap = ad.snapshot()
     const blocks = ad.blocks()
     docMeta = readDocMeta(ad.frontMatter())
+    // a long document: the paragraphs in view first, so their underlines show at once, and the
+    // rest (checked one paragraph at a time) follows; what was checked before shows meanwhile
+    const near = blocks.length > 80 ? ad.nearView?.(blocks) : null
+    if (near && near.size < blocks.length) {
+      const ctx = checkContext(ad, blocks)
+      const seen = await issuesFor(blocks.filter((_, i) => near.has(i)), ctx, { first: true })
+      if (!on() || !ad.alive() || ad.snapshot() !== snap) {
+        again = true
+        return
+      }
+      const known = await issuesFor(blocks.filter((_, i) => !near.has(i)), ctx, { first: true, cachedOnly: true })
+      const now = [...seen, ...known].sort((a, b) => a.from - b.from)
+      if (!sameIssues(now, ad.issues())) ad.setIssues(now)
+    }
     const found = await issuesFor(blocks, checkContext(ad, blocks))
     if (!on() || !ad.alive()) return
     if (ad.snapshot() !== snap) {
@@ -722,6 +760,26 @@ function pmAdapter(v) {
     alive: () => !v.isDestroyed && H.pmView() === v,
     snapshot: () => v.state.doc,
     blocks: () => pmBlocks(v.state.doc),
+    /** The blocks in and around the window (indices), for checking those first. */
+    nearView(blocks) {
+      const sc = v.dom.closest('#scroller')
+      if (!sc) return null
+      const r = sc.getBoundingClientRect()
+      const x = v.dom.getBoundingClientRect().left + Math.min(120, v.dom.clientWidth / 2)
+      const top = v.posAtCoords({ left: x, top: r.top + 4 })?.pos
+      const bottom = v.posAtCoords({ left: x, top: r.bottom - 4 })?.pos
+      if (top == null || bottom == null) return null
+      const near = new Set()
+      let lo = blocks.findIndex((b) => b.at(b.text.length) >= top)
+      if (lo < 0) return null
+      let hi = lo
+      while (hi + 1 < blocks.length && blocks[hi + 1].at(0) <= bottom) hi++
+      // a screen's worth above and below as well
+      lo = Math.max(0, lo - 30)
+      hi = Math.min(blocks.length - 1, hi + 30)
+      for (let i = lo; i <= hi; i++) near.add(i)
+      return near
+    },
     setIssues: (list) => v.dispatch(v.state.tr.setMeta(pmKey, { issues: list }).setMeta('addToHistory', false)),
     issues: () => pmKey.getState(v.state)?.issues || [],
     textAt: (a, b) => v.state.doc.textBetween(a, b, '\n', '￼'),
