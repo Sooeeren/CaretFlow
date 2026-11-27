@@ -1,6 +1,6 @@
 [package]
 name = "caretflow"
-version = "0.14.1"
+version = "0.15.0"
 description = "CaretFlow - the all-in-one Markdown editor: fast, minimal, complete"
 authors = ["Sooeeren"]
 homepage = "https://caretflow.vercel.app/"
