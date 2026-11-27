@@ -571,6 +571,9 @@ async function createEditor(markdown) {
   cleanDoc = null
   S.rendered = { text: markdown, md: c.getMarkdown() }
   if (root.classList.contains('cf-big')) settleHeights(root)
+  // the Diagram buttons go onto code blocks as edits touch them (watchDiagramButtons): a new
+  // document's blocks get theirs once it is on the page
+  if (extOn('diagram')) requestAnimationFrame(diagramButtons)
   if (S.readonly) c.setReadonly(true)
   return c
 }
@@ -3669,31 +3672,50 @@ function editDiagramBlock(block) {
 }
 
 // a "Diagram" button on every Mermaid block in the rendered view while the extension is installed
-let dgQueued = false
+/** Adds or removes the button of one code block (Milkdown draws its tools, so it can drop the button again). */
+function diagramButton(b, on = extOn('diagram') && !S.readonly) {
+  const tools = b.querySelector(':scope > .tools')
+  if (!tools) return
+  const mm = /^mermaid\b/i.test(tools.querySelector('.language-button')?.textContent.trim() || '')
+  const btn = tools.querySelector('.cf-dg-btn')
+  if (on && mm && !btn) {
+    const nb = el('button', { type: 'button', class: 'cf-dg-btn', title: 'Edit in the Diagram Editor (Ctrl+Alt+D)', onmousedown: (e) => e.preventDefault() }, 'Diagram')
+    nb.addEventListener('click', (e) => {
+      e.stopPropagation()
+      editDiagramBlock(b)
+    })
+    tools.insertBefore(nb, tools.querySelector('.tools-button-group'))
+  } else if (btn && !(on && mm)) btn.remove()
+}
+/** Every code block: when the extension is installed or removed, or read-only mode changes. */
 function diagramButtons() {
   const on = extOn('diagram') && !S.readonly
-  for (const b of document.querySelectorAll('#wysiwyg .milkdown-code-block')) {
-    const tools = b.querySelector(':scope > .tools')
-    if (!tools) continue
-    const mm = /^mermaid\b/i.test(tools.querySelector('.language-button')?.textContent.trim() || '')
-    const btn = tools.querySelector('.cf-dg-btn')
-    if (on && mm && !btn) {
-      const nb = el('button', { type: 'button', class: 'cf-dg-btn', title: 'Edit in the Diagram Editor (Ctrl+Alt+D)', onmousedown: (e) => e.preventDefault() }, 'Diagram')
-      nb.addEventListener('click', (e) => {
-        e.stopPropagation()
-        editDiagramBlock(b)
-      })
-      tools.insertBefore(nb, tools.querySelector('.tools-button-group'))
-    } else if (btn && !(on && mm)) btn.remove()
-  }
+  for (const b of document.querySelectorAll('#wysiwyg .milkdown-code-block')) diagramButton(b, on)
 }
 function watchDiagramButtons(root) {
-  new MutationObserver(() => {
-    if (dgQueued || !extOn('diagram')) return
-    dgQueued = true
+  // only the code blocks an edit touched: looking at all of them after every keystroke made typing
+  // lag in a long document with many code blocks
+  let touched = new Set()
+  let queued = false
+  new MutationObserver((muts) => {
+    if (!extOn('diagram')) return
+    for (const m of muts) {
+      const t = m.target.nodeType === 1 ? m.target : m.target.parentElement
+      const b = t?.closest('.milkdown-code-block')
+      if (b) touched.add(b)
+      for (const n of m.addedNodes) {
+        if (n.nodeType !== 1 || b) continue
+        if (n.matches('.milkdown-code-block')) touched.add(n)
+        else if (n.firstElementChild) for (const c of n.querySelectorAll('.milkdown-code-block')) touched.add(c)
+      }
+    }
+    if (queued || !touched.size) return
+    queued = true
     requestAnimationFrame(() => {
-      dgQueued = false
-      diagramButtons()
+      queued = false
+      const blocks = touched
+      touched = new Set()
+      for (const b of blocks) if (b.isConnected) diagramButton(b)
     })
   }).observe(root, { childList: true, subtree: true, characterData: true })
   // double-clicking a drawn diagram opens it too
