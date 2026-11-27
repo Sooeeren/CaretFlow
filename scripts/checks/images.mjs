@@ -32,7 +32,7 @@ export const scenes = {
       await page.click('.milkdown-image-block .cf-img-full')
       await wait(300)
       const v = await run(page, () => { const b = document.querySelector('.cf-img-viewer'); return b && { cap: b.querySelector('.cf-img-viewer-cap').textContent, w: b.getBoundingClientRect().width, src: !!b.querySelector('img').src } })
-      await page.screenshot({ path: process.env.PROBE_OUT + '/viewer.png' }).catch(() => {})
+      if (process.env.PROBE_OUT) await page.screenshot({ path: process.env.PROBE_OUT + '/viewer.png' }).catch(() => {})
       check('viewer opens over the window', v && v.w >= 990 && v.src, JSON.stringify(v))
       await page.keyboard.press('Escape')
       await wait(300)

@@ -40,6 +40,7 @@ export const scenes = {
       const saved = await run(page, () => JSON.parse(localStorage.getItem('caretflow.settings')).materialSeed)
       check('picking a swatch saves the seed', saved === '#006a60', saved)
       check('…and recolors the app', (await accent(page)) !== '#634ca0', await accent(page))
+      summary()
     },
   },
   'material-dark': {
