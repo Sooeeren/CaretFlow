@@ -30,3 +30,5 @@ desktop.ini
 .env
 .env.*
 src/ai-stats.json
+# the long benchmark document is kept local (large, generated)
+benchmark/long.md
